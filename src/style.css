@@ -1,0 +1,444 @@
+/* ======================================================
+   全局样式 — 侘寂美学 · 大地色系设计系统
+   ====================================================== */
+
+/* ── CSS 自定义属性 ── */
+:root {
+  /* 色彩 — 大地色系 */
+  --color-bg: #F5F0EB;
+  --color-bg-alt: #EDE8E2;
+  --color-bg-dark: #1E1E1E;
+  --color-bg-dark-alt: #2A2A2A;
+  --color-text: #2D2D2D;
+  --color-text-light: #6B6B6B;
+  --color-text-lighter: #9A9A9A;
+  --color-text-inv: #F5F0EB;
+  --color-text-inv-light: rgba(245, 240, 235, 0.6);
+  --color-accent: #7C8C6E;
+  --color-accent-light: #9AAB8B;
+  --color-accent-dark: #5F6D53;
+  --color-accent-glow: rgba(124, 140, 110, 0.4);
+  --color-accent-glow-strong: rgba(124, 140, 110, 0.65);
+  --color-warm: #C4A882;
+  --color-warm-light: #D4C4A8;
+
+  /* 毛玻璃 */
+  --glass-bg: rgba(255, 255, 255, 0.42);
+  --glass-bg-hover: rgba(255, 255, 255, 0.58);
+  --glass-bg-dark: rgba(255, 255, 255, 0.06);
+  --glass-bg-dark-hover: rgba(255, 255, 255, 0.10);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-border-dark: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --glass-shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.10);
+
+  /* 圆角 */
+  --radius-lg: 24px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+  --radius-full: 9999px;
+
+  /* 字体 */
+  --font-serif: 'Noto Serif SC', 'STSong', 'SimSun', serif;
+  --font-sans: 'Noto Sans SC', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  /* 过渡 */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition: 0.3s var(--ease);
+  --transition-slow: 0.6s var(--ease);
+  --transition-spring: 0.4s var(--ease-spring);
+
+  /* 布局 */
+  --section-padding: 120px 0;
+  --container-width: 1100px;
+  --nav-height: 72px;
+}
+
+/* ── 全局重置 ── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: color var(--transition);
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+/* ── 布局工具 ── */
+.container {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 0 24px;
+  width: 100%;
+}
+
+.section {
+  padding: var(--section-padding);
+  position: relative;
+}
+
+.section-dark {
+  background-color: var(--color-bg-dark);
+  color: var(--color-text-inv);
+}
+
+.section-alt {
+  background-color: var(--color-bg-alt);
+}
+
+/* ── 排版 ── */
+.section-header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.section-title {
+  font-family: var(--font-serif);
+  font-size: 2.6rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  letter-spacing: 0.02em;
+  position: relative;
+  display: inline-block;
+}
+
+.section-title::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 3px;
+  background: var(--color-accent);
+  margin: 0.8rem auto 0;
+  border-radius: var(--radius-full);
+}
+
+.section-subtitle {
+  font-size: 1.1rem;
+  color: var(--color-text-light);
+  font-weight: 300;
+  letter-spacing: 0.03em;
+}
+
+.section-dark .section-subtitle {
+  color: var(--color-text-inv-light);
+}
+
+/* ── 毛玻璃卡片 ── */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--glass-shadow);
+  transition: all var(--transition);
+}
+
+.glass-card:hover {
+  background: var(--glass-bg-hover);
+  box-shadow: var(--glass-shadow-hover);
+}
+
+.glass-card-dark {
+  background: var(--glass-bg-dark);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border-dark);
+  border-radius: var(--radius);
+  box-shadow: var(--glass-shadow);
+  transition: all var(--transition);
+}
+
+.glass-card-dark:hover {
+  background: var(--glass-bg-dark-hover);
+  box-shadow: var(--glass-shadow-hover);
+}
+
+/* ── 滚动渐入动画 ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+}
+
+.reveal-left.revealed {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.reveal-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+}
+
+.reveal-right.revealed {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+}
+
+.reveal-scale.revealed {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 延迟类 */
+.delay-1 { transition-delay: 0.1s; }
+.delay-2 { transition-delay: 0.2s; }
+.delay-3 { transition-delay: 0.3s; }
+.delay-4 { transition-delay: 0.4s; }
+.delay-5 { transition-delay: 0.5s; }
+.delay-6 { transition-delay: 0.6s; }
+
+/* ── 发光按钮 (Uiverse.io 风格) ── */
+.glow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 32px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text-inv);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition);
+  letter-spacing: 0.05em;
+}
+
+.glow-btn::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-light),
+    var(--color-accent),
+    var(--color-accent-dark),
+    var(--color-accent-light)
+  );
+  background-size: 300% 300%;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity var(--transition);
+  animation: glow-rotate 4s linear infinite;
+}
+
+.glow-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 20px var(--color-accent-glow),
+    0 0 40px var(--color-accent-glow);
+}
+
+.glow-btn:hover::before {
+  opacity: 1;
+}
+
+.glow-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes glow-rotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ── 发光输入框 (Uiverse.io 风格) ── */
+.glow-input {
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  color: var(--color-text-inv);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: all var(--transition);
+}
+
+.glow-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.glow-input:focus {
+  border-color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 0 3px var(--color-accent-glow),
+    0 0 20px rgba(124, 140, 110, 0.15);
+}
+
+
+/* ── 3D 倾斜光泽效果 (配合 useTilt) ── */
+.tilt-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.tilt-shine::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  width: 140%;
+  height: 140%;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.08) 44%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.08) 56%,
+    transparent 62%
+  );
+  transform: translateX(-100%);
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.tilt-shine:hover::after {
+  opacity: 1;
+  animation: shine-sweep 0.7s ease-in-out;
+}
+
+@keyframes shine-sweep {
+  0% { transform: translateX(-100%) rotate(-5deg); }
+  100% { transform: translateX(100%) rotate(-5deg); }
+}
+
+/* ── 自定义滚动条 ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-lighter);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-light);
+}
+
+/* ── 选中文本 ── */
+::selection {
+  background: var(--color-accent);
+  color: white;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 768px) {
+  :root {
+    --section-padding: 80px 0;
+    --nav-height: 60px;
+  }
+
+  .section-title {
+    font-size: 2rem;
+  }
+
+  .section-subtitle {
+    font-size: 1rem;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --section-padding: 60px 0;
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+  }
+}
+
+/* ── 动画 prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal,
+  .reveal-left,
+  .reveal-right,
+  .reveal-scale {
+    opacity: 1;
+    transform: none;
+  }
+}
