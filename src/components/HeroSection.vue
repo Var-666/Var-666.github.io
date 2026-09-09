@@ -308,7 +308,6 @@ function scrollToAbout() {
   letter-spacing: 0.15em;
   margin-bottom: 1rem;
   opacity: 0;
-  animation: fadeInUp 1s ease 0.5s forwards;
   background: linear-gradient(135deg, #F5F0EB 0%, #D4C4A8 40%, #9AAB8B 70%, #F5F0EB 100%);
   background-size: 300% 300%;
   -webkit-background-clip: text;

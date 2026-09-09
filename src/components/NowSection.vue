@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, nextTick } from 'vue'
 import { useScrollReveal } from '@/composables/useScrollReveal'
+import { useTilt } from '@/composables/useTilt'
 import { useLiveStatus } from '@/composables/useLiveStatus'
 
 const sectionRef = ref<HTMLElement | null>(null)
+const cardRefs = ref<HTMLElement[]>([])
 const { observeAll } = useScrollReveal()
+const { bind: bindTilt } = useTilt({ max: 6, scale: 1.02, speed: 400 })
 const { timeStr, dateStr, city, weather, temp, currentActivity, activityIcon, isWorkingHour, isAutoLocated } = useLiveStatus()
 
 interface TimelineItem {
@@ -41,10 +44,23 @@ const changelog: TimelineItem[] = [
   },
 ]
 
-onMounted(() => {
+const cardAccents = [
+  'var(--color-accent)',
+  'var(--color-warm)',
+  'rgba(154, 171, 139, 0.7)',
+  'var(--color-accent-light)',
+]
+
+onMounted(async () => {
   if (sectionRef.value) {
-    observeAll('.reveal, .reveal-left, .reveal-right', sectionRef.value)
+    observeAll('.reveal, .reveal-left, .reveal-right, .reveal-scale', sectionRef.value)
   }
+
+  await nextTick()
+
+  cardRefs.value.forEach((el) => {
+    if (el) bindTilt(el)
+  })
 })
 </script>
 
@@ -56,16 +72,16 @@ onMounted(() => {
         <span class="section-index">( 02 ) 此时此刻 · NOW</span>
         <h2 class="section-title">活在当下的呼吸感</h2>
         <p class="section-subtitle">
-          受 Derek Sivers 的 /now 理念启发 · 记录我当前的实时时间、生活状态、正在看的书与近况足迹
+          受 Derek Sivers 的 /now 理念启发 · 记录我当前的实时状态与近况足迹
         </p>
       </div>
 
       <!-- 实时生命体征控制台 (Live Status Console) -->
-      <div class="live-console-card art-card reveal">
+      <div class="live-console-card glass-card tilt-shine reveal">
         <div class="console-grid">
           <!-- 实时时间与时区 -->
           <div class="console-block">
-            <span class="console-label">当地时间 ( CST / UTC+8 )</span>
+            <span class="console-label">当地时间 ( LOCAL )</span>
             <div class="console-time-wrap">
               <span class="console-time">{{ timeStr || '15:28:00' }}</span>
               <span class="console-date">{{ dateStr }}</span>
@@ -76,7 +92,7 @@ onMounted(() => {
           <div class="console-block">
             <div class="console-label-row">
               <span class="console-label">身处之所 ( LOCATION )</span>
-              <span v-if="isAutoLocated" class="auto-badge" title="已通过真实 IP 与气象卫星 API 实时解析">实时定位</span>
+              <span v-if="isAutoLocated" class="auto-badge" title="已通过真实 IP 与气象 API 实时解析">实时定位</span>
             </div>
             <div class="console-val-row">
               <span class="geo-pin">📍</span>
@@ -87,7 +103,7 @@ onMounted(() => {
 
           <!-- 当前在线状态 -->
           <div class="console-block">
-            <span class="console-label">当前活跃状态 ( LIVING STATUS )</span>
+            <span class="console-label">当前活跃状态 ( STATUS )</span>
             <div class="console-val-row">
               <span class="live-status-dot" :class="{ working: isWorkingHour }"></span>
               <span class="console-val-main">{{ currentActivity }}</span>
@@ -100,7 +116,11 @@ onMounted(() => {
       <!-- 四大近况视窗 (Four Focus Windows) -->
       <div class="now-grid">
         <!-- 1. 在读书目 -->
-        <div class="now-card art-card reveal-left">
+        <div
+          :ref="(el) => { if (el) cardRefs[0] = el as HTMLElement }"
+          class="now-card glass-card tilt-shine reveal-scale delay-1"
+        >
+          <div class="now-card-accent" :style="{ background: cardAccents[0] }"></div>
           <div class="now-card-top">
             <span class="now-card-icon">📖</span>
             <span class="now-card-tag">正在阅读</span>
@@ -111,12 +131,16 @@ onMounted(() => {
             <div class="progress-fill" style="width: 74%"></div>
           </div>
           <p class="now-card-quote">
-            “白并不是一种颜色，而是一种感觉的容纳。把多余的视觉噪音去掉，信息本身才能发出清晰的声音。”
+            "白并不是一种颜色，而是一种感觉的容纳。把多余的视觉噪音去掉，信息本身才能发出清晰的声音。"
           </p>
         </div>
 
         <!-- 2. 本周单曲循环 -->
-        <div class="now-card art-card reveal-right">
+        <div
+          :ref="(el) => { if (el) cardRefs[1] = el as HTMLElement }"
+          class="now-card glass-card tilt-shine reveal-scale delay-2"
+        >
+          <div class="now-card-accent" :style="{ background: cardAccents[1] }"></div>
           <div class="now-card-top">
             <span class="now-card-icon">🎧</span>
             <span class="now-card-tag">本周单曲循环</span>
@@ -135,7 +159,11 @@ onMounted(() => {
         </div>
 
         <!-- 3. 技术试验田 -->
-        <div class="now-card art-card reveal-left">
+        <div
+          :ref="(el) => { if (el) cardRefs[2] = el as HTMLElement }"
+          class="now-card glass-card tilt-shine reveal-scale delay-3"
+        >
+          <div class="now-card-accent" :style="{ background: cardAccents[2] }"></div>
           <div class="now-card-top">
             <span class="now-card-icon">🔬</span>
             <span class="now-card-tag">技术试验田</span>
@@ -148,7 +176,11 @@ onMounted(() => {
         </div>
 
         <!-- 4. 日常生活感受 -->
-        <div class="now-card art-card reveal-right">
+        <div
+          :ref="(el) => { if (el) cardRefs[3] = el as HTMLElement }"
+          class="now-card glass-card tilt-shine reveal-scale delay-4"
+        >
+          <div class="now-card-accent" :style="{ background: cardAccents[3] }"></div>
           <div class="now-card-top">
             <span class="now-card-icon">🌿</span>
             <span class="now-card-tag">生活琐事</span>
@@ -162,7 +194,7 @@ onMounted(() => {
       </div>
 
       <!-- 近期足迹时间流 (Changelog & Activity Stream) -->
-      <div class="timeline-wrap reveal">
+      <div class="timeline-wrap glass-card reveal">
         <div class="timeline-header">
           <h3 class="timeline-title">近期足迹与更迭 ( Footprints )</h3>
           <span class="timeline-sub">真实的时间刻度，记录每一步探索</span>
@@ -198,13 +230,21 @@ onMounted(() => {
   position: relative;
 }
 
+/* 小标签索引 */
+.section-index {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-accent);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.8rem;
+  opacity: 0.7;
+}
+
 /* 实时监控卡片 */
 .live-console-card {
   padding: 2.2rem 2.8rem;
-  background: #FFFFFF;
   margin-bottom: 3.5rem;
-  border: 1px solid var(--border-medium);
-  box-shadow: var(--shadow-card);
 }
 
 .console-grid {
@@ -238,7 +278,7 @@ onMounted(() => {
   font-family: var(--font-mono);
   font-size: 0.65rem;
   padding: 1px 7px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   background: rgba(16, 185, 129, 0.1);
   color: #059669;
   border: 1px solid rgba(16, 185, 129, 0.25);
@@ -317,15 +357,40 @@ onMounted(() => {
 .now-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
-  margin-bottom: 4rem;
+  gap: 1.5rem;
+  margin-bottom: 3.5rem;
 }
 
 .now-card {
-  padding: 2.2rem;
-  background: #FFFFFF;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.now-card:hover {
+  border-color: rgba(124, 140, 110, 0.3);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.08),
+    0 0 30px var(--color-accent-glow);
+}
+
+/* 顶部色调装饰线 */
+.now-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+.now-card:hover .now-card-accent {
+  opacity: 1;
 }
 
 .now-card-top {
@@ -337,6 +402,11 @@ onMounted(() => {
 
 .now-card-icon {
   font-size: 1.2rem;
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.now-card:hover .now-card-icon {
+  transform: scale(1.2) rotate(-5deg);
 }
 
 .now-card-tag {
@@ -344,7 +414,7 @@ onMounted(() => {
   padding: 2px 8px;
   background: var(--color-accent-soft);
   color: var(--color-accent);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   font-weight: 500;
 }
 
@@ -354,6 +424,11 @@ onMounted(() => {
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: 0.2rem;
+  transition: color 0.3s;
+}
+
+.now-card:hover .now-card-title {
+  color: var(--color-accent-dark);
 }
 
 .now-card-author {
@@ -375,6 +450,7 @@ onMounted(() => {
   height: 100%;
   background: var(--color-accent);
   border-radius: var(--radius-full);
+  transition: width 1.2s var(--ease);
 }
 
 .now-card-quote {
@@ -423,10 +499,6 @@ onMounted(() => {
 /* 足迹时间流 */
 .timeline-wrap {
   padding: 2.5rem;
-  background: #FFFFFF;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-medium);
-  box-shadow: var(--shadow-card);
 }
 
 .timeline-header {
@@ -468,6 +540,11 @@ onMounted(() => {
 
 .timeline-item {
   position: relative;
+  transition: transform 0.3s var(--ease);
+}
+
+.timeline-item:hover {
+  transform: translateX(4px);
 }
 
 .timeline-point {
@@ -477,11 +554,18 @@ onMounted(() => {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #FFFFFF;
+  background: var(--color-bg);
   border: 2px solid var(--color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.3s var(--ease-spring);
+}
+
+.timeline-item:hover .timeline-point {
+  border-color: var(--color-accent-light);
+  box-shadow: 0 0 0 4px var(--color-accent-glow);
+  transform: scale(1.2);
 }
 
 .point-core {
@@ -509,7 +593,7 @@ onMounted(() => {
   font-size: 0.72rem;
   padding: 1px 8px;
   background: var(--color-bg-alt);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   color: var(--color-text-lighter);
 }
 
@@ -519,6 +603,11 @@ onMounted(() => {
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: 4px;
+  transition: color 0.3s;
+}
+
+.timeline-item:hover .item-title {
+  color: var(--color-accent-dark);
 }
 
 .item-detail {

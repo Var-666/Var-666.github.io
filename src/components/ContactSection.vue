@@ -29,14 +29,19 @@ const formData = ref({
 })
 
 const isSubmitting = ref(false)
+const showToast = ref(false)
+const toastName = ref('')
+
+const currentYear = new Date().getFullYear()
 
 async function handleSubmit() {
   isSubmitting.value = true
-  // 模拟提交
   await new Promise(r => setTimeout(r, 800))
   isSubmitting.value = false
-  alert(`感谢你的留言，${formData.value.name}！我会尽快回复你。`)
+  toastName.value = formData.value.name
+  showToast.value = true
   formData.value = { name: '', email: '', message: '' }
+  setTimeout(() => { showToast.value = false }, 4000)
 }
 
 onMounted(async () => {
@@ -160,6 +165,12 @@ onMounted(async () => {
               <span v-else class="btn-spinner"></span>
             </button>
           </form>
+          <Transition name="toast">
+            <div v-if="showToast" class="toast-notification">
+              <span class="toast-icon">✅</span>
+              <span class="toast-text">感谢你的留言，{{ toastName }}！我会尽快回复。</span>
+            </div>
+          </Transition>
         </div>
       </div>
 
@@ -167,7 +178,7 @@ onMounted(async () => {
       <div class="footer reveal">
         <div class="footer-divider"></div>
         <p class="footer-text">
-          © 2024 var · 以代码编织创意
+          © {{ currentYear }} var · 以代码编织创意
         </p>
         <p class="footer-sub">
           使用 Vue.js + TypeScript 构建 · 设计灵感源于自然
@@ -395,4 +406,31 @@ onMounted(async () => {
   .social-links { justify-content: center; flex-wrap: wrap; }
   .contact-form { padding: 1.5rem; }
 }
+
+/* Toast 通知 */
+.toast-notification {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 24px;
+  background: var(--color-accent);
+  color: white;
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(124, 140, 110, 0.35);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.toast-icon {
+  font-size: 1.2rem;
+}
+
+.toast-enter-active { transition: all 0.4s var(--ease-spring); }
+.toast-leave-active { transition: all 0.3s var(--ease); }
+.toast-enter-from { opacity: 0; transform: translateY(20px) scale(0.95); }
+.toast-leave-to { opacity: 0; transform: translateY(-10px) scale(0.95); }
 </style>

@@ -329,7 +329,8 @@ onMounted(async () => {
   font-size: 2rem;
   font-weight: 700;
   color: var(--color-accent);
-  transition: color 0.3s;
+  display: inline-block;
+  transition: color 0.3s, transform 0.3s var(--ease-spring);
 }
 
 .stat-item:hover .stat-number {

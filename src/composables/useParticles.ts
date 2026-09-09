@@ -146,14 +146,14 @@ export function useParticles() {
   function animate() {
     if (!ctx || !canvas) return
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight)
 
     // 绘制连接线
     drawConnections()
 
     // 更新并绘制粒子
     for (const p of particles) {
-      updateParticle(p, canvas.width, canvas.height)
+      updateParticle(p, canvas.offsetWidth, canvas.offsetHeight)
       drawParticle(p)
     }
 
@@ -161,10 +161,12 @@ export function useParticles() {
   }
 
   function handleResize() {
-    if (!canvas) return
-    canvas.width = canvas.offsetWidth
-    canvas.height = canvas.offsetHeight
-    initParticles(canvas.width, canvas.height)
+    if (!canvas || !ctx) return
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = canvas.offsetWidth * dpr
+    canvas.height = canvas.offsetHeight * dpr
+    ctx.scale(dpr, dpr)
+    initParticles(canvas.offsetWidth, canvas.offsetHeight)
   }
 
   function handleMouseMove(e: MouseEvent) {
@@ -184,10 +186,12 @@ export function useParticles() {
     ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    canvas.width = canvas.offsetWidth
-    canvas.height = canvas.offsetHeight
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = canvas.offsetWidth * dpr
+    canvas.height = canvas.offsetHeight * dpr
+    ctx.scale(dpr, dpr)
 
-    initParticles(canvas.width, canvas.height)
+    initParticles(canvas.offsetWidth, canvas.offsetHeight)
 
     canvas.addEventListener('mousemove', handleMouseMove)
     canvas.addEventListener('mouseleave', handleMouseLeave)
@@ -195,6 +199,19 @@ export function useParticles() {
 
     isRunning.value = true
     animate()
+
+    // 离屏暂停
+    const visObs = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) {
+        if (!animationId) animate()
+      } else {
+        if (animationId) {
+          cancelAnimationFrame(animationId)
+          animationId = null
+        }
+      }
+    }, { threshold: 0.05 })
+    visObs.observe(canvas)
   }
 
   function destroy() {

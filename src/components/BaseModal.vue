@@ -68,7 +68,7 @@ onUnmounted(() => {
   width: 100%;
   max-width: 700px;
   max-height: 86vh;
-  background: #FFFFFF;
+  background: var(--color-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 20px 60px -10px rgba(60, 48, 38, 0.18), 0 4px 16px rgba(0, 0, 0, 0.04);

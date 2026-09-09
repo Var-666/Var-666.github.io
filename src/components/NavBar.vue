@@ -322,6 +322,25 @@ onUnmounted(() => {
   transform: translateY(-1px);
 }
 
+.navbar.scrolled .nav-live-pill {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--color-text);
+}
+
+.navbar.scrolled .live-clock {
+  color: var(--color-text);
+}
+
+.navbar.scrolled .live-city {
+  color: var(--color-text-light);
+}
+
+.navbar.scrolled .nav-live-pill:hover {
+  background: rgba(124, 140, 110, 0.08);
+  border-color: var(--color-accent);
+}
+
 .live-pulse-dot {
   width: 6px;
   height: 6px;

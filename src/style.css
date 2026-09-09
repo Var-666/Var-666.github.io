@@ -42,6 +42,14 @@
   /* 字体 */
   --font-serif: 'Noto Serif SC', 'STSong', 'SimSun', serif;
   --font-sans: 'Noto Sans SC', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+  /* 边框与阴影 */
+  --border-light: rgba(0, 0, 0, 0.06);
+  --border-medium: rgba(0, 0, 0, 0.1);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.05);
+  --color-accent-soft: rgba(124, 140, 110, 0.1);
+  --card-border: rgba(0, 0, 0, 0.08);
 
   /* 过渡 */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);

@@ -28,6 +28,13 @@ const skills: Skill[] = [
 const RING_RADIUS = 42
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
+function getLevel(percent: number): string {
+  if (percent >= 90) return '精通'
+  if (percent >= 80) return '熟练'
+  if (percent >= 70) return '常用'
+  return '学习中'
+}
+
 function getStrokeDashoffset(percent: number): number {
   return RING_CIRCUMFERENCE - (RING_CIRCUMFERENCE * percent) / 100
 }
@@ -104,7 +111,7 @@ onMounted(async () => {
 
           <!-- 发光标签 -->
           <div class="skill-glow-tag">
-            <span>{{ skill.name }}</span>
+            <span>{{ getLevel(skill.percent) }}</span>
           </div>
         </div>
       </div>
