@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useLiveStatus } from '@/composables/useLiveStatus'
+
+const { timeStr } = useLiveStatus()
 
 const scrolled = ref(false)
 const mobileMenuOpen = ref(false)
@@ -9,6 +12,7 @@ const activeSection = ref('hero')
 const navLinks = [
   { label: '首页', href: '#hero', id: 'hero' },
   { label: '关于', href: '#about', id: 'about' },
+  { label: '近况', href: '#now', id: 'now' },
   { label: '技能', href: '#skills', id: 'skills' },
   { label: '作品', href: '#portfolio', id: 'portfolio' },
   { label: '联系', href: '#contact', id: 'contact' },
@@ -22,7 +26,7 @@ function handleScroll() {
   scrollProgress.value = total > 0 ? (window.scrollY / total) * 100 : 0
 
   // 活跃板块检测
-  const sections = ['contact', 'portfolio', 'skills', 'about', 'hero']
+  const sections = ['contact', 'portfolio', 'skills', 'now', 'about', 'hero']
   for (const id of sections) {
     const el = document.getElementById(id)
     if (el && el.getBoundingClientRect().top <= 150) {
@@ -69,6 +73,13 @@ onUnmounted(() => {
           </a>
         </li>
       </ul>
+
+      <!-- 实时微胶囊 (Live Pulse Pill) -->
+      <button class="nav-live-pill" @click="scrollTo('#now')" title="查看当前实时近况与生活状态">
+        <span class="live-pulse-dot"></span>
+        <span class="live-clock">{{ timeStr || '15:28' }}</span>
+        <span class="live-city">杭州</span>
+      </button>
 
       <!-- Mobile Toggle -->
       <button
@@ -286,6 +297,61 @@ onUnmounted(() => {
 
 .mobile-toggle.active span:nth-child(3) {
   transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* ── 实时状态微胶囊 ── */
+.nav-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+  color: var(--color-text-inv);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all var(--transition);
+  backdrop-filter: blur(8px);
+}
+
+.nav-live-pill:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--color-accent-light);
+  transform: translateY(-1px);
+}
+
+.live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 8px #10B981;
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.live-clock {
+  color: var(--color-text-inv);
+  font-weight: 600;
+}
+
+.live-city {
+  font-family: var(--font-sans);
+  color: var(--color-text-inv-light);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 900px) {
+  .nav-live-pill {
+    display: none;
+  }
 }
 
 /* Mobile Menu */
