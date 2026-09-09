@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useLiveStatus } from '@/composables/useLiveStatus'
 
-const { timeStr } = useLiveStatus()
+const { timeStr, city } = useLiveStatus()
 
 const scrolled = ref(false)
 const mobileMenuOpen = ref(false)
@@ -78,7 +78,7 @@ onUnmounted(() => {
       <button class="nav-live-pill" @click="scrollTo('#now')" title="查看当前实时近况与生活状态">
         <span class="live-pulse-dot"></span>
         <span class="live-clock">{{ timeStr || '15:28' }}</span>
-        <span class="live-city">杭州</span>
+        <span class="live-city">{{ city }}</span>
       </button>
 
       <!-- Mobile Toggle -->

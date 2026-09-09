@@ -5,7 +5,7 @@ import { useLiveStatus } from '@/composables/useLiveStatus'
 
 const sectionRef = ref<HTMLElement | null>(null)
 const { observeAll } = useScrollReveal()
-const { timeStr, dateStr, city, weather, temp, currentActivity, activityIcon, isWorkingHour } = useLiveStatus()
+const { timeStr, dateStr, city, weather, temp, currentActivity, activityIcon, isWorkingHour, isAutoLocated } = useLiveStatus()
 
 interface TimelineItem {
   date: string
@@ -74,7 +74,10 @@ onMounted(() => {
 
           <!-- 地理与气象 -->
           <div class="console-block">
-            <span class="console-label">身处之所 ( LOCATION )</span>
+            <div class="console-label-row">
+              <span class="console-label">身处之所 ( LOCATION )</span>
+              <span v-if="isAutoLocated" class="auto-badge" title="已通过真实 IP 与气象卫星 API 实时解析">实时定位</span>
+            </div>
             <div class="console-val-row">
               <span class="geo-pin">📍</span>
               <span class="console-val-main">{{ city }}</span>
@@ -223,6 +226,23 @@ onMounted(() => {
   color: var(--color-text-lighter);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.console-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auto-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-weight: 500;
 }
 
 .console-time-wrap {
