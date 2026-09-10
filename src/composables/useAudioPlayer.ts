@@ -15,7 +15,7 @@ const isPlaying = ref(false)
 const isLoading = ref(false)
 const currentTime = ref(0)
 const duration = ref(INITIAL_PLAYLIST[0]?.duration || 312)
-const volume = ref(0.85)
+const volume = ref(1.0)
 const isMuted = ref(false)
 const isExpanded = ref(false)
 
@@ -85,7 +85,7 @@ function initAudioEngine() {
  */
 async function prefetchPlaylistAudioUrls(tracks: Track[]) {
   if (!tracks || tracks.length === 0) return
-  const neteaseTracks = tracks.filter(t => t.id.startsWith('netease-') && !t.audioUrl.includes('.126.net'))
+  const neteaseTracks = tracks.filter(t => t.id.startsWith('netease-') && !t.audioUrl.startsWith('/audio/') && !t.audioUrl.includes('.126.net'))
   if (neteaseTracks.length === 0) return
 
   const ids = neteaseTracks.map(t => t.id.replace('netease-', ''))
@@ -138,9 +138,9 @@ function play() {
     })
   }
 
-  // 异步检查当前歌曲是否已换取最新 CDN 直链，若未换取则后台更新
+  // 异步检查当前歌曲是否已换取最新 CDN 直链，若未换取则后台更新（跳过本地高保真音轨）
   const track = currentTrack.value
-  if (track && (track.id.startsWith('netease-') || track.audioUrl.includes('music.163.com')) && !track.audioUrl.includes('.126.net')) {
+  if (track && (track.id.startsWith('netease-') || track.audioUrl.includes('music.163.com')) && !track.audioUrl.startsWith('/audio/') && !track.audioUrl.includes('.126.net')) {
     const songId = track.id.replace('netease-', '')
     const apiUrl = getSavedApiUrl()
     if (apiUrl) {
@@ -190,8 +190,8 @@ function selectTrack(index: number) {
   }
   play()
 
-  // 异步解析直链，不阻塞当前播放
-  if (track && (track.id.startsWith('netease-') || track.audioUrl.includes('music.163.com')) && !track.audioUrl.includes('.126.net')) {
+  // 异步解析直链，不阻塞当前播放（跳过本地高保真音轨）
+  if (track && (track.id.startsWith('netease-') || track.audioUrl.includes('music.163.com')) && !track.audioUrl.startsWith('/audio/') && !track.audioUrl.includes('.126.net')) {
     const songId = track.id.replace('netease-', '')
     const apiUrl = getSavedApiUrl()
     if (apiUrl) {

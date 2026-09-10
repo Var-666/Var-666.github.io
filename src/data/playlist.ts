@@ -11,7 +11,7 @@ export interface Track {
   isFull: boolean
 }
 
-// 站长专属精选曲库（同步自网易云歌单「不可以叫我憨憨喜欢的音乐」）
+// 站长专属精选曲库（同步自网易云「不可以叫我憨憨」精选歌单，核心曲目直通本地无损高保真流）
 export const INITIAL_PLAYLIST: Track[] = [
   {
     "id": "netease-27946612",
@@ -22,7 +22,7 @@ export const INITIAL_PLAYLIST: Track[] = [
     "genre": "Cloud Music",
     "themeColor": "#7C8C6E",
     "coverUrl": "https://p3.music.126.net/cpoUinrExafBHL5Nv5iDHQ==/109951166361218466.jpg?param=300y300",
-    "audioUrl": "https://music.163.com/song/media/outer/url?id=27946612.mp3",
+    "audioUrl": "/audio/dai-wo-zou.mp3",
     "isFull": true
   },
   {
@@ -82,7 +82,7 @@ export const INITIAL_PLAYLIST: Track[] = [
     "genre": "Cloud Music",
     "themeColor": "#7C8C6E",
     "coverUrl": "https://p4.music.126.net/6C8M0t0GfjOmmas8_iVpXQ==/109951165604085144.jpg?param=300y300",
-    "audioUrl": "https://music.163.com/song/media/outer/url?id=1809108646.mp3",
+    "audioUrl": "/audio/love-story.mp3",
     "isFull": true
   },
   {
@@ -106,7 +106,7 @@ export const INITIAL_PLAYLIST: Track[] = [
     "genre": "Cloud Music",
     "themeColor": "#7C8C6E",
     "coverUrl": "https://p3.music.126.net/Yrk8cISlkr1Nf3YwEAuKRQ==/109951171791431725.jpg?param=300y300",
-    "audioUrl": "https://music.163.com/song/media/outer/url?id=1952737857.mp3",
+    "audioUrl": "/audio/payphone.mp3",
     "isFull": true
   },
   {
@@ -166,7 +166,7 @@ export const INITIAL_PLAYLIST: Track[] = [
     "genre": "Cloud Music",
     "themeColor": "#7C8C6E",
     "coverUrl": "https://p3.music.126.net/qpKo50Kz2YRYn2oUBHWX9w==/109951166196887769.jpg?param=300y300",
-    "audioUrl": "https://music.163.com/song/media/outer/url?id=1862710424.mp3",
+    "audioUrl": "/audio/stay.mp3",
     "isFull": true
   },
   {
@@ -226,7 +226,7 @@ export const INITIAL_PLAYLIST: Track[] = [
     "genre": "Cloud Music",
     "themeColor": "#7C8C6E",
     "coverUrl": "https://p3.music.126.net/6fjOogsb9YjTBYbAGUWC6Q==/109951164817797370.jpg?param=300y300",
-    "audioUrl": "https://music.163.com/song/media/outer/url?id=1432159268.mp3",
+    "audioUrl": "/audio/paris-in-the-rain.mp3",
     "isFull": true
   },
   {
@@ -250,7 +250,7 @@ export const INITIAL_PLAYLIST: Track[] = [
     "genre": "Cloud Music",
     "themeColor": "#7C8C6E",
     "coverUrl": "https://p4.music.126.net/z5ds67NEHe4irYdXy8r2zA==/109951167275181511.jpg?param=300y300",
-    "audioUrl": "https://music.163.com/song/media/outer/url?id=1936975624.mp3",
+    "audioUrl": "/audio/free-loop.mp3",
     "isFull": true
   },
   {
@@ -262,7 +262,7 @@ export const INITIAL_PLAYLIST: Track[] = [
     "genre": "Cloud Music",
     "themeColor": "#7C8C6E",
     "coverUrl": "https://p3.music.126.net/mU-cKIp8HvqVUSA0gzY2Dg==/903798558076025.jpg?param=300y300",
-    "audioUrl": "https://music.163.com/song/media/outer/url?id=2080326.mp3",
+    "audioUrl": "/audio/nothing-gonna-change.mp3",
     "isFull": true
   },
   {
@@ -287,6 +287,30 @@ export const INITIAL_PLAYLIST: Track[] = [
     "themeColor": "#7C8C6E",
     "coverUrl": "https://p4.music.126.net/sF9I_mKMVNtsCD-ZXzfV_A==/109951165251958014.jpg?param=300y300",
     "audioUrl": "https://music.163.com/song/media/outer/url?id=1472480890.mp3",
+    "isFull": true
+  },
+  {
+    "id": "hisaishi-summer",
+    "title": "Summer (菊次郎的夏天)",
+    "artist": "久石让 · 钢琴重奏",
+    "album": "北野武电影原声经典",
+    "duration": 185,
+    "genre": "Soundtrack / Piano",
+    "themeColor": "#9AAFB2",
+    "coverUrl": "/covers/summer.jpg",
+    "audioUrl": "/audio/summer-piano.mp3",
+    "isFull": true
+  },
+  {
+    "id": "sakamoto-andata",
+    "title": "andata (Ambient Piano)",
+    "artist": "坂本龍一 · 意境重奏",
+    "album": "《async》 / 经典钢琴心流",
+    "duration": 208,
+    "genre": "Ambient / Piano",
+    "themeColor": "#7C8C6E",
+    "coverUrl": "/covers/sakamoto.jpg",
+    "audioUrl": "/audio/andata-ambient.mp3",
     "isFull": true
   }
 ]
