@@ -296,6 +296,7 @@ function scrollToAbout() {
   font-size: clamp(4rem, 14vw, 11rem);
   font-weight: 700;
   letter-spacing: 0.12em;
+  margin-right: -0.12em;
   margin-bottom: 0.6rem;
   opacity: 0;
   background: linear-gradient(135deg, #F5F0EB 0%, #D4C4A8 40%, #9AAB8B 70%, #F5F0EB 100%);
@@ -325,6 +326,7 @@ function scrollToAbout() {
   font-weight: 300;
   color: rgba(245, 240, 235, 0.45);
   letter-spacing: 0.3em;
+  margin-right: -0.3em;
   text-transform: uppercase;
   margin-bottom: 2.5rem;
   opacity: 0;
@@ -370,27 +372,28 @@ function scrollToAbout() {
   position: absolute;
   bottom: 40px;
   left: 50%;
-  transform: translateX(-50%);
-  z-index: 3;
+  transform: translate(-50%, 0);
+  z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: rgba(245, 240, 235, 0.35);
+  color: rgba(245, 240, 235, 0.4);
   font-size: 0.8rem;
-  letter-spacing: 0.15em;
   transition: color var(--transition), transform 0.3s;
   opacity: 0;
-  animation: fadeInUp 1s ease 1.2s forwards;
+  animation: fadeInUpCenter 1s ease 1.2s forwards;
 }
 
 .scroll-indicator:hover {
   color: var(--color-accent-light);
-  transform: translateX(-50%) translateY(-3px);
+  transform: translate(-50%, -4px);
 }
 
 .scroll-text {
   font-weight: 300;
+  letter-spacing: 0.15em;
+  margin-right: -0.15em;
 }
 
 .scroll-arrow {
@@ -406,6 +409,17 @@ function scrollToAbout() {
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(25px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUpCenter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 25px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 @keyframes fadeInDown {
