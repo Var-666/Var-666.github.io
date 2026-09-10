@@ -133,6 +133,13 @@ function scrollToAbout() {
       </div>
     </div>
 
+    <!-- 波浪分隔过渡 -->
+    <div class="hero-wave">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 72" preserveAspectRatio="none">
+        <path d="M0,36 C240,72 480,0 720,36 C960,72 1200,0 1440,36 L1440,72 L0,72 Z" fill="#F5F0EB"/>
+      </svg>
+    </div>
+
     <!-- 滚动引导 -->
     <button class="scroll-indicator" @click="scrollToAbout" aria-label="向下滚动">
       <span class="scroll-text">向下探索</span>
@@ -159,46 +166,29 @@ function scrollToAbout() {
 .hero-canvas {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
   z-index: 1;
+  pointer-events: none;
 }
 
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 30% 20%, rgba(124, 140, 110, 0.1) 0%, transparent 60%),
-    radial-gradient(ellipse at 70% 80%, rgba(196, 168, 130, 0.07) 0%, transparent 50%);
+  background: radial-gradient(circle at center, transparent 0%, rgba(30, 30, 30, 0.6) 100%);
   z-index: 2;
   pointer-events: none;
 }
 
-/* 视差浮动装饰 */
 .hero-floats {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
+  overflow: hidden;
 }
 
 .float-el {
   position: absolute;
   border-radius: 50%;
-  transition: transform 0.4s ease-out;
-}
-
-.float-1 {
-  top: 12%;
-  left: 8%;
-  width: 6px;
-  height: 6px;
-  background: rgba(154, 171, 139, 0.4);
-  box-shadow: 0 0 12px rgba(154, 171, 139, 0.3);
-}
-
-.float-2 {
-  top: 22%;
   right: 12%;
   width: 80px;
   height: 80px;
@@ -303,10 +293,10 @@ function scrollToAbout() {
 /* 名字 — 悬浮时触发文字解码 */
 .hero-name {
   font-family: 'Courier New', monospace;
-  font-size: 6rem;
+  font-size: clamp(4rem, 14vw, 11rem);
   font-weight: 700;
-  letter-spacing: 0.15em;
-  margin-bottom: 1rem;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.6rem;
   opacity: 0;
   background: linear-gradient(135deg, #F5F0EB 0%, #D4C4A8 40%, #9AAB8B 70%, #F5F0EB 100%);
   background-size: 300% 300%;
@@ -331,10 +321,11 @@ function scrollToAbout() {
 
 /* 头衔 */
 .hero-title {
-  font-size: 1.25rem;
+  font-size: 0.9rem;
   font-weight: 300;
-  color: rgba(245, 240, 235, 0.55);
-  letter-spacing: 0.2em;
+  color: rgba(245, 240, 235, 0.45);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
   margin-bottom: 2.5rem;
   opacity: 0;
   animation: fadeInUp 1s ease 0.7s forwards;
