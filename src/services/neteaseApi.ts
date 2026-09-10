@@ -1,0 +1,351 @@
+import type { Track } from '@/data/playlist'
+
+const STORAGE_API_KEY = 'var_netease_api_url'
+const STORAGE_COOKIE_KEY = 'var_netease_cookie'
+
+// 官方 Vercel 1-Click Deploy 模板链接 (使用 2025/2026 社区活跃维护的增强版)
+export const RECOMMENDED_VERCEL_DEPLOY_URL = 'https://vercel.com/new/clone?repository-url=https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced'
+
+export function getSavedApiUrl(): string {
+  try {
+    const saved = localStorage.getItem(STORAGE_API_KEY)
+    if (saved && saved.trim()) {
+      return saved.trim().replace(/\/+$/, '')
+    }
+    // 默认直接绑定你的专属生产域名
+    return 'https://personly-use.vercel.app'
+  } catch {
+    return 'https://personly-use.vercel.app'
+  }
+}
+
+export function saveApiUrl(url: string): void {
+  const clean = url.trim().replace(/\/+$/, '')
+  try {
+    if (clean) {
+      localStorage.setItem(STORAGE_API_KEY, clean)
+    } else {
+      localStorage.removeItem(STORAGE_API_KEY)
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function getSavedCookie(): string {
+  try {
+    return localStorage.getItem(STORAGE_COOKIE_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+export function saveCookie(cookie: string): void {
+  try {
+    if (cookie) {
+      localStorage.setItem(STORAGE_COOKIE_KEY, cookie)
+    } else {
+      localStorage.removeItem(STORAGE_COOKIE_KEY)
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function clearAuthData(): void {
+  try {
+    localStorage.removeItem(STORAGE_COOKIE_KEY)
+    localStorage.removeItem('var_netease_auth_profile_v1')
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * 测试给定 API 地址的连通性与响应时间
+ */
+export async function testApiConnection(baseUrl?: string): Promise<{ ok: boolean; latency: number; message?: string }> {
+  const target = (baseUrl || getSavedApiUrl()).trim().replace(/\/+$/, '')
+  if (!target) {
+    return { ok: false, latency: 0, message: '未配置 API 地址' }
+  }
+
+  const startTime = Date.now()
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 6000)
+
+    // 请求轻量接口，例如搜索热词或首页状态
+    const res = await fetch(`${target}/search/hot?timestamp=${Date.now()}`, {
+      signal: controller.signal,
+    })
+    clearTimeout(timeoutId)
+
+    const latency = Date.now() - startTime
+    if (res.ok) {
+      return { ok: true, latency }
+    } else {
+      return { ok: false, latency, message: `HTTP ${res.status}` }
+    }
+  } catch (err: any) {
+    const latency = Date.now() - startTime
+    if (err.name === 'AbortError') {
+      return { ok: false, latency, message: '请求超时 (6s)' }
+    }
+    return { ok: false, latency, message: err.message || '网络连接异常' }
+  }
+}
+
+/**
+ * 1. 获取二维码唯一 key
+ */
+export async function getQrKey(baseUrl?: string): Promise<string | null> {
+  const target = baseUrl || getSavedApiUrl()
+  if (!target) return null
+
+  try {
+    const res = await fetch(`${target}/login/qr/key?timestamp=${Date.now()}`)
+    const json = await res.json()
+    if (json.data && json.data.unikey) {
+      return json.data.unikey
+    }
+  } catch (err) {
+    console.warn('[NeteaseApi] 获取 QR Key 失败:', err)
+  }
+  return null
+}
+
+/**
+ * 2. 根据 key 生成二维码图片 Base64
+ */
+export async function createQrImage(key: string, baseUrl?: string): Promise<{ qrurl: string; qrimg: string } | null> {
+  const target = baseUrl || getSavedApiUrl()
+  if (!target) return null
+
+  try {
+    const res = await fetch(`${target}/login/qr/create?key=${key}&qrimg=true&timestamp=${Date.now()}`)
+    const json = await res.json()
+    if (json.data && (json.data.qrimg || json.data.qrurl)) {
+      return {
+        qrurl: json.data.qrurl,
+        qrimg: json.data.qrimg || '',
+      }
+    }
+  } catch (err) {
+    console.warn('[NeteaseApi] 生成二维码图片失败:', err)
+  }
+  return null
+}
+
+/**
+ * 3. 轮询检测二维码扫码状态
+ * 800: 过期
+ * 801: 等待扫码
+ * 802: 待确认 (nickname, avatarUrl)
+ * 803: 授权登录成功 (cookie)
+ */
+export interface QrCheckResult {
+  code: number
+  message: string
+  cookie?: string
+  nickname?: string
+  avatarUrl?: string
+}
+
+export async function checkQrStatus(key: string, baseUrl?: string): Promise<QrCheckResult> {
+  const target = baseUrl || getSavedApiUrl()
+  if (!target) return { code: 500, message: '未配置 API 地址' }
+
+  try {
+    const res = await fetch(`${target}/login/qr/check?key=${key}&timestamp=${Date.now()}&noCookie=true`)
+    const json = await res.json()
+    return {
+      code: json.code,
+      message: json.message || '',
+      cookie: json.cookie,
+      nickname: json.nickname,
+      avatarUrl: json.avatarUrl,
+    }
+  } catch (err: any) {
+    return {
+      code: 500,
+      message: err.message || '网络轮询异常',
+    }
+  }
+}
+
+/**
+ * 4. 获取当前登录用户账号信息
+ */
+export async function fetchUserAccount(baseUrl?: string, cookie?: string): Promise<any> {
+  const target = baseUrl || getSavedApiUrl()
+  const c = cookie || getSavedCookie()
+  if (!target) return null
+
+  try {
+    const url = `${target}/user/account?timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const res = await fetch(url)
+    const json = await res.json()
+    if (json && json.profile) {
+      return json.profile
+    }
+  } catch (err) {
+    console.warn('[NeteaseApi] 获取账号信息失败:', err)
+  }
+  return null
+}
+
+/**
+ * 5. 获取用户歌单列表
+ */
+export async function fetchUserPlaylists(uid: string | number, baseUrl?: string, cookie?: string): Promise<any[]> {
+  const target = baseUrl || getSavedApiUrl()
+  const c = cookie || getSavedCookie()
+  if (!target) return []
+
+  try {
+    const url = `${target}/user/playlist?uid=${uid}&limit=30&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const res = await fetch(url)
+    const json = await res.json()
+    if (json && json.playlist && Array.isArray(json.playlist)) {
+      return json.playlist
+    }
+  } catch (err) {
+    console.warn('[NeteaseApi] 获取歌单列表失败:', err)
+  }
+  return []
+}
+
+/**
+ * 6. 获取指定歌单的所有歌曲
+ */
+export async function fetchPlaylistTracks(playlistId: number, baseUrl?: string, cookie?: string): Promise<Track[]> {
+  const target = baseUrl || getSavedApiUrl()
+  const c = cookie || getSavedCookie()
+  if (!target) return []
+
+  try {
+    // 优先尝试 track/all 接口
+    let res = await fetch(`${target}/playlist/track/all?id=${playlistId}&limit=50&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`)
+    let json = await res.json()
+
+    let songList = json.songs
+    if (!songList || !Array.isArray(songList)) {
+      // 降级尝试 playlist/detail 接口
+      res = await fetch(`${target}/playlist/detail?id=${playlistId}&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`)
+      json = await res.json()
+      songList = json.playlist?.tracks
+    }
+
+    if (songList && Array.isArray(songList)) {
+      return songList.map((s: any) => {
+        const artistName = s.ar?.map((a: any) => a.name).join(' / ') || s.artists?.map((a: any) => a.name).join(' / ') || '网易云音乐人'
+        const albumName = s.al?.name || s.album?.name || '精选原声'
+        const cover = (s.al?.picUrl || s.album?.picUrl || '').replace('http://', 'https://') + '?param=300y300'
+        const dur = s.dt ? Math.round(s.dt / 1000) : 210
+
+        return {
+          id: `netease-${s.id}`,
+          title: s.name,
+          artist: artistName,
+          album: albumName,
+          duration: dur,
+          genre: 'Cloud Music',
+          themeColor: '#7C8C6E',
+          coverUrl: cover || '/covers/sakamoto.jpg',
+          // 初始默认直链，播放时会自动向 API 解析最新的 VIP 直链
+          audioUrl: `https://music.163.com/song/media/outer/url?id=${s.id}.mp3`,
+          isFull: true,
+        }
+      })
+    }
+  } catch (err) {
+    console.warn('[NeteaseApi] 获取歌单曲目失败:', err)
+  }
+  return []
+}
+
+/**
+ * 7. 核心突破 30s：向 API 解析歌曲真实 VIP 音频直链
+ */
+export async function fetchSongAudioUrl(songId: number | string, baseUrl?: string, cookie?: string): Promise<string | null> {
+  const target = baseUrl || getSavedApiUrl()
+  const c = cookie || getSavedCookie()
+  if (!target) return null
+
+  // 提取纯数字 id
+  const cleanId = String(songId).replace(/\D/g, '')
+  if (!cleanId) return null
+
+  try {
+    // 优先调用 /song/url/v1 (支持 level=standard / exhigh)
+    const url = `${target}/song/url/v1?id=${cleanId}&level=standard&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const res = await fetch(url)
+    const json = await res.json()
+
+    if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+      const songData = json.data[0]
+      if (songData.url) {
+        // 自动统一为 HTTPS 避免混合内容拦截
+        return songData.url.replace(/^http:\/\//i, 'https://')
+      }
+    }
+
+    // 降级尝试传统 /song/url 接口
+    const fallbackUrl = `${target}/song/url?id=${cleanId}&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const fbRes = await fetch(fallbackUrl)
+    const fbJson = await fbRes.json()
+    if (fbJson.data && Array.isArray(fbJson.data) && fbJson.data.length > 0) {
+      const songData = fbJson.data[0]
+      if (songData.url) {
+        return songData.url.replace(/^http:\/\//i, 'https://')
+      }
+    }
+  } catch (err) {
+    console.warn(`[NeteaseApi] 解析歌曲 (ID: ${cleanId}) 音频直链失败:`, err)
+  }
+
+  return null
+}
+
+/**
+ * 8. 全网曲库云搜索
+ */
+export async function searchNeteaseSongs(keyword: string, baseUrl?: string, cookie?: string): Promise<Track[]> {
+  const target = baseUrl || getSavedApiUrl()
+  const c = cookie || getSavedCookie()
+  if (!target) return []
+
+  try {
+    const url = `${target}/cloudsearch?keywords=${encodeURIComponent(keyword)}&type=1&limit=20&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const res = await fetch(url)
+    const json = await res.json()
+
+    const songList = json.result?.songs || json.songs
+    if (songList && Array.isArray(songList)) {
+      return songList.map((s: any) => {
+        const artistName = s.ar?.map((a: any) => a.name).join(' / ') || s.artists?.map((a: any) => a.name).join(' / ') || '网易云音乐人'
+        const albumName = s.al?.name || s.album?.name || '单曲'
+        const cover = (s.al?.picUrl || s.album?.picUrl || '').replace('http://', 'https://') + '?param=300y300'
+        const dur = s.dt ? Math.round(s.dt / 1000) : 210
+
+        return {
+          id: `netease-${s.id}`,
+          title: s.name,
+          artist: artistName,
+          album: albumName,
+          duration: dur,
+          genre: 'Cloud Music',
+          themeColor: '#7C8C6E',
+          coverUrl: cover || 'https://p1.music.126.net/r8jK6UuK2_jXm3bZ4r1Z4g==/109951163428984926.jpg?param=300y300',
+          audioUrl: `https://music.163.com/song/media/outer/url?id=${s.id}.mp3`,
+          isFull: true,
+        }
+      })
+    }
+  } catch (err) {
+    console.warn('[NeteaseApi] 云搜索失败:', err)
+  }
+
+  return []
+}

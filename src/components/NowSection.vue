@@ -3,12 +3,23 @@ import { onMounted, ref, nextTick } from 'vue'
 import { useScrollReveal } from '@/composables/useScrollReveal'
 import { useTilt } from '@/composables/useTilt'
 import { useLiveStatus } from '@/composables/useLiveStatus'
+import { useAudioPlayer } from '@/composables/useAudioPlayer'
 
 const sectionRef = ref<HTMLElement | null>(null)
 const cardRefs = ref<HTMLElement[]>([])
 const { observeAll } = useScrollReveal()
 const { bind: bindTilt } = useTilt({ max: 6, scale: 1.02, speed: 400 })
 const { timeStr, dateStr, city, weather, temp, currentActivity, activityIcon, isWorkingHour, isAutoLocated } = useLiveStatus()
+const { isPlaying: isAudioPlaying, selectTrack, togglePlay: toggleAudioPlay, setExpand } = useAudioPlayer()
+
+function handleMusicCardClick() {
+  selectTrack(0)
+  if (!isAudioPlaying.value) {
+    toggleAudioPlay()
+  } else {
+    setExpand(true)
+  }
+}
 
 interface TimelineItem {
   date: string
@@ -138,13 +149,15 @@ onMounted(async () => {
         <!-- 2. 本周单曲循环 -->
         <div
           :ref="(el) => { if (el) cardRefs[1] = el as HTMLElement }"
-          class="now-card glass-card tilt-shine reveal-scale delay-2"
+          class="now-card glass-card tilt-shine reveal-scale delay-2 interactive-music-card"
+          @click="handleMusicCardClick"
+          title="点击试听 / 展开黑胶唱机"
         >
           <div class="now-card-accent" :style="{ background: cardAccents[1] }"></div>
           <div class="now-card-top">
-            <span class="now-card-icon">🎧</span>
-            <span class="now-card-tag">本周单曲循环</span>
-            <div class="audio-waves">
+            <span class="now-card-icon">{{ isAudioPlaying ? '🎵' : '🎧' }}</span>
+            <span class="now-card-tag">{{ isAudioPlaying ? '正在试听中' : '本周单曲循环' }}</span>
+            <div class="audio-waves" :class="{ playing: isAudioPlaying }">
               <span class="wave-bar w-1"></span>
               <span class="wave-bar w-2"></span>
               <span class="wave-bar w-3"></span>
@@ -156,6 +169,9 @@ onMounted(async () => {
           <p class="now-card-desc">
             写代码时最喜欢的背景律动。钢琴与环境噪音交织，平静、专注而深邃，能让人迅速进入无杂质的心流状态。
           </p>
+          <div class="music-card-hint">
+            <span class="hint-icon">{{ isAudioPlaying ? '❚❚ 正在播放 · 点击展开唱机' : '▶ 点击试听 · 开启心流' }}</span>
+          </div>
         </div>
 
         <!-- 3. 技术试验田 -->
@@ -483,6 +499,11 @@ onMounted(async () => {
   width: 2.5px;
   background: var(--color-accent);
   border-radius: 1px;
+  height: 6px;
+  transition: all 0.3s;
+}
+
+.audio-waves.playing .wave-bar {
   animation: wave-jump 1s ease-in-out infinite alternate;
 }
 
@@ -494,6 +515,33 @@ onMounted(async () => {
 @keyframes wave-jump {
   0% { transform: scaleY(0.3); }
   100% { transform: scaleY(1); }
+}
+
+.interactive-music-card {
+  cursor: pointer;
+  transition: all 0.3s var(--ease);
+}
+
+.interactive-music-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(124, 140, 110, 0.4);
+  box-shadow: 0 12px 36px var(--color-accent-glow);
+}
+
+.music-card-hint {
+  margin-top: auto;
+  padding-top: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-accent);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  transition: transform 0.25s var(--ease-spring);
+}
+
+.interactive-music-card:hover .music-card-hint {
+  transform: translateX(4px);
 }
 
 /* 足迹时间流 */

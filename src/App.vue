@@ -8,6 +8,7 @@ import SkillsSection from '@/components/SkillsSection.vue'
 import PortfolioSection from '@/components/PortfolioSection.vue'
 import ContactSection from '@/components/ContactSection.vue'
 import CustomCursor from '@/components/CustomCursor.vue'
+import MusicPlayer from '@/components/MusicPlayer.vue'
 
 const showBackToTop = ref(false)
 
@@ -39,6 +40,8 @@ onUnmounted(() => {
     <PortfolioSection />
     <ContactSection />
   </main>
+
+  <MusicPlayer />
 
   <!-- Back to Top -->
   <Transition name="btt">
