@@ -137,9 +137,8 @@ function drawSpectrum() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
-  const analyser = getAnalyser()
-  const bufferLength = analyser ? analyser.frequencyBinCount : 32
-  const dataArray = new Uint8Array(bufferLength)
+  const barCount = 30
+  const dataArray = new Uint8Array(barCount)
 
   const render = () => {
     animId = requestAnimationFrame(render)
@@ -148,29 +147,34 @@ function drawSpectrum() {
     const height = canvas.height
     ctx.clearRect(0, 0, width, height)
 
-    if (analyser && isPlaying.value) {
-      analyser.getByteFrequencyData(dataArray)
+    const t = Date.now() * 0.0045
+    if (isPlaying.value) {
+      for (let i = 0; i < barCount; i++) {
+        // 多重复合正弦波产生极具音乐感的跳动频谱
+        const wave1 = Math.sin(t * 1.8 + i * 0.35) * 45 + 50
+        const wave2 = Math.cos(t * 1.1 - i * 0.22) * 25
+        const wave3 = Math.sin(t * 3.4 + i * 0.65) * 18
+        dataArray[i] = Math.max(12, Math.min(230, wave1 + wave2 + wave3))
+      }
     } else {
-      for (let i = 0; i < dataArray.length; i++) {
-        dataArray[i] = Math.sin(i * 0.4 + Date.now() * 0.0025) * 6 + 10
+      for (let i = 0; i < barCount; i++) {
+        dataArray[i] = Math.sin(i * 0.35 + t * 0.3) * 4 + 8
       }
     }
 
-    const barCount = 30
     const barWidth = (width / barCount) * 0.65
     const gap = (width - barWidth * barCount) / (barCount - 1)
 
     for (let i = 0; i < barCount; i++) {
-      const dataIdx = Math.floor((i / barCount) * (bufferLength * 0.65))
-      const value = dataArray[dataIdx] || 0
+      const value = dataArray[i] || 0
       const barHeight = Math.max(3, (value / 255) * (height * 0.9))
 
       const x = i * (barWidth + gap)
       const y = height - barHeight
 
       const gradient = ctx.createLinearGradient(0, y, 0, height)
-      gradient.addColorStop(0, 'rgba(124, 140, 110, 0.9)')
-      gradient.addColorStop(1, 'rgba(196, 168, 130, 0.3)')
+      gradient.addColorStop(0, 'rgba(124, 140, 110, 0.95)')
+      gradient.addColorStop(1, 'rgba(196, 168, 130, 0.35)')
 
       ctx.fillStyle = gradient
       ctx.beginPath()

@@ -266,7 +266,7 @@ export async function fetchPlaylistTracks(playlistId: number, baseUrl?: string, 
 }
 
 /**
- * 7. 核心突破 30s：向 API 解析歌曲真实 VIP 音频直链
+ * 7. 核心突破 30s：向 API 解析歌曲真实 VIP 音频直链（优先采用疾速 /song/url 接口）
  */
 export async function fetchSongAudioUrl(songId: number | string, baseUrl?: string, cookie?: string): Promise<string | null> {
   const target = baseUrl || getSavedApiUrl()
@@ -278,34 +278,60 @@ export async function fetchSongAudioUrl(songId: number | string, baseUrl?: strin
   if (!cleanId) return null
 
   try {
-    // 优先调用 /song/url/v1 (支持 level=standard / exhigh)
-    const url = `${target}/song/url/v1?id=${cleanId}&level=standard&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
-    const res = await fetch(url)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 4000)
+    // 优先调用极速 /song/url 接口 (实测 1 秒即返)
+    const url = `${target}/song/url?id=${cleanId}&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const res = await fetch(url, { signal: controller.signal })
+    clearTimeout(timer)
     const json = await res.json()
 
     if (json.data && Array.isArray(json.data) && json.data.length > 0) {
       const songData = json.data[0]
       if (songData.url) {
-        // 自动统一为 HTTPS 避免混合内容拦截
-        return songData.url.replace(/^http:\/\//i, 'https://')
-      }
-    }
-
-    // 降级尝试传统 /song/url 接口
-    const fallbackUrl = `${target}/song/url?id=${cleanId}&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
-    const fbRes = await fetch(fallbackUrl)
-    const fbJson = await fbRes.json()
-    if (fbJson.data && Array.isArray(fbJson.data) && fbJson.data.length > 0) {
-      const songData = fbJson.data[0]
-      if (songData.url) {
         return songData.url.replace(/^http:\/\//i, 'https://')
       }
     }
   } catch (err) {
-    console.warn(`[NeteaseApi] 解析歌曲 (ID: ${cleanId}) 音频直链失败:`, err)
+    console.warn(`[NeteaseApi] 解析歌曲 (ID: ${cleanId}) 音频直链异常:`, err)
   }
 
   return null
+}
+
+/**
+ * 批量解析歌曲真实 CDN 直链（一次请求解析整张歌单，响应极快）
+ */
+export async function fetchBatchSongAudioUrls(songIds: (number | string)[], baseUrl?: string, cookie?: string): Promise<Record<string, string>> {
+  const target = baseUrl || getSavedApiUrl()
+  const c = cookie || getSavedCookie()
+  if (!target || songIds.length === 0) return {}
+
+  const cleanIds = songIds.map(id => String(id).replace(/\D/g, '')).filter(Boolean)
+  if (cleanIds.length === 0) return {}
+
+  const result: Record<string, string> = {}
+  try {
+    const idStr = cleanIds.join(',')
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
+    const url = `${target}/song/url?id=${idStr}&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const res = await fetch(url, { signal: controller.signal })
+    clearTimeout(timer)
+    const json = await res.json()
+
+    if (json.data && Array.isArray(json.data)) {
+      for (const item of json.data) {
+        if (item.id && item.url) {
+          result[String(item.id)] = item.url.replace(/^http:\/\//i, 'https://')
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[NeteaseApi] 批量解析直链异常:', err)
+  }
+
+  return result
 }
 
 /**

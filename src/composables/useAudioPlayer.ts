@@ -4,6 +4,7 @@ import {
   getSavedApiUrl,
   getSavedCookie,
   fetchSongAudioUrl,
+  fetchBatchSongAudioUrls,
   searchNeteaseSongs,
 } from '@/services/neteaseApi'
 
@@ -13,8 +14,8 @@ const currentTrackIndex = ref(0)
 const isPlaying = ref(false)
 const isLoading = ref(false)
 const currentTime = ref(0)
-const duration = ref(INITIAL_PLAYLIST[0]?.duration || 288)
-const volume = ref(0.7)
+const duration = ref(INITIAL_PLAYLIST[0]?.duration || 312)
+const volume = ref(0.85)
 const isMuted = ref(false)
 const isExpanded = ref(false)
 
@@ -25,18 +26,14 @@ const searchError = ref('')
 
 const currentTrack = computed<Track>(() => playlist.value[currentTrackIndex.value] || playlist.value[0])
 
-// ── HTML5 Audio 与 Web Audio API 节点 ──
+// ── 原生 HTML5 Audio 核心实例（直通扬声器，零 CORS 拦截，零跨域消音） ──
 let audioEl: HTMLAudioElement | null = null
-let audioCtx: AudioContext | null = null
-let analyserNode: AnalyserNode | null = null
-let sourceNode: MediaElementAudioSourceNode | null = null
 let isAudioInited = false
 
 function initAudioEngine() {
   if (isAudioInited) return
 
   audioEl = new Audio()
-  // 不强制设置 crossOrigin，确保网易云 CDN 和各类外部音频流在移动端（iOS/Android）无阻碍播放
   audioEl.preload = 'auto'
   audioEl.src = currentTrack.value.audioUrl
   audioEl.volume = isMuted.value ? 0 : volume.value
@@ -80,55 +77,45 @@ function initAudioEngine() {
     isPlaying.value = false
   })
 
-  // 接入 Web Audio API 频域分析
-  try {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    audioCtx = new AudioContextClass()
-    analyserNode = audioCtx.createAnalyser()
-    analyserNode.fftSize = 128
-    analyserNode.smoothingTimeConstant = 0.82
-
-    sourceNode = audioCtx.createMediaElementSource(audioEl)
-    sourceNode.connect(analyserNode)
-    analyserNode.connect(audioCtx.destination)
-  } catch (e) {
-    console.warn('Web Audio 节点挂载受限 (以原生音轨模式运行):', e)
-  }
-
   isAudioInited = true
 }
 
-// ── 播放器基础控制 ──
-async function play() {
-  initAudioEngine()
-  if (!audioEl) return
+/**
+ * 批量预加载当前歌单所有曲目的最新 HTTPS CDN 直链（1次请求完成全盘预热）
+ */
+async function prefetchPlaylistAudioUrls(tracks: Track[]) {
+  if (!tracks || tracks.length === 0) return
+  const neteaseTracks = tracks.filter(t => t.id.startsWith('netease-') && !t.audioUrl.includes('.126.net'))
+  if (neteaseTracks.length === 0) return
 
+  const ids = neteaseTracks.map(t => t.id.replace('netease-', ''))
   try {
-    if (audioCtx && audioCtx.state === 'suspended') {
-      await audioCtx.resume()
-    }
-  } catch (e) {
-    console.warn('AudioContext 恢复异常:', e)
-  }
-
-  // 若当前歌曲尚未解析 CDN 高速直链，向 API 快速换取
-  const track = currentTrack.value
-  if (track && (track.id.startsWith('netease-') || track.audioUrl.includes('music.163.com')) && !track.audioUrl.includes('.126.net')) {
-    const songId = track.id.replace('netease-', '')
-    const apiUrl = getSavedApiUrl()
-    if (apiUrl) {
-      isLoading.value = true
-      try {
-        const resolvedUrl = await fetchSongAudioUrl(songId, apiUrl, getSavedCookie())
-        if (resolvedUrl) {
-          track.audioUrl = resolvedUrl
-          track.isFull = true
-        }
-      } catch (err) {
-        console.warn('动态换取网易云直链失败，尝试原链接:', err)
+    const urlMap = await fetchBatchSongAudioUrls(ids, getSavedApiUrl(), getSavedCookie())
+    for (const t of tracks) {
+      const songId = t.id.replace('netease-', '')
+      if (urlMap[songId]) {
+        t.audioUrl = urlMap[songId]
+        t.isFull = true
       }
     }
+
+    if (audioEl && !isPlaying.value) {
+      audioEl.src = currentTrack.value.audioUrl
+    }
+  } catch (err) {
+    console.warn('批量预加载 CDN 直链异常:', err)
   }
+}
+
+// 初始化时自动在后台预热初始歌单的 CDN 真实音频链接
+setTimeout(() => {
+  prefetchPlaylistAudioUrls(playlist.value)
+}, 50)
+
+// ── 播放器基础控制 ──
+function play() {
+  initAudioEngine()
+  if (!audioEl) return
 
   const targetUrl = currentTrack.value.audioUrl
   const currentSrc = audioEl.getAttribute('src') || ''
@@ -138,14 +125,38 @@ async function play() {
   }
 
   isLoading.value = true
-  try {
-    await audioEl.play()
-    isPlaying.value = true
-    isLoading.value = false
-  } catch (err) {
-    console.warn('播放等待交互触发:', err)
-    isLoading.value = false
-    isPlaying.value = false
+  // 必须在用户交互上下文中同步调用 play()，保证 iOS/Android 移动端 Autoplay 策略放行
+  const p = audioEl.play()
+  if (p !== undefined) {
+    p.then(() => {
+      isPlaying.value = true
+      isLoading.value = false
+    }).catch((err) => {
+      console.warn('播放等待交互触发:', err)
+      isLoading.value = false
+      isPlaying.value = false
+    })
+  }
+
+  // 异步检查当前歌曲是否已换取最新 CDN 直链，若未换取则后台更新
+  const track = currentTrack.value
+  if (track && (track.id.startsWith('netease-') || track.audioUrl.includes('music.163.com')) && !track.audioUrl.includes('.126.net')) {
+    const songId = track.id.replace('netease-', '')
+    const apiUrl = getSavedApiUrl()
+    if (apiUrl) {
+      fetchSongAudioUrl(songId, apiUrl, getSavedCookie()).then((resolvedUrl) => {
+        if (resolvedUrl && track.audioUrl !== resolvedUrl) {
+          track.audioUrl = resolvedUrl
+          track.isFull = true
+          if (audioEl && isPlaying.value && audioEl.src.includes('music.163.com')) {
+            const curTime = audioEl.currentTime
+            audioEl.src = resolvedUrl
+            audioEl.currentTime = curTime
+            audioEl.play().catch(() => {})
+          }
+        }
+      })
+    }
   }
 }
 
@@ -164,7 +175,7 @@ function togglePlay() {
   }
 }
 
-async function selectTrack(index: number) {
+function selectTrack(index: number) {
   if (index < 0 || index >= playlist.value.length) return
   currentTrackIndex.value = index
   currentTime.value = 0
@@ -172,30 +183,32 @@ async function selectTrack(index: number) {
   const track = playlist.value[index]
   duration.value = track.duration
 
-  // 核心特性：如果选中的是网易云歌曲且已配置 API，动态换取最新的 VIP 直链
-  if (track.id.startsWith('netease-') || track.audioUrl.includes('music.163.com')) {
-    const songId = track.id.replace('netease-', '')
-    const apiUrl = getSavedApiUrl()
-    if (apiUrl) {
-      isLoading.value = true
-      try {
-        const resolvedUrl = await fetchSongAudioUrl(songId, apiUrl, getSavedCookie())
-        if (resolvedUrl) {
-          track.audioUrl = resolvedUrl
-          track.isFull = true
-        }
-      } catch (err) {
-        console.warn('动态换取网易云直链失败，尝试原链接:', err)
-      }
-    }
-  }
-
+  initAudioEngine()
   if (audioEl) {
     audioEl.src = track.audioUrl
     audioEl.load()
-    play()
-  } else {
-    play()
+  }
+  play()
+
+  // 异步解析直链，不阻塞当前播放
+  if (track && (track.id.startsWith('netease-') || track.audioUrl.includes('music.163.com')) && !track.audioUrl.includes('.126.net')) {
+    const songId = track.id.replace('netease-', '')
+    const apiUrl = getSavedApiUrl()
+    if (apiUrl) {
+      fetchSongAudioUrl(songId, apiUrl, getSavedCookie()).then((resolvedUrl) => {
+        if (resolvedUrl && track.audioUrl !== resolvedUrl) {
+          track.audioUrl = resolvedUrl
+          track.isFull = true
+          if (audioEl && currentTrackIndex.value === index) {
+            const curTime = audioEl.currentTime
+            const wasPlaying = isPlaying.value
+            audioEl.src = resolvedUrl
+            audioEl.currentTime = curTime
+            if (wasPlaying) audioEl.play().catch(() => {})
+          }
+        }
+      })
+    }
   }
 }
 
@@ -380,6 +393,7 @@ function setPlaylist(tracks: Track[], autoPlayFirst = true) {
   if (autoPlayFirst) {
     selectTrack(0)
   }
+  prefetchPlaylistAudioUrls(playlist.value)
 }
 
 export function useAudioPlayer() {
@@ -397,7 +411,7 @@ export function useAudioPlayer() {
     searchResults,
     isSearching,
     searchError,
-    getAnalyser: () => analyserNode,
+    getAnalyser: () => null,
 
     play,
     pause,
