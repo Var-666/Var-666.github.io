@@ -36,17 +36,11 @@ const {
 const {
   isLoggedIn,
   isAuthLoading,
-  authError,
   userInfo,
   userPlaylists,
   currentLoadingPlaylistId,
   apiUrl,
   isApiConnected,
-  apiLatency,
-  apiTesting,
-  apiTestMessage,
-  testAndSaveApiUrl,
-  testCurrentApi,
   qrImg,
   qrStatusText,
   qrStatusCode,
@@ -54,9 +48,9 @@ const {
   startQrLogin,
   stopQrPolling,
   refreshQr,
-  loginWithUid,
+  syncOwnerData,
   loadPlaylistTracks,
-  logout,
+  resetToStationMode,
 } = useNeteaseAuth()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -67,32 +61,33 @@ const activeTab = ref<'player' | 'search' | 'playlist' | 'user-playlists'>('play
 const searchKeyword = ref('')
 const hotTags = ['夏天的风', '起风了', '坂本龙一', '千与千寻', '周杰伦', 'Lofi']
 
-// 登录弹窗状态
+// 弹窗状态
 const showNeteaseModal = ref(false)
+const showQrAuth = ref(false)
 
 // 监听弹窗开启和关闭
 watch(showNeteaseModal, (isOpen) => {
-  if (isOpen) {
+  if (!isOpen) {
+    showQrAuth.value = false
+    stopQrPolling()
+  }
+})
+
+watch(showQrAuth, (isQr) => {
+  if (isQr) {
     startQrLogin()
   } else {
     stopQrPolling()
   }
 })
 
-// 监听登录成功自动收起弹窗并跳转到我的歌单
-watch(isLoggedIn, (logged) => {
-  if (logged && showNeteaseModal.value) {
-    showNeteaseModal.value = false
-    if (userPlaylists.value.length > 0) {
-      activeTab.value = 'user-playlists'
-    }
-  }
-})
+function handleStartAuth() {
+  showQrAuth.value = true
+}
 
-async function handleRefreshPlaylists() {
-  if (userInfo.value?.userId) {
-    await loginWithUid(String(userInfo.value.userId))
-  }
+function handleBackToStation() {
+  showQrAuth.value = false
+  stopQrPolling()
 }
 
 async function handleSelectNeteasePlaylist(playlistId: number) {
@@ -291,36 +286,25 @@ watch(isExpanded, (val) => {
                 当前 ({{ playlist.length }})
               </button>
               <button
-                v-if="isLoggedIn && userPlaylists.length > 0"
+                v-if="userPlaylists.length > 0"
                 class="tab-btn highlight"
                 :class="{ active: activeTab === 'user-playlists' }"
                 @click="activeTab = 'user-playlists'"
               >
-                我的歌单 ({{ userPlaylists.length }})
+                精选歌单 ({{ userPlaylists.length }})
               </button>
             </div>
 
             <div class="top-bar-right">
-              <!-- 网易云登录 / 用户徽章 -->
-              <button
-                v-if="!isLoggedIn"
-                class="netease-pill-btn"
-                @click="showNeteaseModal = true"
-                title="登录网易云同步歌单"
-              >
-                <span class="netease-cloud-icon">☁️</span>
-                <span>网易云登录</span>
-              </button>
-
+              <!-- 站长专属黑胶电台徽章（全体访客与移动端免登录） -->
               <div
-                v-else
                 class="user-profile-badge"
                 @click="showNeteaseModal = true"
-                title="点击管理网易云账号"
+                title="站长专属黑胶电台 · 全天候免登录畅听"
               >
                 <img :src="userInfo?.avatarUrl" alt="avatar" class="user-avatar-mini" />
-                <span class="user-nickname-mini">{{ userInfo?.nickname }}</span>
-                <span v-if="userInfo?.vipType" class="vip-mini-tag">VIP</span>
+                <span class="user-nickname-mini">{{ userInfo?.nickname || 'var' }}</span>
+                <span class="vip-mini-tag">VIP</span>
               </div>
 
               <button class="icon-btn-close" @click="toggleExpand" aria-label="收起播放器">
@@ -586,27 +570,37 @@ watch(isExpanded, (val) => {
             <button class="icon-btn-close" @click="showNeteaseModal = false">×</button>
           </div>
 
-          <!-- 已登录档案 -->
-          <div v-if="isLoggedIn" class="logged-in-profile">
+          <!-- 模式 1：站长专属电台展示 -->
+          <div v-if="!showQrAuth" class="logged-in-profile">
             <div class="profile-main">
               <img :src="userInfo?.avatarUrl" alt="avatar" class="profile-avatar" />
               <div class="profile-info">
                 <div class="name-row">
-                  <span class="profile-name">{{ userInfo?.nickname }}</span>
-                  <span v-if="userInfo?.vipType" class="vip-tag">黑胶VIP</span>
+                  <span class="profile-name">{{ userInfo?.nickname || 'var' }}</span>
+                  <span class="vip-tag">黑胶VIP</span>
                 </div>
-                <span class="profile-uid">UID: {{ userInfo?.userId }}</span>
-                <span class="profile-playlists-count">已同步 {{ userPlaylists.length }} 个歌单 · VIP 全曲已激活</span>
+                <span class="profile-uid">UID: {{ userInfo?.userId }} · 站长音乐电台</span>
+                <span class="profile-playlists-count">已同步 {{ userPlaylists.length }} 个精选歌单 · 全曲免登录</span>
+              </div>
+            </div>
+
+            <div class="station-desc-box">
+              <span class="station-icon">📻</span>
+              <div class="station-text">
+                <strong>站长专属免登录电台已激活</strong>
+                <p>已接入 Vercel 专属云解析节点，全网所有访客及移动设备均可直接畅享完整无损全曲，无需任何账号登录。</p>
               </div>
             </div>
 
             <div class="profile-actions">
-              <button class="action-btn-sync" @click="handleRefreshPlaylists">🔄 刷新歌单</button>
-              <button class="action-btn-logout" @click="logout">退出登录</button>
+              <button class="action-btn-sync" @click="syncOwnerData">🔄 刷新歌单</button>
+              <button class="action-btn-auth" @click="handleStartAuth" title="使用手机扫码更新账号或切换歌单">
+                📲 扫码授权 / 换号
+              </button>
             </div>
           </div>
 
-          <!-- 未登录：纯净网易云 App 真机扫码授权 -->
+          <!-- 模式 2：扫码授权/切换账号 -->
           <div v-else class="login-body">
             <div class="qr-box">
               <div class="qr-frame-wrap" :class="{ expired: qrStatusCode === 800 }">
@@ -629,11 +623,13 @@ watch(isExpanded, (val) => {
               </div>
 
               <p class="qr-app-tip">
-                打开手机【网易云音乐】App 扫一扫授权登录<br />
-                同步你的个人歌单并畅听 VIP 完整全曲
+                使用手机【网易云音乐】App 扫码可更新站长 VIP 凭证或同步新歌单
               </p>
 
               <div class="qr-bottom-actions">
+                <button class="btn-qr-action" @click="handleBackToStation">
+                  ← 返回电台
+                </button>
                 <button class="btn-qr-action" @click="refreshQr" title="刷新二维码">
                   🔄 刷新二维码
                 </button>
@@ -2217,6 +2213,36 @@ watch(isExpanded, (val) => {
   color: var(--color-accent);
 }
 
+.station-desc-box {
+  display: flex;
+  gap: 10px;
+  background: var(--color-bg-alt);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-accent);
+  align-items: center;
+}
+
+.station-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.station-text strong {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.station-text p {
+  font-size: 0.7rem;
+  color: var(--color-text-light);
+  line-height: 1.4;
+  margin: 0;
+}
+
 .profile-actions {
   display: flex;
   gap: 10px;
@@ -2237,19 +2263,21 @@ watch(isExpanded, (val) => {
   background: var(--color-accent-dark);
 }
 
-.action-btn-logout {
-  padding: 9px 16px;
+.action-btn-auth {
+  padding: 9px 14px;
   background: var(--color-bg-alt);
-  color: var(--color-text-lighter);
+  color: var(--color-text-light);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   transition: all 0.2s;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.action-btn-logout:hover {
-  color: #DC2626;
-  border-color: #DC2626;
+.action-btn-auth:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 /* 进出过渡 */
