@@ -70,14 +70,12 @@ const hotTags = ['夏天的风', '起风了', '坂本龙一', '千与千寻', '�
 // 登录弹窗状态
 const showNeteaseModal = ref(false)
 const uidInput = ref('')
-const loginTab = ref<'qr' | 'uid' | 'config'>('qr')
-const apiInputUrl = ref(apiUrl.value || '')
+const loginTab = ref<'qr' | 'uid'>('qr')
 
 // 监听弹窗开启和关闭
 watch(showNeteaseModal, (isOpen) => {
   if (isOpen) {
-    apiInputUrl.value = apiUrl.value || ''
-    if (loginTab.value === 'qr' && apiUrl.value) {
+    if (loginTab.value === 'qr') {
       startQrLogin()
     }
   } else {
@@ -87,7 +85,7 @@ watch(showNeteaseModal, (isOpen) => {
 
 // 监听 Tab 切换
 watch(loginTab, (newTab) => {
-  if (newTab === 'qr' && apiUrl.value && showNeteaseModal.value) {
+  if (newTab === 'qr' && showNeteaseModal.value) {
     startQrLogin()
   } else {
     stopQrPolling()
@@ -103,14 +101,6 @@ watch(isLoggedIn, (logged) => {
     }
   }
 })
-
-async function handleSaveApiConfig() {
-  const ok = await testAndSaveApiUrl(apiInputUrl.value)
-  if (ok) {
-    loginTab.value = 'qr'
-    startQrLogin()
-  }
-}
 
 async function handleNeteaseLogin() {
   const success = await loginWithUid(uidInput.value)
@@ -632,54 +622,26 @@ watch(isExpanded, (val) => {
               </div>
             </div>
 
-            <!-- 当前绑定的 API 节点状态微标 -->
-            <div class="api-status-badge-row">
-              <span class="badge-dot" :class="{ active: isApiConnected }"></span>
-              <span class="badge-text">
-                {{ apiUrl ? `专属 API: ${apiUrl}` : '未绑定专属 API (使用公共备用通道)' }}
-              </span>
-              <button class="btn-text-edit" @click="loginTab = 'config'; isLoggedIn = false">更换节点</button>
-            </div>
-
             <div class="profile-actions">
               <button class="action-btn-sync" @click="handleNeteaseLogin">🔄 刷新歌单</button>
               <button class="action-btn-logout" @click="logout">退出登录</button>
             </div>
           </div>
 
-          <!-- 未登录：三大模式 Tab -->
+          <!-- 未登录：扫码与 UID 导入两大模式 -->
           <div v-else class="login-body">
             <div class="login-mode-tabs">
               <button class="mode-tab-btn" :class="{ active: loginTab === 'qr' }" @click="loginTab = 'qr'">
                 📱 App 扫码登录
               </button>
               <button class="mode-tab-btn" :class="{ active: loginTab === 'uid' }" @click="loginTab = 'uid'">
-                🆔 UID 导入
-              </button>
-              <button class="mode-tab-btn" :class="{ active: loginTab === 'config' }" @click="loginTab = 'config'">
-                ⚙️ 专属 API
-                <span v-if="isApiConnected" class="tab-dot-online"></span>
+                🆔 UID 快速导入
               </button>
             </div>
 
             <!-- TAB 1: 扫码登录模式 -->
             <div v-if="loginTab === 'qr'" class="tab-pane-qr">
-              <div v-if="!apiUrl" class="qr-no-api-notice">
-                <span class="notice-icon">💡</span>
-                <div class="notice-text">
-                  <strong>未配置专属 API 节点</strong>
-                  <p>真机扫码与 VIP 全曲播放需要配合专属 Vercel 接口。完全免费且 1 分钟即可部署！</p>
-                </div>
-                <button class="btn-goto-config" @click="loginTab = 'config'">
-                  👉 前往一键配置 (1分钟搞定)
-                </button>
-                <div class="or-separator">或者</div>
-                <button class="btn-use-uid-instead" @click="loginTab = 'uid'">
-                  免配置，使用 UID 一键导入公开歌单
-                </button>
-              </div>
-
-              <div v-else class="qr-box">
+              <div class="qr-box">
                 <div class="qr-frame-wrap" :class="{ expired: qrStatusCode === 800 }">
                   <div v-if="isQrLoading" class="qr-loading-layer">
                     <span class="btn-spinner large"></span>
@@ -702,9 +664,6 @@ watch(isExpanded, (val) => {
                 <div class="qr-bottom-actions">
                   <button class="btn-qr-action" @click="refreshQr" title="刷新二维码">
                     🔄 刷新二维码
-                  </button>
-                  <button class="btn-qr-action" @click="loginTab = 'config'" title="检查 API 状态">
-                    ⚙️ API: {{ isApiConnected ? '已连接' : '检查连接' }}
                   </button>
                 </div>
               </div>
@@ -739,78 +698,6 @@ watch(isExpanded, (val) => {
               <p class="uid-help-tip">
                 💡 怎么找 UID？在网易云 App ->「我的」-> 点击头像进入主页 -> 点击右上角分享 -> 复制链接（链接里的数字就是 UID）。
               </p>
-            </div>
-
-            <!-- TAB 3: 专属 Vercel API 配置模式 -->
-            <div v-else-if="loginTab === 'config'" class="tab-pane-config">
-              <div class="config-desc-box">
-                <span class="config-desc-title">☁️ 专属 Vercel API 节点</span>
-                <p class="config-desc-p">
-                  配置专属 API 后，可解锁 <strong>真机扫码登录、黑胶 VIP 权益与全曲库完整播放</strong>。
-                </p>
-              </div>
-
-              <div class="api-input-group">
-                <label class="input-label">你的 Vercel API 地址:</label>
-                <div class="api-input-wrap">
-                  <input
-                    v-model="apiInputUrl"
-                    type="text"
-                    class="api-input"
-                    placeholder="https://my-music-api.vercel.app"
-                    @keyup.enter="handleSaveApiConfig"
-                  />
-                  <button
-                    class="btn-save-api"
-                    :disabled="apiTesting"
-                    @click="handleSaveApiConfig"
-                  >
-                    <span v-if="apiTesting" class="btn-spinner"></span>
-                    <span v-else>保存并测试</span>
-                  </button>
-                </div>
-                <div v-if="apiTestMessage" class="api-test-feedback" :class="{ success: isApiConnected, error: !isApiConnected }">
-                  <span class="feedback-icon">{{ isApiConnected ? '🟢' : '🔴' }}</span>
-                  <span>{{ apiTestMessage }}</span>
-                </div>
-              </div>
-
-              <!-- 一键部署引导卡片 -->
-              <div class="vercel-deploy-card">
-                <div class="deploy-card-header">
-                  <span class="deploy-card-title">🚀 还没有专属 API？</span>
-                  <span class="deploy-card-tag">永久免费 · 1分钟搞定</span>
-                </div>
-                <p class="deploy-card-tip">
-                  点击下方按钮，使用官方开源模板一键部署到你的个人 Vercel：
-                </p>
-                <a
-                  :href="RECOMMENDED_VERCEL_DEPLOY_URL"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="btn-one-click-vercel"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="12 2 24 22 0 22 12 2" />
-                  </svg>
-                  <span>打开 Vercel 一键克隆部署 ↗</span>
-                </a>
-
-                <div class="deploy-steps-mini">
-                  <div class="step-mini-item">
-                    <span class="step-num">1</span>
-                    <span>点击上方按钮（登录 GitHub）点击 Deploy</span>
-                  </div>
-                  <div class="step-mini-item">
-                    <span class="step-num">2</span>
-                    <span>等待约 1 分钟，Vercel 分配专属域名</span>
-                  </div>
-                  <div class="step-mini-item">
-                    <span class="step-num">3</span>
-                    <span>复制域名粘贴到上方输入框保存！</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
