@@ -36,7 +36,7 @@ function initAudioEngine() {
   if (isAudioInited) return
 
   audioEl = new Audio()
-  audioEl.crossOrigin = 'anonymous'
+  // 不强制设置 crossOrigin，确保网易云 CDN 和各类外部音频流在移动端（iOS/Android）无阻碍播放
   audioEl.preload = 'auto'
   audioEl.src = currentTrack.value.audioUrl
   audioEl.volume = isMuted.value ? 0 : volume.value
