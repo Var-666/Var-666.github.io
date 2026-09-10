@@ -286,7 +286,6 @@ watch(isExpanded, (val) => {
                 当前 ({{ playlist.length }})
               </button>
               <button
-                v-if="userPlaylists.length > 0"
                 class="tab-btn highlight"
                 :class="{ active: activeTab === 'user-playlists' }"
                 @click="activeTab = 'user-playlists'"

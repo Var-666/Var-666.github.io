@@ -111,6 +111,25 @@ async function play() {
     console.warn('AudioContext 恢复异常:', e)
   }
 
+  // 若当前歌曲尚未解析 CDN 高速直链，向 API 快速换取
+  const track = currentTrack.value
+  if (track && (track.id.startsWith('netease-') || track.audioUrl.includes('music.163.com')) && !track.audioUrl.includes('.126.net')) {
+    const songId = track.id.replace('netease-', '')
+    const apiUrl = getSavedApiUrl()
+    if (apiUrl) {
+      isLoading.value = true
+      try {
+        const resolvedUrl = await fetchSongAudioUrl(songId, apiUrl, getSavedCookie())
+        if (resolvedUrl) {
+          track.audioUrl = resolvedUrl
+          track.isFull = true
+        }
+      } catch (err) {
+        console.warn('动态换取网易云直链失败，尝试原链接:', err)
+      }
+    }
+  }
+
   const targetUrl = currentTrack.value.audioUrl
   const currentSrc = audioEl.getAttribute('src') || ''
   if (currentSrc !== targetUrl && !audioEl.src.endsWith(targetUrl)) {

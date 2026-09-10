@@ -183,7 +183,7 @@ export async function fetchUserAccount(baseUrl?: string, cookie?: string): Promi
   if (!target) return null
 
   try {
-    const url = `${target}/user/account?timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const url = `${target}/user/account?timestamp=${Date.now()}&realIP=116.25.146.177${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
     const res = await fetch(url)
     const json = await res.json()
     if (json && json.profile) {
@@ -204,7 +204,7 @@ export async function fetchUserPlaylists(uid: string | number, baseUrl?: string,
   if (!target) return []
 
   try {
-    const url = `${target}/user/playlist?uid=${uid}&limit=30&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const url = `${target}/user/playlist?uid=${uid}&limit=30&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
     const res = await fetch(url)
     const json = await res.json()
     if (json && json.playlist && Array.isArray(json.playlist)) {
@@ -226,13 +226,13 @@ export async function fetchPlaylistTracks(playlistId: number, baseUrl?: string, 
 
   try {
     // 优先尝试 track/all 接口
-    let res = await fetch(`${target}/playlist/track/all?id=${playlistId}&limit=50&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`)
+    let res = await fetch(`${target}/playlist/track/all?id=${playlistId}&limit=50&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`)
     let json = await res.json()
 
     let songList = json.songs
     if (!songList || !Array.isArray(songList)) {
       // 降级尝试 playlist/detail 接口
-      res = await fetch(`${target}/playlist/detail?id=${playlistId}&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`)
+      res = await fetch(`${target}/playlist/detail?id=${playlistId}&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`)
       json = await res.json()
       songList = json.playlist?.tracks
     }
@@ -252,7 +252,7 @@ export async function fetchPlaylistTracks(playlistId: number, baseUrl?: string, 
           duration: dur,
           genre: 'Cloud Music',
           themeColor: '#7C8C6E',
-          coverUrl: cover || '/covers/sakamoto.jpg',
+          coverUrl: cover || 'https://p1.music.126.net/SUeqMM8HOIpHv9Nhl9qt9w==/109951165647004069.jpg?param=300y300',
           // 初始默认直链，播放时会自动向 API 解析最新的 VIP 直链
           audioUrl: `https://music.163.com/song/media/outer/url?id=${s.id}.mp3`,
           isFull: true,
@@ -279,7 +279,7 @@ export async function fetchSongAudioUrl(songId: number | string, baseUrl?: strin
 
   try {
     // 优先调用 /song/url/v1 (支持 level=standard / exhigh)
-    const url = `${target}/song/url/v1?id=${cleanId}&level=standard&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const url = `${target}/song/url/v1?id=${cleanId}&level=standard&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
     const res = await fetch(url)
     const json = await res.json()
 
@@ -292,7 +292,7 @@ export async function fetchSongAudioUrl(songId: number | string, baseUrl?: strin
     }
 
     // 降级尝试传统 /song/url 接口
-    const fallbackUrl = `${target}/song/url?id=${cleanId}&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const fallbackUrl = `${target}/song/url?id=${cleanId}&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
     const fbRes = await fetch(fallbackUrl)
     const fbJson = await fbRes.json()
     if (fbJson.data && Array.isArray(fbJson.data) && fbJson.data.length > 0) {
@@ -317,7 +317,7 @@ export async function searchNeteaseSongs(keyword: string, baseUrl?: string, cook
   if (!target) return []
 
   try {
-    const url = `${target}/cloudsearch?keywords=${encodeURIComponent(keyword)}&type=1&limit=20&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const url = `${target}/cloudsearch?keywords=${encodeURIComponent(keyword)}&type=1&limit=20&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
     const res = await fetch(url)
     const json = await res.json()
 
@@ -337,7 +337,7 @@ export async function searchNeteaseSongs(keyword: string, baseUrl?: string, cook
           duration: dur,
           genre: 'Cloud Music',
           themeColor: '#7C8C6E',
-          coverUrl: cover || 'https://p1.music.126.net/r8jK6UuK2_jXm3bZ4r1Z4g==/109951163428984926.jpg?param=300y300',
+          coverUrl: cover || 'https://p1.music.126.net/SUeqMM8HOIpHv9Nhl9qt9w==/109951165647004069.jpg?param=300y300',
           audioUrl: `https://music.163.com/song/media/outer/url?id=${s.id}.mp3`,
           isFull: true,
         }

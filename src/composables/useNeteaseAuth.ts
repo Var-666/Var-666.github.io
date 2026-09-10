@@ -1,5 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import type { Track } from '@/data/playlist'
+import { INITIAL_PLAYLIST, type Track } from '@/data/playlist'
 import {
   getSavedApiUrl,
   saveApiUrl as persistApiUrl,
@@ -31,15 +31,39 @@ export interface NeteasePlaylist {
   playCount?: number
 }
 
-// 站长专属电台 UID 与默认资料预设
+// 站长专属电台 UID 与默认资料预设（真实网易云账户: 不可以叫我憨憨）
 export const OWNER_UID = '3986148741'
 export const DEFAULT_OWNER_USER: NeteaseUser = {
   userId: OWNER_UID,
-  nickname: 'var',
-  avatarUrl: 'https://p1.music.126.net/r8jK6UuK2_jXm3bZ4r1Z4g==/109951163428984926.jpg',
-  vipType: 1,
-  signature: '以代码编织创意 · 专属黑胶电台',
+  nickname: '不可以叫我憨憨',
+  avatarUrl: 'https://p1.music.126.net/SUeqMM8HOIpHv9Nhl9qt9w==/109951165647004069.jpg?param=200y200',
+  vipType: 11,
+  signature: '站长专属音乐电台 · 全天候免登录畅听',
 }
+
+export const DEFAULT_OWNER_PLAYLISTS: NeteasePlaylist[] = [
+  {
+    id: 5352193809,
+    name: '不可以叫我憨憨喜欢的音乐',
+    coverImgUrl: 'https://p1.music.126.net/mFJKHNEAF9qLv_-VQpZOTw==/109951166361455433.jpg?param=200y200',
+    trackCount: 23,
+    playCount: 47,
+  },
+  {
+    id: 18193921997,
+    name: '你的兴趣歌单',
+    coverImgUrl: 'https://p1.music.126.net/NR9U3zkNPu9ZuQSRr9QEWQ==/109951173650428159.jpg?param=200y200',
+    trackCount: 49,
+    playCount: 1,
+  },
+  {
+    id: 2829816518,
+    name: '欧美私人雷达 | 最懂你的欧美推荐',
+    coverImgUrl: 'https://p1.music.126.net/kBUPrLfB9-OZXHrf8aVbSw==/109951168609048221.jpg?param=200y200',
+    trackCount: 35,
+    playCount: 582609728,
+  },
+]
 
 const STORAGE_KEY = 'var_netease_auth_profile_v1'
 
@@ -48,7 +72,7 @@ const isLoggedIn = ref(true) // 默认开启站长专属电台模式
 const isAuthLoading = ref(false)
 const authError = ref('')
 const userInfo = ref<NeteaseUser>({ ...DEFAULT_OWNER_USER })
-const userPlaylists = ref<NeteasePlaylist[]>([])
+const userPlaylists = ref<NeteasePlaylist[]>([...DEFAULT_OWNER_PLAYLISTS])
 const currentLoadingPlaylistId = ref<number | null>(null)
 
 // API 节点管理状态
@@ -78,7 +102,7 @@ export function useNeteaseAuth() {
         const parsed = JSON.parse(saved)
         if (parsed && parsed.userInfo) {
           userInfo.value = parsed.userInfo
-          userPlaylists.value = parsed.userPlaylists || []
+          userPlaylists.value = parsed.userPlaylists && parsed.userPlaylists.length > 0 ? parsed.userPlaylists : [...DEFAULT_OWNER_PLAYLISTS]
           isLoggedIn.value = true
           hasCachedUser = true
         }
@@ -90,6 +114,7 @@ export function useNeteaseAuth() {
     // 若本地没有额外缓存，默认直接使用站长电台身份
     if (!hasCachedUser) {
       userInfo.value = { ...DEFAULT_OWNER_USER }
+      userPlaylists.value = [...DEFAULT_OWNER_PLAYLISTS]
       isLoggedIn.value = true
     }
 
@@ -117,7 +142,7 @@ export function useNeteaseAuth() {
             userId: OWNER_UID,
             nickname: creator.nickname || DEFAULT_OWNER_USER.nickname,
             avatarUrl: (creator.avatarUrl || DEFAULT_OWNER_USER.avatarUrl).replace('http://', 'https://'),
-            vipType: creator.vipType || 1,
+            vipType: creator.vipType || 11,
             signature: creator.signature || DEFAULT_OWNER_USER.signature,
           }
         }
@@ -313,6 +338,11 @@ export function useNeteaseAuth() {
       console.warn('拉取歌单曲目异常:', e)
     }
 
+    if (playlistId === 5352193809) {
+      currentLoadingPlaylistId.value = null
+      return [...INITIAL_PLAYLIST]
+    }
+
     currentLoadingPlaylistId.value = null
     return []
   }
@@ -321,6 +351,7 @@ export function useNeteaseAuth() {
     stopQrPolling()
     clearAuthData()
     userInfo.value = { ...DEFAULT_OWNER_USER }
+    userPlaylists.value = [...DEFAULT_OWNER_PLAYLISTS]
     isLoggedIn.value = true
     syncOwnerData()
   }
