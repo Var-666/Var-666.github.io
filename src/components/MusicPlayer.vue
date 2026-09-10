@@ -69,23 +69,10 @@ const hotTags = ['夏天的风', '起风了', '坂本龙一', '千与千寻', '�
 
 // 登录弹窗状态
 const showNeteaseModal = ref(false)
-const uidInput = ref('')
-const loginTab = ref<'qr' | 'uid'>('qr')
 
 // 监听弹窗开启和关闭
 watch(showNeteaseModal, (isOpen) => {
   if (isOpen) {
-    if (loginTab.value === 'qr') {
-      startQrLogin()
-    }
-  } else {
-    stopQrPolling()
-  }
-})
-
-// 监听 Tab 切换
-watch(loginTab, (newTab) => {
-  if (newTab === 'qr' && showNeteaseModal.value) {
     startQrLogin()
   } else {
     stopQrPolling()
@@ -102,19 +89,10 @@ watch(isLoggedIn, (logged) => {
   }
 })
 
-async function handleNeteaseLogin() {
-  const success = await loginWithUid(uidInput.value)
-  if (success) {
-    showNeteaseModal.value = false
-    if (userPlaylists.value.length > 0) {
-      activeTab.value = 'user-playlists'
-    }
+async function handleRefreshPlaylists() {
+  if (userInfo.value?.userId) {
+    await loginWithUid(String(userInfo.value.userId))
   }
-}
-
-function handleUseDemoUid() {
-  uidInput.value = '32953014' // 经典云村精选公开账号
-  handleNeteaseLogin()
 }
 
 async function handleSelectNeteasePlaylist(playlistId: number) {
@@ -623,81 +601,43 @@ watch(isExpanded, (val) => {
             </div>
 
             <div class="profile-actions">
-              <button class="action-btn-sync" @click="handleNeteaseLogin">🔄 刷新歌单</button>
+              <button class="action-btn-sync" @click="handleRefreshPlaylists">🔄 刷新歌单</button>
               <button class="action-btn-logout" @click="logout">退出登录</button>
             </div>
           </div>
 
-          <!-- 未登录：扫码与 UID 导入两大模式 -->
+          <!-- 未登录：纯净网易云 App 真机扫码授权 -->
           <div v-else class="login-body">
-            <div class="login-mode-tabs">
-              <button class="mode-tab-btn" :class="{ active: loginTab === 'qr' }" @click="loginTab = 'qr'">
-                📱 App 扫码登录
-              </button>
-              <button class="mode-tab-btn" :class="{ active: loginTab === 'uid' }" @click="loginTab = 'uid'">
-                🆔 UID 快速导入
-              </button>
-            </div>
-
-            <!-- TAB 1: 扫码登录模式 -->
-            <div v-if="loginTab === 'qr'" class="tab-pane-qr">
-              <div class="qr-box">
-                <div class="qr-frame-wrap" :class="{ expired: qrStatusCode === 800 }">
-                  <div v-if="isQrLoading" class="qr-loading-layer">
-                    <span class="btn-spinner large"></span>
-                    <span class="loading-sub">生成授权码中...</span>
-                  </div>
-                  <img v-else-if="qrImg" :src="qrImg" alt="QR Code" class="qr-image" />
-
-                  <!-- 二维码失效遮罩 -->
-                  <div v-if="qrStatusCode === 800" class="qr-expired-overlay" @click="refreshQr">
-                    <span>⚠️ 二维码已失效</span>
-                    <button class="btn-refresh-qr">点击刷新</button>
-                  </div>
+            <div class="qr-box">
+              <div class="qr-frame-wrap" :class="{ expired: qrStatusCode === 800 }">
+                <div v-if="isQrLoading" class="qr-loading-layer">
+                  <span class="btn-spinner large"></span>
+                  <span class="loading-sub">生成授权码中...</span>
                 </div>
+                <img v-else-if="qrImg" :src="qrImg" alt="QR Code" class="qr-image" />
 
-                <div class="qr-status-pill" :class="[`status-${qrStatusCode}`]">
-                  <span class="status-pulse-dot" v-if="qrStatusCode === 801 || qrStatusCode === 802"></span>
-                  <span>{{ qrStatusText || '请打开网易云音乐手机 App 扫码' }}</span>
-                </div>
-
-                <div class="qr-bottom-actions">
-                  <button class="btn-qr-action" @click="refreshQr" title="刷新二维码">
-                    🔄 刷新二维码
-                  </button>
+                <!-- 二维码失效遮罩 -->
+                <div v-if="qrStatusCode === 800" class="qr-expired-overlay" @click="refreshQr">
+                  <span>⚠️ 二维码已失效</span>
+                  <button class="btn-refresh-qr">点击刷新</button>
                 </div>
               </div>
-            </div>
 
-            <!-- TAB 2: UID / 主页链接快速导入模式 -->
-            <div v-else-if="loginTab === 'uid'" class="tab-pane-uid">
-              <p class="login-desc">
-                无需输入账号密码，输入你的网易云数字 UID 或主页链接，一键拉取公开歌单：
+              <div class="qr-status-pill" :class="[`status-${qrStatusCode}`]">
+                <span class="status-pulse-dot" v-if="qrStatusCode === 801 || qrStatusCode === 802"></span>
+                <span>{{ qrStatusText || '请打开网易云音乐手机 App 扫码' }}</span>
+              </div>
+
+              <p class="qr-app-tip">
+                打开手机【网易云音乐】App 扫一扫授权登录<br />
+                同步你的个人歌单并畅听 VIP 完整全曲
               </p>
-              <div class="uid-input-wrap">
-                <input
-                  v-model="uidInput"
-                  type="text"
-                  class="uid-input"
-                  placeholder="输入数字 UID (如 3986148741) 或主页链接"
-                  @keyup.enter="handleNeteaseLogin"
-                />
-              </div>
-              <div v-if="authError" class="auth-error-msg">{{ authError }}</div>
 
-              <div class="login-actions-row">
-                <button class="btn-demo-uid" @click="handleUseDemoUid">
-                  ✨ 示例账号 (32953014)
-                </button>
-                <button class="btn-submit-sync" :disabled="isAuthLoading" @click="handleNeteaseLogin">
-                  <span v-if="isAuthLoading" class="btn-spinner"></span>
-                  <span v-else>立即同步公开歌单</span>
+              <div class="qr-bottom-actions">
+                <button class="btn-qr-action" @click="refreshQr" title="刷新二维码">
+                  🔄 刷新二维码
                 </button>
               </div>
-
-              <p class="uid-help-tip">
-                💡 怎么找 UID？在网易云 App ->「我的」-> 点击头像进入主页 -> 点击右上角分享 -> 复制链接（链接里的数字就是 UID）。
-              </p>
             </div>
           </div>
         </div>
@@ -1789,103 +1729,12 @@ watch(isExpanded, (val) => {
   margin-bottom: 14px;
 }
 
-.mode-tab-btn {
-  flex: 1;
-  padding: 6px 0;
-  font-size: 0.75rem;
+.qr-app-tip {
+  font-size: 0.74rem;
+  color: var(--color-text-lighter);
   text-align: center;
-  border-radius: 4px;
-  color: var(--color-text-lighter);
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.mode-tab-btn.active {
-  background: white;
-  color: #DC2626;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-
-.login-desc {
-  font-size: 0.78rem;
-  color: var(--color-text-light);
-  line-height: 1.6;
-  margin-bottom: 12px;
-}
-
-.uid-input-wrap {
-  margin-bottom: 10px;
-}
-
-.uid-input {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  background: var(--color-bg-alt);
-  color: var(--color-text);
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.uid-input:focus {
-  border-color: #DC2626;
-}
-
-.auth-error-msg {
-  font-size: 0.75rem;
-  color: #DC2626;
-  margin-bottom: 10px;
-}
-
-.login-actions-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.btn-demo-uid {
-  padding: 8px 12px;
-  background: var(--color-bg-alt);
-  color: var(--color-text-light);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.btn-demo-uid:hover {
-  background: rgba(124, 140, 110, 0.1);
-  color: var(--color-accent);
-}
-
-.btn-submit-sync {
-  flex: 1;
-  padding: 8px 14px;
-  background: #DC2626;
-  color: white;
-  border-radius: var(--radius-sm);
-  font-size: 0.78rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-
-.btn-submit-sync:hover:not(:disabled) {
-  background: #B91C1C;
-}
-
-.uid-help-tip {
-  font-size: 0.7rem;
-  color: var(--color-text-lighter);
-  line-height: 1.6;
-  background: var(--color-bg-alt);
-  padding: 10px;
-  border-radius: var(--radius-sm);
+  line-height: 1.5;
+  margin: 4px 0 6px 0;
 }
 
 /* ── 扫码视图与状态 ── */
