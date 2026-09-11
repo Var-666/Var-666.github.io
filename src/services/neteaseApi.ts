@@ -141,7 +141,7 @@ export async function fetchSongAudioUrl(songId: number | string, baseUrl?: strin
 
   try {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 4000)
+    const timer = setTimeout(() => controller.abort(), 10000)
     const url = `${target}/song/url?id=${cleanId}&timestamp=${Date.now()}`
     const res = await fetch(url, { signal: controller.signal })
     clearTimeout(timer)
@@ -174,7 +174,7 @@ export async function fetchBatchSongAudioUrls(songIds: (number | string)[], base
   try {
     const idStr = cleanIds.join(',')
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 8000)
+    const timer = setTimeout(() => controller.abort(), 15000)
     const url = `${target}/song/url?id=${idStr}&timestamp=${Date.now()}`
     const res = await fetch(url, { signal: controller.signal })
     clearTimeout(timer)
@@ -224,7 +224,7 @@ export async function searchNeteaseSongs(keyword: string, baseUrl?: string): Pro
           themeColor: '#7C8C6E',
           coverUrl: cover || 'https://p1.music.126.net/SUeqMM8HOIpHv9Nhl9qt9w==/109951165647004069.jpg?param=300y300',
           audioUrl: `https://music.163.com/song/media/outer/url?id=${s.id}.mp3`,
-          isFull: true,
+          isFull: false,
         }
       })
     }

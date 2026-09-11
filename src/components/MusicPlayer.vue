@@ -10,6 +10,8 @@ const {
   currentTrack,
   isPlaying,
   isLoading,
+  playbackStatus,
+  playbackError,
   currentTime,
   duration,
   volume,
@@ -315,11 +317,20 @@ watch(isExpanded, (val) => {
             <div class="track-meta">
               <div class="title-row">
                 <h3 class="track-title">{{ currentTrack.title }}</h3>
-                <span class="full-song-tag" :class="{ full: currentTrack.isFull }">
-                  {{ currentTrack.isFull ? '● 完整全曲' : '○ 试听采样 30s' }}
+                <span v-if="playbackStatus === 'resolving'" class="full-song-tag resolving">
+                  ● 解析直链中...
+                </span>
+                <span v-else-if="playbackStatus === 'error'" class="full-song-tag error" :title="playbackError">
+                  ⚠️ 播放受阻
+                </span>
+                <span v-else class="full-song-tag" :class="{ full: currentTrack.isFull }">
+                  {{ currentTrack.isFull ? '● 完整全曲' : '○ 试听采样' }}
                 </span>
               </div>
-              <p class="track-subtitle">{{ currentTrack.artist }} · {{ currentTrack.album }}</p>
+              <p class="track-subtitle">
+                <span v-if="playbackStatus === 'error' && playbackError" class="track-error-hint">{{ playbackError }}</span>
+                <span v-else>{{ currentTrack.artist }} · {{ currentTrack.album }}</span>
+              </p>
             </div>
 
             <!-- 实时声波频谱 Canvas (Web Audio) -->
@@ -387,12 +398,12 @@ watch(isExpanded, (val) => {
 
               <div v-else-if="searchResults.length === 0" class="search-intro">
                 <div class="search-intro-card">
-                  <span class="intro-title">🎵 全网音乐检索说明</span>
+                  <span class="intro-title">🎵 网易云曲库全网检索</span>
                   <p class="intro-desc">
-                    受数字版权法限制，全球公开音乐 API 默认提供 <strong>30秒官方试听片段</strong>。
+                    支持按<strong>歌曲名、歌手</strong>全网检索，或直接输入<strong>网易云歌曲 ID</strong>（如 <code>27946612</code>）精准点歌。
                   </p>
                   <p class="intro-action">
-                    👉 想要聆听 <strong>3~5分钟完整长版</strong>？请点击顶部的 <strong>「网易云登录」</strong> 同步个人完整歌单，或使用内置的 <strong>「当前歌单」</strong> 畅听经典长曲！
+                    👉 点击即可通过服务端安全直链网关自动解析并进入单向稳定播放。
                   </p>
                 </div>
               </div>
@@ -407,8 +418,8 @@ watch(isExpanded, (val) => {
                 <div class="item-info">
                   <div class="item-title-row">
                     <span class="item-title">{{ item.title }}</span>
-                    <span class="item-badge" :class="{ full: item.isFull }">
-                      {{ item.isFull ? '完整全曲' : '试听 30s' }}
+                    <span class="item-badge full">
+                      网易云单曲
                     </span>
                   </div>
                   <span class="item-meta">{{ item.artist }} · {{ item.album }}</span>
@@ -1088,12 +1099,31 @@ watch(isExpanded, (val) => {
   font-weight: 500;
 }
 
+.full-song-tag.resolving {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563EB;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  font-weight: 500;
+}
+
+.full-song-tag.error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #DC2626;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  font-weight: 500;
+}
+
 .track-subtitle {
   font-size: 0.78rem;
   color: var(--color-text-lighter);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.track-error-hint {
+  color: #DC2626;
+  font-size: 0.74rem;
 }
 
 .visualizer-wrap {
