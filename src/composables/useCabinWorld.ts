@@ -13,7 +13,6 @@ import {
   createWoodFloorTexture,
 } from './cabinTextures'
 import { createCabinCharacter, type CabinCharacterController } from './cabinCharacter'
-import { createModelInstance, preloadCoreCabinAssets } from './cabinAssetLoader'
 
 export interface InteractiveItem {
   id: string
@@ -31,7 +30,7 @@ export interface InteractiveItem {
 
 /**
  * 1:1 像素级复刻设计图《My Little Web》的小木屋三维微缩交互世界
- * 结合真实 GLTF/GLB 模型资产与纯正低多边形治愈质感
+ * 纯正高精度低多边形艺术风格、治愈色盘、多层切面冷杉林与沉浸式暖光微缩移轴
  */
 export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
   const store = useCabinStore()
@@ -41,7 +40,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
   const interactiveItems = ref<InteractiveItem[]>([])
   const nearbyItem = ref<InteractiveItem | null>(null)
 
-  // 虚拟摇杆移动向量（由 HUD 触控摇杆调用更新）
+  // 虚拟摇杆移动向量
   let joystickVector = { x: 0, y: 0 }
   function setJoystickMove(x: number, y: number) {
     joystickVector = { x, y }
@@ -54,14 +53,14 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
   let characterCtrl: CabinCharacterController | null = null
 
   // 角色位置与移动状态
-  const playerPos = new THREE.Vector3(0, 0.45, 1.6) // 初始站在中央大地图桌旁
+  const playerPos = new THREE.Vector3(0, 0.45, 1.6)
   const playerVelocity = new THREE.Vector3()
   let playerRotation = 0
   let isMoving = false
   const keys = { w: false, a: false, s: false, d: false }
 
-  // 摄像机镜头控制与平滑阻尼跟踪
-  const cameraOffset = new THREE.Vector3(14, 15, 14) // 经典 45° 俯仰等轴测长焦角
+  // 摄像机长焦等轴测长焦角 (45° 斜等轴测)
+  const cameraOffset = new THREE.Vector3(14, 15, 14)
   const cameraTarget = new THREE.Vector3(0, 1.2, 0)
   let cameraExtraAngleX = 0
   let cameraExtraAngleY = 0
@@ -69,8 +68,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
   let previousMousePosition = { x: 0, y: 0 }
 
   // 动画与微动引用
-  let sleepingCatMesh: THREE.Object3D | null = null
-  let sleepingCatBaseScaleY = 0.026
+  let sleepingCatGroup: THREE.Group | null = null
   let dustParticles: THREE.Points | null = null
   const flickeringLights: THREE.PointLight[] = []
 
@@ -81,7 +79,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
   const _upVec = new THREE.Vector3(0, 1, 0)
   const _projectedVec = new THREE.Vector3()
 
-  // 场景可交互点位定义（完全对应设计图上的各个 UI 浮标）
+  // 场景可交互点位定义
   const interactablesData = [
     {
       id: 'computer',
@@ -90,7 +88,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
       subLabel: '精选个人开发项目',
       icon: '💻',
       pos: new THREE.Vector3(-2.8, 1.1, -3.2),
-      promptPos: new THREE.Vector3(-2.8, 2.3, -3.2),
+      promptPos: new THREE.Vector3(-2.8, 2.35, -3.2),
     },
     {
       id: 'bookshelf',
@@ -99,7 +97,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
       subLabel: '技术随笔与思考',
       icon: '📖',
       pos: new THREE.Vector3(0.5, 1.4, -3.5),
-      promptPos: new THREE.Vector3(0.5, 2.85, -3.5),
+      promptPos: new THREE.Vector3(0.5, 2.9, -3.5),
     },
     {
       id: 'bulletin',
@@ -108,7 +106,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
       subLabel: '近期动态与便利贴',
       icon: '📋',
       pos: new THREE.Vector3(2.6, 1.4, -3.5),
-      promptPos: new THREE.Vector3(2.6, 2.65, -3.5),
+      promptPos: new THREE.Vector3(2.6, 2.7, -3.5),
     },
     {
       id: 'cabinet',
@@ -117,7 +115,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
       subLabel: '探索收集陈列柜',
       icon: '💎',
       pos: new THREE.Vector3(4.0, 1.2, -2.4),
-      promptPos: new THREE.Vector3(4.0, 2.6, -2.4),
+      promptPos: new THREE.Vector3(4.0, 2.65, -2.4),
     },
     {
       id: 'map',
@@ -126,7 +124,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
       subLabel: '全站大地图与导览',
       icon: '🗺️',
       pos: new THREE.Vector3(0.1, 0.85, 0.2),
-      promptPos: new THREE.Vector3(0.1, 1.9, 0.2),
+      promptPos: new THREE.Vector3(0.1, 1.95, 0.2),
     },
     {
       id: 'crystal',
@@ -141,23 +139,15 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
 
   // 家具 AABB 碰撞盒列表 [minX, minZ, maxX, maxZ]
   const obstacles = [
-    // 电脑桌区域
-    { minX: -4.4, minZ: -4.2, maxX: -1.2, maxZ: -2.0 },
-    // 书架区域
-    { minX: -0.6, minZ: -4.2, maxX: 1.6, maxZ: -2.8 },
-    // 告示板与长椅
-    { minX: 1.8, minZ: -4.2, maxX: 3.3, maxZ: -3.0 },
-    // 玻璃展柜
-    { minX: 3.4, minZ: -4.2, maxX: 4.8, maxZ: -1.6 },
-    // 中央地图大木桌与凳子
-    { minX: -1.4, minZ: -0.8, maxX: 1.4, maxZ: 1.2 },
-    // 左侧床榻
-    { minX: -4.6, minZ: -1.8, maxX: -2.0, maxZ: 0.8 },
-    // 房间右侧与后侧外墙边界
-    { minX: 4.5, minZ: -4.5, maxX: 6.0, maxZ: 4.5 },
-    { minX: -4.8, minZ: -4.8, maxX: 4.8, maxZ: -3.8 },
-    // 室内围栏阻挡（门洞除外：门洞在 X: -3.8 ~ -2.0）
-    { minX: -1.8, minZ: 2.5, maxX: 4.5, maxZ: 2.9 },
+    { minX: -4.4, minZ: -4.2, maxX: -1.2, maxZ: -2.0 }, // 电脑桌
+    { minX: -0.6, minZ: -4.2, maxX: 1.6, maxZ: -2.8 },  // 书架
+    { minX: 1.8, minZ: -4.2, maxX: 3.3, maxZ: -3.0 },   // 告示板与长椅
+    { minX: 3.4, minZ: -4.2, maxX: 4.8, maxZ: -1.6 },   // 玻璃展柜
+    { minX: -1.4, minZ: -0.8, maxX: 1.4, maxZ: 1.2 },   // 中央沙盘长桌
+    { minX: -4.6, minZ: -1.8, maxX: -2.0, maxZ: 0.8 },  // 左侧床铺
+    { minX: 4.5, minZ: -4.5, maxX: 6.0, maxZ: 4.5 },    // 房间右侧外墙
+    { minX: -4.8, minZ: -4.8, maxX: 4.8, maxZ: -3.8 },  // 房间后侧外墙
+    { minX: -1.8, minZ: 2.5, maxX: 4.5, maxZ: 2.9 },    // 室内围栏
     { minX: -4.8, minZ: 2.5, maxX: -4.0, maxZ: 2.9 },
   ]
 
@@ -170,8 +160,8 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
 
     // 1. 场景与森林晨雾
     scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x19211e) // 浓郁森林夜色底
-    scene.fog = new THREE.FogExp2(0x19211e, 0.02)
+    scene.background = new THREE.Color(0x1a261e) // 浓郁森林绿调微夜色底
+    scene.fog = new THREE.FogExp2(0x1a261e, 0.018)
 
     // 2. 长焦斜俯视相机（正交等轴测质感）
     camera = new THREE.PerspectiveCamera(26, width / height, 0.1, 100)
@@ -188,25 +178,22 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.18
+    renderer.toneMappingExposure = 1.26
     containerRef.value.appendChild(renderer.domElement)
 
-    // 4. 灯光系统（1:1 营造设计图中的暖黄煤油灯火与室外冷月光对比）
+    // 4. 灯光系统（温暖 2400K 煤油火光与窗外晨光对比）
     setupLights(isMobile)
 
-    // 5. 建造木屋基础架构
+    // 5. 建造 1:1 像素级复刻的小木屋微缩世界
     buildCabinDiorama()
 
-    // 6. 异步载入高质量 3D 资产库（松树、石径、实木家具、睡猫等）
-    loadCabinAssets()
-
-    // 7. 创建 1:1 红便帽探险主角
+    // 6. 创建 1:1 红便帽探险主角
     buildPlayer()
 
-    // 8. 初始化交互状态
+    // 7. 初始化交互状态
     updateInteractiveItemsState(true)
 
-    // 9. 事件监听
+    // 8. 事件监听
     window.addEventListener('resize', onResize)
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
@@ -218,9 +205,6 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     window.addEventListener('touchend', onTouchEnd, { passive: true })
 
     isLoaded.value = true
-
-    // 10. 预热核心资源与启动帧循环
-    preloadCoreCabinAssets()
     setupVisibilityListeners()
   }
 
@@ -230,80 +214,80 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
 
     flickeringLights.length = 0
 
-    // 1. 整体暖色环境漫射光
-    const ambientLight = new THREE.AmbientLight(0xffedd8, 0.62)
+    // 1. 温暖舒适的环境漫射天光
+    const ambientLight = new THREE.AmbientLight(0xffecd2, 0.7)
     scene.add(ambientLight)
 
-    // 2. 模拟室外透过树丛透射进来的清冷天光 (冷蓝调)
-    const dirLight = new THREE.DirectionalLight(0xdcecf8, 0.85)
-    dirLight.position.set(12, 18, 8)
-    dirLight.castShadow = true
-    dirLight.shadow.mapSize.width = isMobile ? 512 : 1024
-    dirLight.shadow.mapSize.height = isMobile ? 512 : 1024
-    dirLight.shadow.camera.near = 0.5
-    dirLight.shadow.camera.far = 40
-    const d = 10
-    dirLight.shadow.camera.left = -d
-    dirLight.shadow.camera.right = d
-    dirLight.shadow.camera.top = d
-    dirLight.shadow.camera.bottom = -d
-    dirLight.shadow.bias = -0.001
-    scene.add(dirLight)
+    // 2. 透过左侧窗户倾泻而入的明亮晨光（太阳主光）
+    const sunLight = new THREE.DirectionalLight(0xfffae8, 1.1)
+    sunLight.position.set(-10, 14, -2.5)
+    sunLight.target.position.set(0, 1, 0)
+    sunLight.castShadow = true
+    sunLight.shadow.mapSize.width = isMobile ? 512 : 1024
+    sunLight.shadow.mapSize.height = isMobile ? 512 : 1024
+    sunLight.shadow.camera.near = 0.5
+    sunLight.shadow.camera.far = 35
+    const d = 8
+    sunLight.shadow.camera.left = -d
+    sunLight.shadow.camera.right = d
+    sunLight.shadow.camera.top = d
+    sunLight.shadow.camera.bottom = -d
+    sunLight.shadow.bias = -0.0012
+    scene.add(sunLight)
+    scene.add(sunLight.target)
 
-    // 3. 窗边透射光（从左侧窗户透入室内的冷调天光）
-    const windowLight = new THREE.DirectionalLight(0x89c4f4, 0.55)
-    windowLight.position.set(-8, 6, -1.8)
-    windowLight.target.position.set(-2, 1, -1.8)
-    scene.add(windowLight)
-    scene.add(windowLight.target)
+    // 3. 室外冷调森林环境天光
+    const skyLight = new THREE.DirectionalLight(0x74b9ff, 0.45)
+    skyLight.position.set(8, 12, 10)
+    scene.add(skyLight)
 
-    // 4. 点光源 1：工作电脑桌暖光壁灯
-    const deskLamp = new THREE.PointLight(0xffaa38, 2.4, 6)
-    deskLamp.position.set(-2.6, 1.85, -3.1)
+    // 4. 点光源：电脑工作台暖光鹅颈壁灯
+    const deskLamp = new THREE.PointLight(0xffa834, 2.5, 6.5)
+    deskLamp.position.set(-2.6, 1.9, -3.1)
     deskLamp.castShadow = true
     scene.add(deskLamp)
     flickeringLights.push(deskLamp)
 
-    // 5. 点光源 2：电脑屏幕柔和蓝白色冷微光
-    const screenGlow = new THREE.PointLight(0x70a1ff, 1.1, 3.2)
+    // 5. 点光源：电脑显示器湖山壁纸冷蓝微光
+    const screenGlow = new THREE.PointLight(0x54a0ff, 1.2, 3.5)
     screenGlow.position.set(-2.8, 1.35, -2.7)
     scene.add(screenGlow)
 
-    // 6. 点光源 3：床头小柜煤油提灯
-    const bedLantern = new THREE.PointLight(0xff9f43, 1.9, 5.5)
+    // 6. 点光源：床头柜复古煤油提灯
+    const bedLantern = new THREE.PointLight(0xff9f43, 2.0, 5.5)
     bedLantern.position.set(-4.1, 1.15, 0.3)
     scene.add(bedLantern)
     flickeringLights.push(bedLantern)
 
-    // 7. 点光源 4：中央大地图桌吊灯/煤油灯（2400K 暖金光晕）
-    const tableLantern = new THREE.PointLight(0xffb84d, 2.9, 8.5)
-    tableLantern.position.set(0.1, 2.45, 0.2)
+    // 7. 点光源：中央大地图桌暖金吊灯
+    const tableLantern = new THREE.PointLight(0xffb84d, 3.0, 8.5)
+    tableLantern.position.set(0.1, 2.5, 0.2)
     tableLantern.castShadow = true
     scene.add(tableLantern)
     flickeringLights.push(tableLantern)
 
-    // 8. 点光源 5：告示板射灯
+    // 8. 点光源：告示板阅读射灯
     const boardLight = new THREE.PointLight(0xffaa44, 1.8, 6)
     boardLight.position.set(2.6, 2.5, -3.2)
     scene.add(boardLight)
 
-    // 9. 点光源 6：陈列展柜内部高亮青蓝水晶射灯
-    const cabinetLight = new THREE.PointLight(0x00d2d3, 1.8, 4.5)
+    // 9. 点光源：玻璃展柜内部青蓝水晶自发光
+    const cabinetLight = new THREE.PointLight(0x00d2d3, 2.2, 4.5)
     cabinetLight.position.set(3.9, 1.8, -2.4)
     scene.add(cabinetLight)
 
-    // 10. 点光源 7：室外石阶旁探险地灯
-    const stairLantern = new THREE.PointLight(0xffa502, 2.2, 5)
+    // 10. 点光源：室外石阶地灯
+    const stairLantern = new THREE.PointLight(0xffa502, 2.2, 5.5)
     stairLantern.position.set(-3.6, 0.6, 3.6)
     scene.add(stairLantern)
     flickeringLights.push(stairLantern)
   }
 
-  // 建造 1:1 木屋主框架与建筑结构
+  // 建造 1:1 像素级复刻的小木屋场景
   function buildCabinDiorama() {
     if (!scene) return
 
-    // 材质库
+    // ── 材质库 ──
     const woodFloorTex = createWoodFloorTexture()
     const woodFloorMat = new THREE.MeshStandardMaterial({
       map: woodFloorTex,
@@ -312,12 +296,12 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     })
 
     const woodDarkMat = new THREE.MeshStandardMaterial({
-      color: 0x422c1d, // 深色实木横梁立柱
+      color: 0x3d2717, // 深色实木横梁立柱
       roughness: 0.75,
     })
 
     const woodOakMat = new THREE.MeshStandardMaterial({
-      color: 0x6e4729, // 暖胡桃实木
+      color: 0x694326, // 暖胡桃实木家具
       roughness: 0.7,
     })
 
@@ -327,15 +311,20 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     })
 
     const grassMat = new THREE.MeshStandardMaterial({
-      color: 0x2e492c, // 浓郁森林深绿草坪
+      color: 0x274326, // 浓郁森林深绿草坪
       roughness: 0.85,
+    })
+
+    const stoneMat = new THREE.MeshStandardMaterial({
+      color: 0x8a9296, // 天然鹅卵石质感
+      roughness: 0.75,
     })
 
     const glassMat = new THREE.MeshStandardMaterial({
       color: 0xdff9fb,
       transparent: true,
-      opacity: 0.4,
-      roughness: 0.1,
+      opacity: 0.35,
+      roughness: 0.05,
       metalness: 0.1,
     })
 
@@ -346,7 +335,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     ground.receiveShadow = true
     scene.add(ground)
 
-    // ── 2. 木屋实木基底与地板 ──
+    // ── 2. 木屋实木基座与地板 ──
     const roomWidth = 9.2
     const roomDepth = 7.4
     const floorGeo = new THREE.BoxGeometry(roomWidth, 0.3, roomDepth)
@@ -355,40 +344,41 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     floor.receiveShadow = true
     scene.add(floor)
 
-    // ── 3. 墙体与立柱结构 ──
-    // 后墙 (Z深处)
+    // ── 3. 墙体与立柱（开设有真窗洞，透出室外蓝天与松树） ──
+    // 后实木大白墙 (Z: -4.3)
     const backWall = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, 3.6, 0.25), wallCreamMat)
     backWall.position.set(0, 1.8 + 0.3, -0.6 - roomDepth / 2)
     backWall.receiveShadow = true
     scene.add(backWall)
 
-    // 左实木外墙 (X负侧)
-    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.6, roomDepth), wallCreamMat)
-    leftWall.position.set(-roomWidth / 2, 1.8 + 0.3, -0.6)
-    leftWall.receiveShadow = true
-    scene.add(leftWall)
+    // 左侧墙体：分割成窗洞前、中（上/下）、后三段，保证窗户是通透无阻碍的！
+    // 窗户中心位于 Z: -1.8, Y: 2.3, 尺寸 2.2 x 1.8
+    // 左墙后段 (Z: -4.3 ~ -2.9)
+    const leftWallBack = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.6, 1.5), wallCreamMat)
+    leftWallBack.position.set(-roomWidth / 2, 2.1, -3.55)
+    leftWallBack.receiveShadow = true
+    // 左墙前段 (Z: -0.7 ~ 3.1)
+    const leftWallFront = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.6, 3.8), wallCreamMat)
+    leftWallFront.position.set(-roomWidth / 2, 2.1, 1.2)
+    leftWallFront.receiveShadow = true
+    // 窗洞上方过梁与下方窗台
+    const leftWallTop = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.9, 2.2), wallCreamMat)
+    leftWallTop.position.set(-roomWidth / 2, 3.45, -1.8)
+    const leftWallBottom = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.9, 2.2), wallCreamMat)
+    leftWallBottom.position.set(-roomWidth / 2, 0.75, -1.8)
+    scene.add(leftWallBack, leftWallFront, leftWallTop, leftWallBottom)
 
-    // 实木顶部主横梁
+    // 实木顶部主横梁与角柱
     const topBeam = new THREE.Mesh(new THREE.BoxGeometry(roomWidth + 0.4, 0.35, 0.35), woodDarkMat)
     topBeam.position.set(0, 3.75, -0.6 - roomDepth / 2 + 0.1)
-    scene.add(topBeam)
-
     const leftTopBeam = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, roomDepth + 0.4), woodDarkMat)
     leftTopBeam.position.set(-roomWidth / 2 + 0.1, 3.75, -0.6)
-    scene.add(leftTopBeam)
-
-    // 墙角粗壮实木立柱
     const cornerPost = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.6, 0.4), woodDarkMat)
-    cornerPost.position.set(-roomWidth / 2 + 0.15, 1.8 + 0.3, -0.6 - roomDepth / 2 + 0.15)
-    scene.add(cornerPost)
+    cornerPost.position.set(-roomWidth / 2 + 0.15, 2.1, -0.6 - roomDepth / 2 + 0.15)
+    scene.add(topBeam, leftTopBeam, cornerPost)
 
-    // ── 4. 左侧实木大窗户与挂毯 ──
-    const windowGroup = new THREE.Group()
-    windowGroup.position.set(-roomWidth / 2 + 0.05, 2.3, -1.8)
-    const windowFrame = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.8, 2.2), woodDarkMat)
-    const windowGlass = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.6, 2.0), glassMat)
-    windowGroup.add(windowFrame, windowGlass)
-    scene.add(windowGroup)
+    // ── 4. 左侧透亮大木窗（White Panes，透出窗外阳光、翠绿松枝与蓝天） ──
+    buildWindowWithOutdoorView(-roomWidth / 2, 2.3, -1.8)
 
     // 挂毯："Good Ideas Live Here 🌲"
     const tapestryTex = createTapestryTexture()
@@ -399,30 +389,25 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     const tapestryMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.8), tapestryMat)
     tapestryMesh.rotation.y = Math.PI / 2
     tapestryMesh.position.set(-roomWidth / 2 + 0.15, 2.4, -3.2)
-    scene.add(tapestryMesh)
-
     const tapPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.35, 12), woodDarkMat)
     tapPole.rotation.x = Math.PI / 2
     tapPole.position.set(-roomWidth / 2 + 0.17, 3.32, -3.2)
-    scene.add(tapPole)
+    scene.add(tapestryMesh, tapPole)
 
-    // ── 5. 前方矮围栏与题字刻板 ──
+    // ── 5. 前方矮围栏与刻板题字 ──
     const retainingWallTex = createRetainingWallTexture()
     const retainingMat = new THREE.MeshStandardMaterial({
       map: retainingWallTex,
       roughness: 0.8,
     })
     const frontFence = new THREE.Mesh(new THREE.BoxGeometry(5.2, 1.4, 0.25), retainingMat)
-    frontFence.position.set(1.2, 0.7 + 0.3, 3.0)
+    frontFence.position.set(1.2, 1.0, 3.0)
     frontFence.castShadow = true
     scene.add(frontFence)
 
     // ── 6. 左下角出门木台阶与探险路标 ──
     for (let stepIdx = 0; stepIdx < 3; stepIdx++) {
-      const sWidth = 2.4
-      const sDepth = 0.65
-      const sHeight = 0.12
-      const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(sWidth, sHeight, sDepth), woodOakMat)
+      const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.12, 0.65), woodOakMat)
       stepMesh.position.set(-2.8, 0.3 - stepIdx * 0.09, 3.2 + stepIdx * 0.5)
       stepMesh.receiveShadow = true
       scene.add(stepMesh)
@@ -441,38 +426,18 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     signPole.position.set(-3.8, 0.6, 3.4)
     scene.add(signBoard, signPole)
 
-    // 台阶上的煤油灯
     createKeroseneLantern(-3.6, 0.42, 3.6, 0.9)
 
-    // ── 7. 地毯铺设 ──
-    // 卧室古典波斯红毯
-    const burgundyRugTex = createBurgundyRugTexture()
-    const burgundyMat = new THREE.MeshStandardMaterial({
-      map: burgundyRugTex,
-      roughness: 0.9,
-    })
-    const bedRug = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 2.0), burgundyMat)
-    bedRug.rotation.x = -Math.PI / 2
-    bedRug.position.set(-3.3, 0.31, -0.6)
-    bedRug.receiveShadow = true
-    scene.add(bedRug)
+    // ── 7. 卧室区（原木床榻、绿色折叠被褥、熟睡橘白猫咪、古典红地毯） ──
+    buildBedAndSleepingCatArea()
 
-    // 中央大桌墨绿几何毛毯
-    const greenRugTex = createGreenRugTexture()
-    const greenRugMat = new THREE.MeshStandardMaterial({
-      map: greenRugTex,
-      roughness: 0.9,
-    })
-    const tableRug = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 2.8), greenRugMat)
-    tableRug.rotation.x = -Math.PI / 2
-    tableRug.position.set(0.1, 0.31, 0.2)
-    tableRug.receiveShadow = true
-    scene.add(tableRug)
-
-    // ── 8. 工作台区（Projects 电脑桌、曲面屏、办公椅、热咖啡） ──
+    // ── 8. 电脑工作台区（超宽曲面屏显示器、青绿转椅、写字台、壁灯） ──
     buildWorkstationArea()
 
-    // ── 9. 告示板区（Latest Updates，软木大板、Small Steps 标语、拍立得） ──
+    // ── 9. 大型藏书架区（满载数百本各色书籍、黄铜地球仪、绿植） ──
+    buildGrandBookcaseArea()
+
+    // ── 10. 告示板区（Latest Updates，软木大板、Small Steps 标语、拍立得相片） ──
     const bulletinTex = createBulletinBoardTexture()
     const bulletinMat = new THREE.MeshStandardMaterial({
       map: bulletinTex,
@@ -487,183 +452,215 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     bench.castShadow = true
     scene.add(bench)
 
-    // ── 10. 探索陈列展柜（Discovered Content，透明玻璃展柜、发光水晶群、小机器人） ──
-    buildGlassCurioCabinet()
+    // ── 11. 探索陈列展柜（Discovered Content，透明玻璃展柜、发光水晶群、小机器人） ──
+    buildCurioShowcaseCabinet()
 
-    // ── 11. 悬浮空气金光微尘 ──
+    // ── 12. 中央大地图桌（Explore，展开的大地图、3D 微缩立体山脉与河流、木凳、绿毯） ──
+    buildCentralMapTableArea()
+
+    // ── 13. 室外多层立体切面冷杉林与鹅卵石野花小径 ──
+    buildOutdoorForestAndGarden(stoneMat)
+
+    // ── 14. 悬浮空气暖金光尘微粒 ──
     buildAmbientDust()
   }
 
-  // 异步加载与注入真实高精度 3D 资产库
-  async function loadCabinAssets() {
+  // 1:1 构建左侧通透窗户与窗外阳光绿林景深
+  function buildWindowWithOutdoorView(x: number, y: number, z: number) {
     if (!scene) return
+    const winGroup = new THREE.Group()
+    winGroup.position.set(x, y, z)
 
-    // ── A. 室外松树家族（全面替换简易方块圆锥） ──
-    const treeConfigs = [
-      { path: 'models/nature/tree_pineTallA.glb', pos: [-6.8, 0, -2.8], scale: 2.7 },
-      { path: 'models/nature/tree_pineTallB.glb', pos: [-7.6, 0, 0.6], scale: 2.5 },
-      { path: 'models/nature/tree_pineRoundA.glb', pos: [-6.0, 0, 3.2], scale: 2.2 },
-      { path: 'models/nature/tree_pineTallA.glb', pos: [-5.4, 0, 6.2], scale: 2.9 },
-      { path: 'models/nature/tree_pineTallB.glb', pos: [5.8, 0, 5.2], scale: 2.6 },
-      { path: 'models/nature/tree_pineRoundB.glb', pos: [6.8, 0, 2.4], scale: 2.4 },
-      { path: 'models/nature/tree_cone.glb', pos: [7.2, 0, -1.6], scale: 2.5 },
-      { path: 'models/nature/tree_pineTallA.glb', pos: [6.2, 0, -4.5], scale: 3.1 },
-      { path: 'models/nature/tree_pineTallB.glb', pos: [-2.5, 0, -6.6], scale: 3.2 },
-      { path: 'models/nature/tree_pineRoundA.glb', pos: [2.2, 0, -6.5], scale: 2.8 },
-    ]
+    const darkWood = new THREE.MeshStandardMaterial({ color: 0x3d2717, roughness: 0.8 })
+    const whiteWood = new THREE.MeshStandardMaterial({ color: 0xf5f6fa, roughness: 0.6 })
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0xe0f7fa, transparent: true, opacity: 0.35, roughness: 0.05 })
 
-    for (const cfg of treeConfigs) {
-      const tree = await createModelInstance(cfg.path, {
-        position: cfg.pos as [number, number, number],
-        scale: cfg.scale,
-        rotation: [0, Math.random() * Math.PI * 2, 0],
-      })
-      if (tree && scene) scene.add(tree)
-    }
+    // 外窗框 (深木)
+    const outerFrame = new THREE.Mesh(new THREE.BoxGeometry(0.26, 1.84, 2.24), darkWood)
+    winGroup.add(outerFrame)
 
-    // ── B. 室外石阶碎石小径与自然岩石 ──
-    const stoneConfigs = [
-      { pos: [-2.8, 0.05, 4.3], scale: 1.5, rot: 0.4 },
-      { pos: [-2.5, 0.05, 5.1], scale: 1.4, rot: 1.2 },
-      { pos: [-2.1, 0.05, 5.9], scale: 1.6, rot: 2.1 },
-      { pos: [-1.5, 0.05, 6.7], scale: 1.4, rot: 0.8 },
-      { pos: [-0.9, 0.05, 7.4], scale: 1.5, rot: 1.6 },
-    ]
-    for (const sc of stoneConfigs) {
-      const stone = await createModelInstance('models/nature/stone_smallA.glb', {
-        position: sc.pos as [number, number, number],
-        scale: sc.scale,
-        rotation: [0, sc.rot, 0],
-      })
-      if (stone && scene) scene.add(stone)
-    }
+    // 6 格白木内窗格 (2 行 x 3 列)
+    const innerGlass = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.76, 2.16), glassMat)
+    const hBar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 2.16), whiteWood)
+    const vBar1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.76, 0.06), whiteWood)
+    vBar1.position.z = -0.68
+    const vBar2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.76, 0.06), whiteWood)
+    vBar2.position.z = 0.68
+    winGroup.add(innerGlass, hBar, vBar1, vBar2)
 
-    // 庭院自然巨石与矮石堆
-    const rock1 = await createModelInstance('models/nature/rock_largeA.glb', {
-      position: [-4.6, 0, 4.0],
-      scale: 1.8,
-      rotation: [0, 0.6, 0],
-    })
-    if (rock1 && scene) scene.add(rock1)
+    // 窗台延伸搁板（摆放一盆迎光小多肉）
+    const sill = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 2.3), darkWood)
+    sill.position.set(0.08, -0.92, 0)
+    winGroup.add(sill)
 
-    const rock2 = await createModelInstance('models/nature/rock_smallA.glb', {
-      position: [-3.6, 0, 5.8],
-      scale: 1.5,
-      rotation: [0, 1.8, 0],
-    })
-    if (rock2 && scene) scene.add(rock2)
+    scene.add(winGroup)
 
-    const rock3 = await createModelInstance('models/nature/rock_smallB.glb', {
-      position: [3.4, 0, 4.6],
-      scale: 1.6,
-      rotation: [0, 2.4, 0],
-    })
-    if (rock3 && scene) scene.add(rock3)
-
-    // ── C. 野花群落与灌木丛 🌼 ──
-    const flowerPositions: [string, [number, number, number], number][] = [
-      ['models/nature/flower_yellowA.glb', [-3.2, 0, 3.8], 1.4],
-      ['models/nature/flower_yellowA.glb', [-2.1, 0, 4.8], 1.3],
-      ['models/nature/flower_purpleA.glb', [-3.4, 0, 4.8], 1.5],
-      ['models/nature/flower_redA.glb', [-1.8, 0, 6.4], 1.4],
-      ['models/nature/flower_yellowA.glb', [-0.5, 0, 7.0], 1.3],
-      ['models/nature/plant_bush.glb', [-4.2, 0, 2.4], 1.6],
-      ['models/nature/plant_bushLarge.glb', [4.2, 0, 3.6], 1.5],
-      ['models/nature/fence_simple.glb', [-5.2, 0, 3.6], 1.2],
-      ['models/nature/log_stack.glb', [-4.8, 0, 2.2], 1.3],
-      ['models/nature/stump_round.glb', [-4.2, 0, 4.6], 1.4],
-    ]
-    for (const [fPath, fPos, fScale] of flowerPositions) {
-      const item = await createModelInstance(fPath, {
-        position: fPos,
-        scale: fScale,
-        rotation: [0, Math.random() * Math.PI, 0],
-      })
-      if (item && scene) scene.add(item)
-    }
-
-    // ── D. 卧室实木床榻与熟睡橘白小猫 🐱 ──
-    const bed = await createModelInstance('models/furniture/bed_single_B.gltf', {
-      position: [-3.3, 0.3, -0.6],
-      scale: [1.0, 0.95, 0.82],
-      rotation: [0, Math.PI, 0],
-    })
-    if (bed && scene) scene.add(bed)
-
-    // 熟睡小猫（卷缩在被窝上，赋予呼吸动效）
-    const cat = await createModelInstance('models/cat.glb', {
-      position: [-3.2, 0.92, -0.55],
-      scale: 0.026,
-      rotation: [0, -Math.PI / 4, 0],
-      tintColor: 0xe67e22, // 温暖橘白相间
-    })
-    if (cat && scene) {
-      sleepingCatMesh = cat
-      sleepingCatBaseScaleY = 0.026
-      scene.add(cat)
-    }
-
-    // 床头小柜与书籍
-    const nightstand = await createModelInstance('models/furniture/table_small.gltf', {
-      position: [-4.1, 0.3, 0.3],
-      scale: 0.75,
-    })
-    if (nightstand && scene) scene.add(nightstand)
-    createKeroseneLantern(-4.1, 0.95, 0.3, 0.85)
-
-    // ── E. 大型实木大书架（Articles / Notes） ──
-    const bookcase = await createModelInstance('models/furniture/shelf_B_large_decorated.gltf', {
-      position: [0.5, 0.3, -3.8],
-      scale: 1.15,
-    })
-    if (bookcase && scene) scene.add(bookcase)
-
-    // 黄铜旋转地球仪 🌍 与顶部垂悬藤蔓
-    buildGlobe(scene, 1.25, 2.45, -3.7)
-    buildHangingIvy(scene, -0.4, 3.25, -3.7)
-
-    // ── F. 中央探险沙盘大长桌（Explore） ──
-    const mainTable = await createModelInstance('models/furniture/table_medium_long.gltf', {
-      position: [0.1, 0.3, 0.2],
-      scale: [0.82, 0.75, 0.72],
-    })
-    if (mainTable && scene) scene.add(mainTable)
-
-    // 四周实木方凳
-    const stoolCoords = [
-      [-0.7, 0.95],
-      [0.9, 0.95],
-      [-0.7, -0.55],
-      [0.9, -0.55],
-    ]
-    for (const [stX, stZ] of stoolCoords) {
-      const stool = await createModelInstance('models/furniture/chair_stool_wood.gltf', {
-        position: [0.1 + stX, 0.3, 0.2 + stZ],
-        scale: 0.85,
-      })
-      if (stool && scene) scene.add(stool)
-    }
-
-    // 大桌上的探险沙盘地图与立体浮凸 3D 低模山峦群！
-    build3DTopologicalMap()
-
-    // ── G. 悬浮旋转的神秘数据水晶遗物 ──
-    const crystalGeo = new THREE.OctahedronGeometry(0.25, 0)
-    const outdoorCrystal = new THREE.Mesh(
-      crystalGeo,
-      new THREE.MeshStandardMaterial({
-        color: 0x54a0ff,
-        emissive: 0x2e86de,
-        emissiveIntensity: 0.9,
-        roughness: 0.1,
-      })
-    )
-    outdoorCrystal.name = 'floatingCrystal'
-    outdoorCrystal.position.set(-3.2, 0.4, 4.5)
-    scene.add(outdoorCrystal)
+    // 在窗外紧邻放置一棵向阳的高耸冷杉松树，让枝叶透过玻璃依稀可见
+    createLushPineTree(-5.8, 0, -1.8, 2.2)
   }
 
-  // 构建电脑工作台区（超宽屏、办公转椅、写字台）
+  // 1:1 构建卧室区（精致原木床架、深绿被褥、两只白枕头、卷缩大睡的橘白小猫）
+  function buildBedAndSleepingCatArea() {
+    if (!scene) return
+    const bedGroup = new THREE.Group()
+    bedGroup.position.set(-3.3, 0.3, -0.6)
+
+    const woodDark = new THREE.MeshStandardMaterial({ color: 0x4e331e, roughness: 0.7 })
+    const woodBed = new THREE.MeshStandardMaterial({ color: 0x6e4729, roughness: 0.7 })
+    const whiteLinen = new THREE.MeshStandardMaterial({ color: 0xfbfbfd, roughness: 0.85 })
+    const greenQuilt = new THREE.MeshStandardMaterial({ color: 0x2e4f35, roughness: 0.8 }) // 饱满治愈的深森林绿被子
+
+    // 古典波斯红毯 (地面铺垫)
+    const burgundyRugTex = createBurgundyRugTexture()
+    const bedRug = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 2.1), new THREE.MeshStandardMaterial({ map: burgundyRugTex, roughness: 0.9 }))
+    bedRug.rotation.x = -Math.PI / 2
+    bedRug.position.set(0, 0.01, 0)
+    bedRug.receiveShadow = true
+    bedGroup.add(bedRug)
+
+    // 实木床架与 4 根圆润立柱
+    const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.38, 2.2), woodBed)
+    bedFrame.position.set(0, 0.2, 0)
+    bedFrame.castShadow = true
+    bedGroup.add(bedFrame)
+
+    for (const [px, pz] of [[-0.8, -1.1], [0.8, -1.1], [-0.8, 1.1], [0.8, 1.1]]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.75, 12), woodDark)
+      post.position.set(px, 0.38, pz)
+      post.castShadow = true
+      bedGroup.add(post)
+    }
+
+    // 床头高背板
+    const headboard = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.65, 0.1), woodDark)
+    headboard.position.set(0, 0.62, -1.06)
+    headboard.castShadow = true
+    bedGroup.add(headboard)
+
+    // 白色床垫
+    const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.16, 2.05), whiteLinen)
+    mattress.position.set(0, 0.44, 0)
+    bedGroup.add(mattress)
+
+    // 深森林绿厚被子（铺盖后半截）
+    const quilt = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.18, 1.45), greenQuilt)
+    quilt.position.set(0, 0.52, 0.3)
+    quilt.castShadow = true
+    bedGroup.add(quilt)
+
+    // 折叠露出的白被单边缘
+    const sheetTurn = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.08, 0.25), whiteLinen)
+    sheetTurn.position.set(0, 0.55, -0.45)
+    bedGroup.add(sheetTurn)
+
+    // 两只蓬松白枕头
+    const pillow1 = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.14, 0.4), whiteLinen)
+    pillow1.position.set(-0.38, 0.56, -0.8)
+    const pillow2 = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.14, 0.4), whiteLinen)
+    pillow2.position.set(0.38, 0.56, -0.8)
+    bedGroup.add(pillow1, pillow2)
+
+    // 🐱 1:1 精确复刻设计图：在被窝中央甜美熟睡的橘白花斑小猫（带起伏呼吸）
+    const catGroup = createSleepingGingerCat()
+    catGroup.position.set(0.12, 0.62, 0.25)
+    catGroup.rotation.y = -0.4
+    bedGroup.add(catGroup)
+    sleepingCatGroup = catGroup
+
+    scene.add(bedGroup)
+
+    // 床头小木柜、书籍与煤油灯
+    const nightstand = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.65), woodBed)
+    nightstand.position.set(-4.1, 0.62, 0.3)
+    scene.add(nightstand)
+
+    // 床头叠放的 3 本彩色精装书
+    buildBookStack(scene, -4.1, 0.95, 0.45, 3)
+    createKeroseneLantern(-4.1, 0.96, 0.2, 0.85)
+  }
+
+  // 纯手工高精度打造 1:1 卷缩熟睡的橘白猫咪（带白肚皮、白爪爪、耳朵与卷曲长尾）
+  function createSleepingGingerCat(): THREE.Group {
+    const cat = new THREE.Group()
+
+    const orangeMat = new THREE.MeshStandardMaterial({
+      color: 0xe67e22, // 温暖的鲜明橘猫底色
+      roughness: 0.65,
+    })
+    const whiteMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, // 纯白胸脯与四爪
+      roughness: 0.65,
+    })
+    const earInnerMat = new THREE.MeshStandardMaterial({
+      color: 0xffb8b8, // 粉嫩耳廓
+      roughness: 0.7,
+    })
+    const closedEyeMat = new THREE.MeshBasicMaterial({ color: 0x4a2e12 })
+
+    // 身体：优美蜷曲的圆形肉球（Torus 弧段）
+    const bodyGeo = new THREE.TorusGeometry(0.16, 0.11, 16, 32, Math.PI * 1.35)
+    const body = new THREE.Mesh(bodyGeo, orangeMat)
+    body.rotation.x = Math.PI / 2
+    body.castShadow = true
+    cat.add(body)
+
+    // 白色肚皮内衬
+    const bellyGeo = new THREE.SphereGeometry(0.11, 14, 14)
+    const belly = new THREE.Mesh(bellyGeo, whiteMat)
+    belly.scale.set(1.0, 0.65, 1.2)
+    belly.position.set(0.04, -0.02, 0.05)
+    cat.add(belly)
+
+    // 圆乎乎的猫猫头（埋在身体一端）
+    const headGeo = new THREE.SphereGeometry(0.115, 18, 18)
+    const head = new THREE.Mesh(headGeo, orangeMat)
+    head.position.set(0.14, 0.06, 0.12)
+    head.castShadow = true
+    cat.add(head)
+
+    // 白色面颊与下巴
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), whiteMat)
+    muzzle.scale.set(1.2, 0.8, 1.0)
+    muzzle.position.set(0.19, 0.03, 0.14)
+    cat.add(muzzle)
+
+    // 闭着的萌萌睡眼 ⌒ ⌒
+    const leftEyeCurve = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.005, 4, 12, Math.PI), closedEyeMat)
+    leftEyeCurve.position.set(0.23, 0.06, 0.16)
+    leftEyeCurve.rotation.y = Math.PI / 3
+    const rightEyeCurve = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.005, 4, 12, Math.PI), closedEyeMat)
+    rightEyeCurve.position.set(0.17, 0.06, 0.22)
+    rightEyeCurve.rotation.y = Math.PI / 6
+    cat.add(leftEyeCurve, rightEyeCurve)
+
+    // 扁平趴下的三角形小耳朵
+    const leftEar = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.06, 4), orangeMat)
+    leftEar.position.set(0.16, 0.15, 0.06)
+    leftEar.rotation.set(-0.3, 0, 0.5)
+    const rightEar = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.06, 4), orangeMat)
+    rightEar.position.set(0.08, 0.15, 0.14)
+    rightEar.rotation.set(0.5, 0, -0.3)
+    cat.add(leftEar, rightEar)
+
+    // 抱头的前白爪
+    const paw1 = new THREE.Mesh(new THREE.SphereGeometry(0.038, 10, 10), whiteMat)
+    paw1.position.set(0.21, 0.0, 0.08)
+    const paw2 = new THREE.Mesh(new THREE.SphereGeometry(0.038, 10, 10), whiteMat)
+    paw2.position.set(0.12, 0.0, 0.22)
+    cat.add(paw1, paw2)
+
+    // 蜷绕在屁股后方的长尾巴（带白尾尖）
+    const tail = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.035, 10, 24, Math.PI * 1.1), orangeMat)
+    tail.rotation.x = Math.PI / 2
+    tail.position.set(-0.04, 0, -0.06)
+    const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), whiteMat)
+    tailTip.position.set(-0.19, 0, 0.04)
+    cat.add(tail, tailTip)
+
+    return cat
+  }
+
+  // 1:1 构建电脑工作台区
   function buildWorkstationArea() {
     if (!scene) return
     const deskGroup = new THREE.Group()
@@ -677,7 +674,17 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     deskTable.castShadow = true
     deskGroup.add(deskTable)
 
-    // 显示器金属底座与液压臂支架
+    // 抽屉把手金属点缀
+    for (const dy of [0.25, 0.55]) {
+      const h1 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.12, 8), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8 }))
+      h1.rotation.z = Math.PI / 2
+      h1.position.set(-0.8, dy, 0.61)
+      const h2 = h1.clone()
+      h2.position.x = 0.8
+      deskGroup.add(h1, h2)
+    }
+
+    // 显示器金属底座与液压臂
     const monitorStandMat = new THREE.MeshStandardMaterial({ color: 0x1f2429, roughness: 0.3, metalness: 0.7 })
     const mBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 18), monitorStandMat)
     mBase.position.set(0, 0.82, -0.15)
@@ -685,33 +692,33 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     mArm.position.set(0, 1.02, -0.15)
     deskGroup.add(mBase, mArm)
 
-    // 超宽窄边框曲面屏黑框
-    const screenFrame = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.72, 0.04), monitorStandMat)
-    screenFrame.position.set(0, 1.32, -0.14)
+    // 超宽曲面显示器黑框
+    const screenFrame = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.74, 0.04), monitorStandMat)
+    screenFrame.position.set(0, 1.34, -0.14)
     deskGroup.add(screenFrame)
 
-    // 屏幕雪山极简壁纸并微弱泛光
+    // 极简雪山湖泊壁纸微光
     const wallpaperTex = createScreenWallpaperTexture()
     const screenMat = new THREE.MeshBasicMaterial({ map: wallpaperTex })
-    const screenFace = new THREE.Mesh(new THREE.PlaneGeometry(1.18, 0.66), screenMat)
-    screenFace.position.set(0, 1.32, -0.118)
+    const screenFace = new THREE.Mesh(new THREE.PlaneGeometry(1.22, 0.68), screenMat)
+    screenFace.position.set(0, 1.34, -0.118)
     deskGroup.add(screenFace)
 
-    // 极简机械键盘与鼠标垫
-    const mousepad = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.005, 0.35), new THREE.MeshStandardMaterial({ color: 0x222f3e, roughness: 0.9 }))
+    // 机械键盘、鼠标垫、鼠标
+    const mousepad = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.005, 0.35), new THREE.MeshStandardMaterial({ color: 0x222f3e, roughness: 0.9 }))
     mousepad.position.set(0.05, 0.805, 0.22)
-    const kb = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.02, 0.16), new THREE.MeshStandardMaterial({ color: 0xecf0f1, roughness: 0.5 }))
+    const kb = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.02, 0.16), new THREE.MeshStandardMaterial({ color: 0xecf0f1, roughness: 0.5 }))
     kb.position.set(-0.02, 0.82, 0.22)
     const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.02, 0.11), new THREE.MeshStandardMaterial({ color: 0x747d8c, roughness: 0.4 }))
     mouse.position.set(0.26, 0.82, 0.22)
     deskGroup.add(mousepad, kb, mouse)
 
-    // 红色陶瓷热咖啡马克杯
+    // 陶瓷热咖啡马克杯
     const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.15, 14), new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.3 }))
     mug.position.set(0.68, 0.88, 0.15)
     deskGroup.add(mug)
 
-    // 桌面暖光小台灯
+    // 桌面左侧小台灯
     createDeskLamp(deskGroup, -0.9, 0.8, -0.2)
 
     // 桌面小多肉盆栽
@@ -719,77 +726,201 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
 
     scene.add(deskGroup)
 
-    // 电脑桌前深蓝青色滚轮转椅 (Office Swivel Chair)
+    // 墙上小挂画
+    const artFrame = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.55, 0.04), woodOakMat)
+    artFrame.position.set(-2.8, 2.5, -4.26)
+    scene.add(artFrame)
+
+    // 电脑桌前人体工学青绿转椅
     buildSwivelChair(-2.8, 0.3, -2.2)
   }
 
-  // 构建大桌上的 3D 立体沙盘探险地图
-  function build3DTopologicalMap() {
+  // 1:1 构建宏大藏书大书架（数百本错落图书、复古地球仪、盆栽）
+  function buildGrandBookcaseArea() {
     if (!scene) return
+    const shelfGroup = new THREE.Group()
+    shelfGroup.position.set(0.5, 0.3, -3.8)
+
+    const oak = new THREE.MeshStandardMaterial({ color: 0x4a2e1b, roughness: 0.75 })
+
+    // 书柜外框（高 3.2m，宽 2.5m，深 0.55m）
+    const bW = 2.5
+    const bH = 3.2
+    const bD = 0.55
+
+    // 左右主立板
+    const leftSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, bH, bD), oak)
+    leftSide.position.set(-bW / 2 + 0.04, bH / 2, 0)
+    const rightSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, bH, bD), oak)
+    rightSide.position.set(bW / 2 - 0.04, bH / 2, 0)
+    // 中间隔板
+    const midDivider = new THREE.Mesh(new THREE.BoxGeometry(0.06, bH, bD), oak)
+    midDivider.position.set(0, bH / 2, 0)
+    // 顶底横板
+    const topBoard = new THREE.Mesh(new THREE.BoxGeometry(bW, 0.08, bD), oak)
+    topBoard.position.set(0, bH - 0.04, 0)
+    const bottomBoard = new THREE.Mesh(new THREE.BoxGeometry(bW, 0.1, bD), oak)
+    bottomBoard.position.set(0, 0.05, 0)
+    // 背板
+    const backPanel = new THREE.Mesh(new THREE.BoxGeometry(bW, bH, 0.04), oak)
+    backPanel.position.set(0, bH / 2, -bD / 2 + 0.02)
+    shelfGroup.add(leftSide, rightSide, midDivider, topBoard, bottomBoard, backPanel)
+
+    // 3 层内部实木隔板 (Y: 0.85, 1.65, 2.45)
+    for (const sy of [0.85, 1.65, 2.45]) {
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(bW - 0.16, 0.05, bD - 0.04), oak)
+      shelf.position.set(0, sy, 0.01)
+      shelfGroup.add(shelf)
+    }
+
+    // 丰富的各色精装藏书（红、蓝、绿、黄、棕、橙错落排布）
+    const bookColors = [0x8b1515, 0x1b3a57, 0x274e30, 0xc98a2c, 0x5c3a21, 0xb84d18, 0x234e52, 0x502c1e]
+    // 第 1 层图书 (下层)
+    for (let c = 0; c < 2; c++) {
+      const startX = c === 0 ? -1.1 : 0.1
+      for (let i = 0; i < 11; i++) {
+        const h = 0.35 + Math.random() * 0.15
+        const w = 0.06 + Math.random() * 0.03
+        const col = bookColors[(i + c * 3) % bookColors.length]
+        const book = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.32), new THREE.MeshStandardMaterial({ color: col, roughness: 0.65 }))
+        book.position.set(startX + i * 0.09, 0.88 + h / 2, 0.04)
+        shelfGroup.add(book)
+      }
+    }
+    // 第 2 层图书 (中层左侧满书，右侧陈列地球仪)
+    for (let i = 0; i < 10; i++) {
+      const h = 0.38 + Math.random() * 0.12
+      const w = 0.07 + Math.random() * 0.02
+      const col = bookColors[(i * 2) % bookColors.length]
+      const book = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.34), new THREE.MeshStandardMaterial({ color: col, roughness: 0.65 }))
+      book.position.set(-1.1 + i * 0.095, 1.68 + h / 2, 0.04)
+      shelfGroup.add(book)
+    }
+
+    // 中层右侧：黄铜旋转地球仪 🌍
+    buildGlobe(shelfGroup, 0.65, 1.7, 0.06)
+
+    // 第 3 层图书 (上层倾斜书本与横堆书籍)
+    for (let i = 0; i < 7; i++) {
+      const book = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.42, 0.34), new THREE.MeshStandardMaterial({ color: bookColors[i % bookColors.length] }))
+      book.position.set(-1.1 + i * 0.09, 2.48 + 0.21, 0.04)
+      shelfGroup.add(book)
+    }
+    // 倾斜依靠的书籍
+    const leaningBook = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.44, 0.34), new THREE.MeshStandardMaterial({ color: 0x8b1515 }))
+    leaningBook.position.set(-0.42, 2.48 + 0.2, 0.04)
+    leaningBook.rotation.z = -0.32
+    shelfGroup.add(leaningBook)
+
+    // 顶层垂悬常春藤绿植
+    buildHangingIvy(shelfGroup, -0.85, 3.25, 0.15)
+
+    scene.add(shelfGroup)
+
+    // 书架旁的落地虎尾兰大盆栽
+    createTallHousePlant(1.9, 0.3, -3.6)
+  }
+
+  // 1:1 构建中央大长桌与 3D 微缩山川探险沙盘
+  function buildCentralMapTableArea() {
+    if (!scene) return
+
+    const woodDark = new THREE.MeshStandardMaterial({ color: 0x462d1a, roughness: 0.75 })
+    const woodOak = new THREE.MeshStandardMaterial({ color: 0x6e4729, roughness: 0.7 })
+
+    // 大桌下方铺垫的大型森林绿几何毛毯
+    const greenRugTex = createGreenRugTexture()
+    const tableRug = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 2.8), new THREE.MeshStandardMaterial({ map: greenRugTex, roughness: 0.9 }))
+    tableRug.rotation.x = -Math.PI / 2
+    tableRug.position.set(0.1, 0.31, 0.2)
+    tableRug.receiveShadow = true
+    scene.add(tableRug)
+
+    // 厚重实木大工作长桌（宽 2.5m，高 0.75m，深 1.5m）
+    const mainTable = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.78, 1.5), woodOak)
+    mainTable.position.set(0.1, 0.69, 0.2)
+    mainTable.castShadow = true
+    scene.add(mainTable)
+
+    // 桌底横撑梁与书籍木箱
+    const underCrate = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.35, 0.55), woodDark)
+    underCrate.position.set(0.1, 0.48, 0.2)
+    scene.add(underCrate)
+
+    // 四周围绕的 4 张质朴实木方凳
+    for (const [stX, stZ] of [[-0.75, 1.05], [0.95, 1.05], [-0.75, -0.65], [0.95, -0.65]]) {
+      const stool = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.44, 0.42), woodOak)
+      stool.position.set(0.1 + stX, 0.52, 0.2 + stZ)
+      stool.castShadow = true
+      scene.add(stool)
+    }
 
     // 桌面上展开的羊皮纸大地图
     const mapTex = createAdventureMapTexture()
-    const mapMat = new THREE.MeshStandardMaterial({
-      map: mapTex,
-      roughness: 0.8,
-    })
-    const mapMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.85, 1.15), mapMat)
+    const mapMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.2), new THREE.MeshStandardMaterial({ map: mapTex, roughness: 0.8 }))
     mapMesh.rotation.x = -Math.PI / 2
-    mapMesh.position.set(0.1, 1.06, 0.2)
+    mapMesh.position.set(0.1, 1.085, 0.2)
     scene.add(mapMesh)
 
-    // 1:1 像素级复刻设计图：从纸面凸起的 3D 微缩山峰与河流！
+    // 🏔️ 1:1 复刻设计图灵魂：从羊皮纸地图直接立体突起的 3D 低多边形雪山群峰与蓝色河流！
     const miniMountainGroup = new THREE.Group()
-    miniMountainGroup.position.set(0.38, 1.06, 0.16)
+    miniMountainGroup.position.set(0.4, 1.085, 0.16)
 
-    const mountainMat = new THREE.MeshStandardMaterial({ color: 0x576574, roughness: 0.85 })
-    const snowCapMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
+    const mountainMat = new THREE.MeshStandardMaterial({ color: 0x57606f, roughness: 0.85, flatShading: true })
+    const snowCapMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, flatShading: true })
+    const riverMat = new THREE.MeshStandardMaterial({ color: 0x3867d6, roughness: 0.3 })
 
-    // 主峰（带皑皑积雪雪顶）
-    const peak1 = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.36, 6), mountainMat)
-    peak1.position.set(0, 0.18, 0)
-    const snow1 = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.13, 6), snowCapMat)
-    snow1.position.set(0, 0.29, 0)
+    // 主峰（带积雪白顶）
+    const peak1 = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.38, 6), mountainMat)
+    peak1.position.set(0, 0.19, 0)
+    const snow1 = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.14, 6), snowCapMat)
+    snow1.position.set(0, 0.31, 0)
     miniMountainGroup.add(peak1, snow1)
 
     // 副峰 2
-    const peak2 = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.26, 6), mountainMat)
-    peak2.position.set(-0.18, 0.13, 0.09)
-    const snow2 = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.1, 6), snowCapMat)
-    snow2.position.set(-0.18, 0.21, 0.09)
+    const peak2 = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.28, 6), mountainMat)
+    peak2.position.set(-0.19, 0.14, 0.09)
+    const snow2 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.11, 6), snowCapMat)
+    snow2.position.set(-0.19, 0.225, 0.09)
     miniMountainGroup.add(peak2, snow2)
 
     // 副峰 3
-    const peak3 = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.22, 5), mountainMat)
-    peak3.position.set(0.2, 0.11, -0.07)
+    const peak3 = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.24, 5), mountainMat)
+    peak3.position.set(0.22, 0.12, -0.08)
     miniMountainGroup.add(peak3)
+
+    // 蜿蜒河流带
+    const river = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.12), riverMat)
+    river.rotation.x = -Math.PI / 2
+    river.position.set(-0.1, 0.005, -0.15)
+    miniMountainGroup.add(river)
 
     scene.add(miniMountainGroup)
 
-    // 桌上的小多肉盆与热咖啡
-    createTerracottaPlant(scene, -0.52, 1.06, 0.35, 0.15)
+    // 桌面小多肉盆与陶瓷咖啡马克杯
+    createTerracottaPlant(scene, -0.52, 1.085, 0.35, 0.15)
     const tableMug = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.14, 14), new THREE.MeshStandardMaterial({ color: 0xf5f6fa, roughness: 0.3 }))
-    tableMug.position.set(-0.42, 1.13, -0.1)
+    tableMug.position.set(-0.42, 1.155, -0.1)
     scene.add(tableMug)
   }
 
-  // 构建透明玻璃发光陈列柜
-  function buildGlassCurioCabinet() {
+  // 1:1 构建发光玻璃陈列展柜
+  function buildCurioShowcaseCabinet() {
     if (!scene) return
     const cabinetGroup = new THREE.Group()
     cabinetGroup.position.set(3.9, 0.3, -2.4)
     cabinetGroup.rotation.y = -Math.PI / 2
 
-    const woodDarkMat = new THREE.MeshStandardMaterial({ color: 0x422c1d, roughness: 0.75 })
+    const woodDarkMat = new THREE.MeshStandardMaterial({ color: 0x3d2717, roughness: 0.75 })
     const glassMat = new THREE.MeshStandardMaterial({
       color: 0xdff9fb,
       transparent: true,
-      opacity: 0.42,
+      opacity: 0.38,
       roughness: 0.08,
       metalness: 0.1,
     })
 
-    // 顶底木架
+    // 底座与顶盖
     const cabBase = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 0.75), woodDarkMat)
     cabBase.position.y = 0.25
     const cabTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.15, 0.75), woodDarkMat)
@@ -803,7 +934,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
       cabinetGroup.add(post)
     }
 
-    // 透明外罩玻璃面板
+    // 透明玻璃面板
     const glassPane = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.9, 0.65), glassMat)
     glassPane.position.y = 1.45
     cabinetGroup.add(glassPane)
@@ -819,7 +950,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     const cyanCrystalMat = new THREE.MeshStandardMaterial({
       color: 0x00d2d3,
       emissive: 0x00d2d3,
-      emissiveIntensity: 0.95,
+      emissiveIntensity: 1.1,
       roughness: 0.1,
     })
     const crystalMesh1 = new THREE.Mesh(new THREE.OctahedronGeometry(0.19, 0), cyanCrystalMat)
@@ -834,7 +965,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     const amberCrystalMat = new THREE.MeshStandardMaterial({
       color: 0xffa502,
       emissive: 0xffa502,
-      emissiveIntensity: 0.8,
+      emissiveIntensity: 0.9,
       roughness: 0.2,
     })
     const crystalMesh2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.15, 0), amberCrystalMat)
@@ -844,7 +975,108 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     scene.add(cabinetGroup)
   }
 
-  // 经典复古煤油提灯组件
+  // 1:1 构建室外多层立体切面冷杉林与鹅卵石野花小径
+  function buildOutdoorForestAndGarden(stoneMat: THREE.Material) {
+    if (!scene) return
+
+    // 🌲 浓密立体多层冷杉松林群落（纯正深森林绿，高低错落环绕木屋四周）
+    const pineForestConfigs: [number, number, number, number][] = [
+      // 左侧森林 (窗外)
+      [-6.8, 0, -3.2, 2.8],
+      [-7.5, 0, -0.6, 2.6],
+      [-6.2, 0, 1.6, 2.2],
+      [-5.5, 0, 4.8, 2.7],
+      // 右侧与后侧森林
+      [5.8, 0, 5.2, 2.6],
+      [6.8, 0, 2.4, 2.5],
+      [7.2, 0, -1.6, 2.7],
+      [6.4, 0, -4.5, 3.0],
+      [-2.2, 0, -6.5, 3.2],
+      [1.8, 0, -6.6, 2.9],
+      [4.2, 0, -6.2, 3.1],
+    ]
+
+    for (const [px, py, pz, scale] of pineForestConfigs) {
+      createLushPineTree(px, py, pz, scale)
+    }
+
+    // 蜿蜒自然鹅卵石步道石（带不同角度微旋转）
+    const stoneCoords: [number, number, number][] = [
+      [-2.8, 4.3, 0.45],
+      [-2.5, 5.1, 0.42],
+      [-2.1, 5.9, 0.46],
+      [-1.5, 6.7, 0.43],
+      [-0.9, 7.4, 0.45],
+    ]
+    for (const [sx, sz, r] of stoneCoords) {
+      const stoneGeo = new THREE.CylinderGeometry(r, r * 1.1, 0.08, 8)
+      const stone = new THREE.Mesh(stoneGeo, stoneMat)
+      stone.position.set(sx, 0.04, sz)
+      stone.rotation.y = Math.random() * Math.PI
+      stone.receiveShadow = true
+      scene.add(stone)
+    }
+
+    // 盛开的白色雏菊野花与灌木丛 🌼
+    buildDaisyField()
+
+    // 悬浮旋转的神秘数据水晶遗物
+    const crystalGeo = new THREE.OctahedronGeometry(0.25, 0)
+    const outdoorCrystal = new THREE.Mesh(
+      crystalGeo,
+      new THREE.MeshStandardMaterial({
+        color: 0x54a0ff,
+        emissive: 0x2e86de,
+        emissiveIntensity: 0.95,
+        roughness: 0.1,
+      })
+    )
+    outdoorCrystal.name = 'floatingCrystal'
+    outdoorCrystal.position.set(-3.2, 0.4, 4.5)
+    scene.add(outdoorCrystal)
+  }
+
+  // 多层立体切面冷杉松树（5 层渐进收拢，深邃饱满的森林翠绿）
+  function createLushPineTree(x: number, y: number, z: number, scale = 1.0) {
+    if (!scene) return
+    const tree = new THREE.Group()
+    tree.position.set(x, y, z)
+    tree.scale.setScalar(scale)
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2716, roughness: 0.85 })
+    const needleMat = new THREE.MeshStandardMaterial({
+      color: 0x244a29, // 纯正深邃森林冷杉绿
+      roughness: 0.7,
+      flatShading: true, // 开启切面光照，彰显高贵低模立体感
+    })
+
+    // 粗壮实木树干
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.26, 1.8, 8), trunkMat)
+    trunk.position.y = 0.9
+    trunk.castShadow = true
+    tree.add(trunk)
+
+    // 5 层多面体切面松针冠层
+    const tiers = [
+      { r: 1.25, h: 1.1, y: 1.35 },
+      { r: 1.05, h: 1.0, y: 1.95 },
+      { r: 0.85, h: 0.9, y: 2.55 },
+      { r: 0.65, h: 0.8, y: 3.1 },
+      { r: 0.42, h: 0.7, y: 3.6 },
+    ]
+
+    tiers.forEach((t, idx) => {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(t.r, t.h, 7), needleMat)
+      cone.position.y = t.y
+      cone.rotation.y = idx * 0.45 // 层间微旋，避免单一
+      cone.castShadow = true
+      tree.add(cone)
+    })
+
+    scene.add(tree)
+  }
+
+  // 经典复古玻璃煤油提灯组件
   function createKeroseneLantern(x: number, y: number, z: number, scale = 1) {
     if (!scene) return
     const lanternGroup = new THREE.Group()
@@ -857,16 +1089,12 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
 
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.08, 14), metalMat)
     base.position.y = 0.04
-
     const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.22, 14), glassMat)
     chimney.position.y = 0.19
-
     const flame = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 8), flameMat)
     flame.position.y = 0.18
-
     const top = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.11, 0.09, 14), metalMat)
     top.position.y = 0.34
-
     const handle = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.015, 8, 16, Math.PI), metalMat)
     handle.position.y = 0.41
 
@@ -874,7 +1102,7 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     scene.add(lanternGroup)
   }
 
-  // 黄铜复古地球仪 🌍
+  // 黄铜复古旋转地球仪 🌍
   function buildGlobe(parent: THREE.Object3D, x: number, y: number, z: number) {
     const globeGroup = new THREE.Group()
     globeGroup.position.set(x, y, z)
@@ -964,7 +1192,47 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     parent.add(plantGroup)
   }
 
-  // 桌面壁挂式鹅颈暖光台灯
+  // 落地高大室内绿植盆栽
+  function createTallHousePlant(x: number, y: number, z: number) {
+    if (!scene) return
+    const plantGroup = new THREE.Group()
+    plantGroup.position.set(x, y, z)
+
+    const potMat = new THREE.MeshStandardMaterial({ color: 0xecf0f1, roughness: 0.5 })
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x218c74, roughness: 0.65 })
+
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.25, 0.65, 16), potMat)
+    pot.position.y = 0.32
+    pot.castShadow = true
+    plantGroup.add(pot)
+
+    for (let i = 0; i < 6; i++) {
+      const leafGeo = new THREE.CylinderGeometry(0.08, 0.02, 0.9, 5)
+      const leaf = new THREE.Mesh(leafGeo, leafMat)
+      leaf.position.set((Math.random() - 0.5) * 0.15, 0.75, (Math.random() - 0.5) * 0.15)
+      leaf.rotation.set((Math.random() - 0.5) * 0.4, Math.random() * Math.PI, (Math.random() - 0.5) * 0.4)
+      leaf.castShadow = true
+      plantGroup.add(leaf)
+    }
+
+    scene.add(plantGroup)
+  }
+
+  // 堆叠书籍辅助
+  function buildBookStack(parent: THREE.Object3D, x: number, y: number, z: number, count = 3) {
+    const group = new THREE.Group()
+    group.position.set(x, y, z)
+    const cols = [0x8b1515, 0x1b3a57, 0x274e30, 0xc98a2c]
+    for (let i = 0; i < count; i++) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.3), new THREE.MeshStandardMaterial({ color: cols[i % cols.length] }))
+      b.position.y = 0.025 + i * 0.052
+      b.rotation.y = (Math.random() - 0.5) * 0.2
+      group.add(b)
+    }
+    parent.add(group)
+  }
+
+  // 桌面复古小台灯
   function createDeskLamp(group: THREE.Group, x: number, y: number, z: number) {
     const lampGroup = new THREE.Group()
     lampGroup.position.set(x, y, z)
@@ -983,32 +1251,28 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     group.add(lampGroup)
   }
 
-  // 办公工学转椅 (Office Chair)
+  // 办公工学青绿转椅
   function buildSwivelChair(x: number, y: number, z: number) {
     if (!scene) return
     const chairGroup = new THREE.Group()
     chairGroup.position.set(x, y, z)
-    chairGroup.rotation.y = Math.PI * 0.75 // 惬意微转朝向室内
+    chairGroup.rotation.y = Math.PI * 0.75
 
     const plasticMat = new THREE.MeshStandardMaterial({ color: 0x1e272e, roughness: 0.4, metalness: 0.5 })
-    const fabricMat = new THREE.MeshStandardMaterial({ color: 0x16a085, roughness: 0.8 }) // 沉静高级青绿色坐垫
+    const fabricMat = new THREE.MeshStandardMaterial({ color: 0x16a085, roughness: 0.8 })
 
-    // 五爪星型底座与滚轮
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.05, 5), plasticMat)
     base.position.y = 0.05
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.32, 12), plasticMat)
     stem.position.y = 0.22
 
-    // 软包坐垫
     const seat = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.12, 0.65), fabricMat)
     seat.position.y = 0.42
 
-    // 人体工学靠背
     const backrest = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.75, 0.1), fabricMat)
     backrest.position.set(0, 0.85, 0.3)
     backrest.rotation.x = -0.1
 
-    // 左右扶手
     const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.28, 0.42), plasticMat)
     leftArm.position.set(-0.35, 0.62, 0.05)
     const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.28, 0.42), plasticMat)
@@ -1016,6 +1280,38 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
 
     chairGroup.add(base, stem, seat, backrest, leftArm, rightArm)
     scene.add(chairGroup)
+  }
+
+  // 草地上盛开的小白雏菊群 🌼
+  function buildDaisyField() {
+    if (!scene) return
+    const petalMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
+    const coreMat = new THREE.MeshStandardMaterial({ color: 0xffb142, roughness: 0.5 })
+
+    const coords: [number, number][] = [
+      [-3.8, 3.8],
+      [-3.4, 4.4],
+      [-2.2, 3.8],
+      [-1.8, 4.8],
+      [-2.6, 6.2],
+      [-1.2, 5.8],
+      [-3.6, 5.4],
+      [-0.8, 6.8],
+    ]
+
+    for (const [dx, dz] of coords) {
+      const daisy = new THREE.Group()
+      daisy.position.set(dx, 0.02, dz)
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), coreMat)
+      daisy.add(core)
+      for (let p = 0; p < 6; p++) {
+        const petal = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.015, 0.08), petalMat)
+        petal.position.set(Math.sin((p / 6) * Math.PI * 2) * 0.06, 0, Math.cos((p / 6) * Math.PI * 2) * 0.06)
+        petal.rotation.y = (p / 6) * Math.PI * 2
+        daisy.add(petal)
+      }
+      scene.add(daisy)
+    }
   }
 
   // 空气悬浮暖金光尘粒子
@@ -1338,15 +1634,17 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     // 1. 更新主角小人与动作
     updatePlayer(delta)
 
-    // 2. 呼吸起伏的小猫 🐱
-    if (sleepingCatMesh) {
-      sleepingCatMesh.scale.y = sleepingCatBaseScaleY * (1 + Math.sin(now * 0.003) * 0.04)
+    // 2. 🐱 熟睡橘猫温柔起伏的呼吸动效
+    if (sleepingCatGroup) {
+      const breathe = Math.sin(now * 0.0024)
+      sleepingCatGroup.scale.y = 1.0 + breathe * 0.05
+      sleepingCatGroup.scale.x = 1.0 + breathe * 0.02
     }
 
-    // 3. 煤油灯光微妙颤动 (Flicker)
+    // 3. 煤油灯光火晕自然微颤 (Flicker)
     for (let i = 0; i < flickeringLights.length; i++) {
       const light = flickeringLights[i]
-      light.intensity = 2.0 + Math.sin(now * 0.012 + i * 2.1) * 0.2
+      light.intensity = 2.2 + Math.sin(now * 0.012 + i * 2.1) * 0.25
     }
 
     // 4. 旋转场景中的漂浮水晶
