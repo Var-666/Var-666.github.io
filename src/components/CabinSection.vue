@@ -94,7 +94,30 @@ function triggerItem(item: any) {
     <!-- 左下角 HUD 探索进度面板 (1:1 还原参考图) -->
     <div class="cabin-hud-card">
       <div class="hud-avatar-wrap">
-        <div class="hud-avatar">🎒</div>
+        <svg viewBox="0 0 48 48" width="42" height="42" class="avatar-svg">
+          <!-- 背景圆环 -->
+          <circle cx="24" cy="24" r="22" fill="#3a5a6b" />
+          <!-- 蓝色工装夹克领口与白衬衫 -->
+          <path d="M10 44 C10 35, 17 33, 24 33 C31 33, 38 35, 38 44 Z" fill="#253545" />
+          <path d="M14 44 C14 36, 18 34, 24 34 C30 34, 34 36, 34 44 Z" fill="#4a738c" />
+          <path d="M22 34 L24 37 L26 34 Z" fill="#ffffff" />
+          <!-- 小人脸蛋 -->
+          <circle cx="24" cy="24" r="10.5" fill="#ffd3b6" />
+          <!-- 栗色刘海与鬓发 -->
+          <path d="M15 21 Q19 25 24 20 Q29 25 33 21 Q30 14 24 14 Q18 14 15 21 Z" fill="#3d271d" />
+          <!-- 萌系大眼睛 -->
+          <circle cx="20.5" cy="23.5" r="1.5" fill="#1e272e" />
+          <circle cx="27.5" cy="23.5" r="1.5" fill="#1e272e" />
+          <!-- 脸颊红晕 -->
+          <ellipse cx="18.5" cy="26.5" rx="2.2" ry="1.2" fill="#ff7979" opacity="0.65" />
+          <ellipse cx="29.5" cy="26.5" rx="2.2" ry="1.2" fill="#ff7979" opacity="0.65" />
+          <!-- 微笑小嘴 -->
+          <path d="M22 26.5 Q24 28.5 26 26.5" stroke="#b33939" stroke-width="1.2" stroke-linecap="round" fill="none" />
+          <!-- 标志性深红便帽 (Red Beanie) -->
+          <path d="M12 18 C12 8, 36 8, 36 18 Z" fill="#bd2a2a" />
+          <!-- 便帽卷边厚圈 -->
+          <rect x="11" y="16" width="26" height="4.5" rx="2.2" fill="#9e2020" />
+        </svg>
       </div>
       <div class="hud-info">
         <div class="hud-hearts">
@@ -111,24 +134,22 @@ function triggerItem(item: any) {
       </div>
     </div>
 
-    <!-- 底部居中操作快捷提示 -->
+    <!-- 底部居中操作快捷提示 (1:1 还原设计图) -->
     <div class="cabin-controls-hint">
       <div class="hint-group">
         <span class="key-cap">W</span>
         <span class="key-cap">A</span>
         <span class="key-cap">S</span>
         <span class="key-cap">D</span>
-        <span class="hint-label">移动</span>
+        <span class="hint-label">Move</span>
       </div>
-      <span class="hint-sep">|</span>
       <div class="hint-group">
         <span class="key-cap">E</span>
-        <span class="hint-label">交互</span>
+        <span class="hint-label">Interact</span>
       </div>
-      <span class="hint-sep">|</span>
       <div class="hint-group">
         <span class="hint-icon">🖱️</span>
-        <span class="hint-label">按住拖拽视角</span>
+        <span class="hint-label">Look Around</span>
       </div>
     </div>
 
@@ -408,17 +429,14 @@ function triggerItem(item: any) {
 .hud-avatar-wrap {
   width: 44px;
   height: 44px;
-  background: linear-gradient(135deg, #c23616, #e15f41);
+  background: #253342;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.hud-avatar {
-  font-size: 1.35rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
 }
 
 .hud-info {
