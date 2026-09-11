@@ -203,7 +203,8 @@ watch(isExpanded, (val) => {
         <div class="capsule-info">
           <div class="title-with-badge">
             <span class="capsule-title">{{ currentTrack.title }}</span>
-            <span v-if="currentTrack.isFull" class="capsule-full-pill">全曲</span>
+            <span v-if="currentTrack.isTrial" class="capsule-trial-pill">试听</span>
+            <span v-else-if="currentTrack.isFull" class="capsule-full-pill">全曲</span>
           </div>
           <span class="capsule-artist">{{ currentTrack.artist }}</span>
         </div>
@@ -323,8 +324,8 @@ watch(isExpanded, (val) => {
                 <span v-else-if="playbackStatus === 'error'" class="full-song-tag error" :title="playbackError">
                   ⚠️ 播放受阻
                 </span>
-                <span v-else class="full-song-tag" :class="{ full: currentTrack.isFull }">
-                  {{ currentTrack.isFull ? '● 完整全曲' : '○ 试听采样' }}
+                <span v-else class="full-song-tag" :class="{ full: currentTrack.isFull, trial: currentTrack.isTrial }">
+                  {{ currentTrack.isTrial ? '◐ 试听采样 (30秒)' : (currentTrack.isFull ? '● 完整全曲' : '○ 试听采样') }}
                 </span>
               </div>
               <p class="track-subtitle">
@@ -418,9 +419,9 @@ watch(isExpanded, (val) => {
                 <div class="item-info">
                   <div class="item-title-row">
                     <span class="item-title">{{ item.title }}</span>
-                    <span class="item-badge full">
-                      网易云单曲
-                    </span>
+                    <span v-if="item.isTrial" class="item-badge trial">30秒试听</span>
+                    <span v-else-if="item.isFull" class="item-badge full">完整全曲</span>
+                    <span v-else class="item-badge full">网易云单曲</span>
                   </div>
                   <span class="item-meta">{{ item.artist }} · {{ item.album }}</span>
                 </div>
@@ -447,7 +448,8 @@ watch(isExpanded, (val) => {
                 <div class="row-info">
                   <div class="row-title-row">
                     <span class="row-title">{{ item.title }}</span>
-                    <span v-if="item.isFull" class="badge-full">全曲</span>
+                    <span v-if="item.isTrial" class="badge-trial">试听</span>
+                    <span v-else-if="item.isFull" class="badge-full">全曲</span>
                   </div>
                   <span class="row-artist">{{ item.artist }}</span>
                 </div>
@@ -699,6 +701,16 @@ watch(isExpanded, (val) => {
   padding: 0 4px;
   background: rgba(16, 185, 129, 0.15);
   color: #059669;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.capsule-trial-pill {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  padding: 0 4px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
   border-radius: 3px;
   flex-shrink: 0;
 }
@@ -1099,6 +1111,13 @@ watch(isExpanded, (val) => {
   font-weight: 500;
 }
 
+.full-song-tag.trial {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  font-weight: 500;
+}
+
 .full-song-tag.resolving {
   background: rgba(59, 130, 246, 0.12);
   color: #2563EB;
@@ -1369,6 +1388,11 @@ watch(isExpanded, (val) => {
   color: #059669;
 }
 
+.item-badge.trial {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
 .item-meta {
   font-size: 0.72rem;
   color: var(--color-text-lighter);
@@ -1473,6 +1497,16 @@ watch(isExpanded, (val) => {
   padding: 0 4px;
   background: rgba(16, 185, 129, 0.15);
   color: #059669;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.badge-trial {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  padding: 0 4px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
   border-radius: 2px;
   flex-shrink: 0;
 }

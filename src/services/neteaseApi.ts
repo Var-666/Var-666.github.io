@@ -129,10 +129,51 @@ export async function fetchPlaylistTracks(playlistId: number, baseUrl?: string):
   return []
 }
 
+export interface ResolvedSongAudio {
+  url: string
+  isFull: boolean
+  isTrial: boolean
+  trialDuration?: number
+  bitrate?: number
+  size?: number
+}
+
+function parseSongAudioData(songData: any): ResolvedSongAudio | null {
+  if (!songData || !songData.url) return null
+
+  const rawUrl = String(songData.url).replace(/^http:\/\//i, 'https://')
+  // 识别免费试听片段：有 freeTrialInfo、或有限时试听权限、或受限且时长约为 30s
+  const hasTrialInfo = !!songData.freeTrialInfo
+  const hasTimeTrialPrivilege = !!(songData.freeTimeTrialPrivilege && songData.freeTimeTrialPrivilege.remainTime > 0)
+  const isShortFeeTrack = (songData.fee > 0 && typeof songData.time === 'number' && songData.time > 0 && songData.time <= 40000)
+
+  const isTrial = hasTrialInfo || hasTimeTrialPrivilege || isShortFeeTrack
+  let trialDuration: number | undefined
+
+  if (isTrial) {
+    if (songData.freeTrialInfo && typeof songData.freeTrialInfo.start === 'number' && typeof songData.freeTrialInfo.end === 'number') {
+      trialDuration = Math.max(1, Math.round(songData.freeTrialInfo.end - songData.freeTrialInfo.start))
+    } else if (typeof songData.time === 'number' && songData.time > 0) {
+      trialDuration = Math.max(1, Math.round(songData.time / 1000))
+    } else {
+      trialDuration = 30
+    }
+  }
+
+  return {
+    url: rawUrl,
+    isFull: !isTrial,
+    isTrial,
+    trialDuration,
+    bitrate: songData.br,
+    size: songData.size,
+  }
+}
+
 /**
- * 解析歌曲真实音频直链（纯只读 GET，不携带任何 Cookie）
+ * 解析歌曲真实音频直链（纯只读 GET，不携带任何 Cookie，严格识别试听与完整权限）
  */
-export async function fetchSongAudioUrl(songId: number | string, baseUrl?: string): Promise<string | null> {
+export async function fetchSongAudioUrl(songId: number | string, baseUrl?: string): Promise<ResolvedSongAudio | null> {
   const target = baseUrl || getSavedApiUrl()
   if (!target) return null
 
@@ -148,10 +189,7 @@ export async function fetchSongAudioUrl(songId: number | string, baseUrl?: strin
     const json = await res.json()
 
     if (json.data && Array.isArray(json.data) && json.data.length > 0) {
-      const songData = json.data[0]
-      if (songData.url) {
-        return songData.url.replace(/^http:\/\//i, 'https://')
-      }
+      return parseSongAudioData(json.data[0])
     }
   } catch (err) {
     console.warn(`[NeteaseApi] 解析歌曲 (ID: ${cleanId}) 音频直链异常:`, err)
@@ -161,16 +199,16 @@ export async function fetchSongAudioUrl(songId: number | string, baseUrl?: strin
 }
 
 /**
- * 批量解析歌曲真实 CDN 直链（纯只读 GET，不携带任何 Cookie）
+ * 批量解析歌曲真实 CDN 直链（纯只读 GET，不携带任何 Cookie，严格识别试听与完整权限）
  */
-export async function fetchBatchSongAudioUrls(songIds: (number | string)[], baseUrl?: string): Promise<Record<string, string>> {
+export async function fetchBatchSongAudioUrls(songIds: (number | string)[], baseUrl?: string): Promise<Record<string, ResolvedSongAudio>> {
   const target = baseUrl || getSavedApiUrl()
   if (!target || songIds.length === 0) return {}
 
   const cleanIds = songIds.map(id => String(id).replace(/\D/g, '')).filter(Boolean)
   if (cleanIds.length === 0) return {}
 
-  const result: Record<string, string> = {}
+  const result: Record<string, ResolvedSongAudio> = {}
   try {
     const idStr = cleanIds.join(',')
     const controller = new AbortController()
@@ -182,8 +220,11 @@ export async function fetchBatchSongAudioUrls(songIds: (number | string)[], base
 
     if (json.data && Array.isArray(json.data)) {
       for (const item of json.data) {
-        if (item.id && item.url) {
-          result[String(item.id)] = item.url.replace(/^http:\/\//i, 'https://')
+        if (item.id) {
+          const parsed = parseSongAudioData(item)
+          if (parsed) {
+            result[String(item.id)] = parsed
+          }
         }
       }
     }

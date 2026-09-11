@@ -13,9 +13,8 @@ const { timeStr, dateStr, city, weather, temp, currentActivity, activityIcon, is
 const { isPlaying: isAudioPlaying, selectTrack, togglePlay: toggleAudioPlay, setExpand } = useAudioPlayer()
 
 function handleMusicCardClick() {
-  selectTrack(0)
   if (!isAudioPlaying.value) {
-    toggleAudioPlay()
+    selectTrack(0, true)
   } else {
     setExpand(true)
   }

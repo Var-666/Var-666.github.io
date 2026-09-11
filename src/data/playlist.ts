@@ -9,6 +9,8 @@ export interface Track {
   coverUrl: string
   audioUrl: string
   isFull: boolean
+  isTrial?: boolean
+  trialDuration?: number
 }
 
 // 站长专属精选曲库（同步自网易云「不可以叫我憨憨」精选歌单，核心曲目直通本地无损高保真流）
