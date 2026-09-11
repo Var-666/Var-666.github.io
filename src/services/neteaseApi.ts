@@ -1,29 +1,14 @@
 import type { Track } from '@/data/playlist'
 
 const STORAGE_API_KEY = 'var_netease_api_url'
-const STORAGE_COOKIE_KEY = 'var_netease_cookie'
 export const DEFAULT_NETEASE_API_URL = 'https://api.hi-var.top'
-
-const LEGACY_API_URLS = new Set([
-  'https://personly-use.vercel.app',
-  'https://music-api.varhello99.workers.dev',
-])
-
-// 官方 Vercel 1-Click Deploy 模板链接 (使用 2025/2026 社区活跃维护的增强版)
-export const RECOMMENDED_VERCEL_DEPLOY_URL = 'https://vercel.com/new/clone?repository-url=https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced'
 
 export function getSavedApiUrl(): string {
   try {
     const saved = localStorage.getItem(STORAGE_API_KEY)
     if (saved && saved.trim()) {
-      const normalized = saved.trim().replace(/\/+$/, '')
-      if (!LEGACY_API_URLS.has(normalized)) {
-        return normalized
-      }
-
-      localStorage.setItem(STORAGE_API_KEY, DEFAULT_NETEASE_API_URL)
+      return saved.trim().replace(/\/+$/, '')
     }
-    // 默认直接绑定你的专属生产域名
     return DEFAULT_NETEASE_API_URL
   } catch {
     return DEFAULT_NETEASE_API_URL
@@ -43,34 +28,6 @@ export function saveApiUrl(url: string): void {
   }
 }
 
-export function getSavedCookie(): string {
-  try {
-    return localStorage.getItem(STORAGE_COOKIE_KEY) || ''
-  } catch {
-    return ''
-  }
-}
-
-export function saveCookie(cookie: string): void {
-  try {
-    if (cookie) {
-      localStorage.setItem(STORAGE_COOKIE_KEY, cookie)
-    } else {
-      localStorage.removeItem(STORAGE_COOKIE_KEY)
-    }
-  } catch {
-    // ignore
-  }
-}
-
-export function clearAuthData(): void {
-  try {
-    localStorage.removeItem(STORAGE_COOKIE_KEY)
-    localStorage.removeItem('var_netease_auth_profile_v1')
-  } catch {
-    // ignore
-  }
-}
 
 /**
  * 测试给定 API 地址的连通性与响应时间
@@ -108,151 +65,14 @@ export async function testApiConnection(baseUrl?: string): Promise<{ ok: boolean
 }
 
 /**
- * 1. 获取二维码唯一 key
+ * 获取指定用户的公开歌单列表（纯只读 GET，不携带任何 Cookie）
  */
-export async function getQrKey(baseUrl?: string): Promise<string | null> {
+export async function fetchUserPlaylists(uid: string | number, baseUrl?: string): Promise<any[]> {
   const target = baseUrl || getSavedApiUrl()
-  if (!target) return null
-
-  try {
-    const res = await fetch(`${target}/login/qr/key?timestamp=${Date.now()}`)
-    const json = await res.json()
-    if (json.data && json.data.unikey) {
-      return json.data.unikey
-    }
-  } catch (err) {
-    console.warn('[NeteaseApi] 获取 QR Key 失败:', err)
-  }
-  return null
-}
-
-/**
- * 2. 根据 key 生成二维码图片 Base64
- */
-export async function createQrImage(key: string, baseUrl?: string): Promise<{ qrurl: string; qrimg: string } | null> {
-  const target = baseUrl || getSavedApiUrl()
-  if (!target) return null
-
-  try {
-    const res = await fetch(`${target}/login/qr/create?key=${key}&qrimg=true&timestamp=${Date.now()}`)
-    const json = await res.json()
-    if (json.data && (json.data.qrimg || json.data.qrurl)) {
-      return {
-        qrurl: json.data.qrurl,
-        qrimg: json.data.qrimg || '',
-      }
-    }
-  } catch (err) {
-    console.warn('[NeteaseApi] 生成二维码图片失败:', err)
-  }
-  return null
-}
-
-/**
- * 3. 轮询检测二维码扫码状态
- * 800: 过期
- * 801: 等待扫码
- * 802: 待确认 (nickname, avatarUrl)
- * 803: 授权登录成功 (cookie)
- */
-export interface QrCheckResult {
-  code: number
-  message: string
-  cookie?: string
-  nickname?: string
-  avatarUrl?: string
-}
-
-export async function checkQrStatus(key: string, baseUrl?: string): Promise<QrCheckResult> {
-  const target = baseUrl || getSavedApiUrl()
-  if (!target) return { code: 500, message: '未配置 API 地址' }
-
-  try {
-    const res = await fetch(`${target}/login/qr/check?key=${key}&timestamp=${Date.now()}&noCookie=true`)
-    const json = await res.json()
-    return {
-      code: json.code,
-      message: json.message || '',
-      cookie: json.cookie,
-      nickname: json.nickname,
-      avatarUrl: json.avatarUrl,
-    }
-  } catch (err: any) {
-    return {
-      code: 500,
-      message: err.message || '网络轮询异常',
-    }
-  }
-}
-
-export interface LoginStatusResult {
-  isLoggedIn: boolean
-  profile: any | null
-  account: any | null
-}
-
-/**
- * 获取真实登录状态（通过网易云官方 /login/status 探针）
- */
-export async function fetchLoginStatus(baseUrl?: string, cookie?: string): Promise<LoginStatusResult> {
-  const target = baseUrl || getSavedApiUrl()
-  const c = cookie || getSavedCookie()
-  if (!target) return { isLoggedIn: false, profile: null, account: null }
-
-  try {
-    const url = `${target}/login/status?timestamp=${Date.now()}&realIP=116.25.146.177${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
-    const res = await fetch(url)
-    const json = await res.json()
-    const data = json?.data || json
-    const profile = data?.profile || null
-    const account = data?.account || null
-    const isAnonymous = account?.anonimousUser === true
-
-    if (profile && profile.userId && !isAnonymous) {
-      return {
-        isLoggedIn: true,
-        profile,
-        account,
-      }
-    }
-  } catch (err) {
-    console.warn('[NeteaseApi] 检查真实登录状态失败:', err)
-  }
-
-  return { isLoggedIn: false, profile: null, account: null }
-}
-
-/**
- * 4. 获取当前登录用户账号信息
- */
-export async function fetchUserAccount(baseUrl?: string, cookie?: string): Promise<any> {
-  const target = baseUrl || getSavedApiUrl()
-  const c = cookie || getSavedCookie()
-  if (!target) return null
-
-  try {
-    const url = `${target}/user/account?timestamp=${Date.now()}&realIP=116.25.146.177${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
-    const res = await fetch(url)
-    const json = await res.json()
-    if (json && json.profile) {
-      return json.profile
-    }
-  } catch (err) {
-    console.warn('[NeteaseApi] 获取账号信息失败:', err)
-  }
-  return null
-}
-
-/**
- * 5. 获取用户歌单列表
- */
-export async function fetchUserPlaylists(uid: string | number, baseUrl?: string, cookie?: string): Promise<any[]> {
-  const target = baseUrl || getSavedApiUrl()
-  const c = cookie || getSavedCookie()
   if (!target) return []
 
   try {
-    const url = `${target}/user/playlist?uid=${uid}&limit=30&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const url = `${target}/user/playlist?uid=${uid}&limit=30&timestamp=${Date.now()}`
     const res = await fetch(url)
     const json = await res.json()
     if (json && json.playlist && Array.isArray(json.playlist)) {
@@ -265,22 +85,19 @@ export async function fetchUserPlaylists(uid: string | number, baseUrl?: string,
 }
 
 /**
- * 6. 获取指定歌单的所有歌曲
+ * 获取指定歌单的所有歌曲（纯只读 GET，不携带任何 Cookie）
  */
-export async function fetchPlaylistTracks(playlistId: number, baseUrl?: string, cookie?: string): Promise<Track[]> {
+export async function fetchPlaylistTracks(playlistId: number, baseUrl?: string): Promise<Track[]> {
   const target = baseUrl || getSavedApiUrl()
-  const c = cookie || getSavedCookie()
   if (!target) return []
 
   try {
-    // 优先尝试 track/all 接口
-    let res = await fetch(`${target}/playlist/track/all?id=${playlistId}&limit=50&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`)
+    let res = await fetch(`${target}/playlist/track/all?id=${playlistId}&limit=50&timestamp=${Date.now()}`)
     let json = await res.json()
 
     let songList = json.songs
     if (!songList || !Array.isArray(songList)) {
-      // 降级尝试 playlist/detail 接口
-      res = await fetch(`${target}/playlist/detail?id=${playlistId}&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`)
+      res = await fetch(`${target}/playlist/detail?id=${playlistId}&timestamp=${Date.now()}`)
       json = await res.json()
       songList = json.playlist?.tracks
     }
@@ -301,7 +118,6 @@ export async function fetchPlaylistTracks(playlistId: number, baseUrl?: string, 
           genre: 'Cloud Music',
           themeColor: '#7C8C6E',
           coverUrl: cover || 'https://p1.music.126.net/SUeqMM8HOIpHv9Nhl9qt9w==/109951165647004069.jpg?param=300y300',
-          // 初始默认直链，播放时会自动向 API 解析最新的 VIP 直链
           audioUrl: `https://music.163.com/song/media/outer/url?id=${s.id}.mp3`,
           isFull: true,
         }
@@ -314,22 +130,19 @@ export async function fetchPlaylistTracks(playlistId: number, baseUrl?: string, 
 }
 
 /**
- * 7. 核心突破 30s：向 API 解析歌曲真实 VIP 音频直链（优先采用疾速 /song/url 接口）
+ * 解析歌曲真实音频直链（纯只读 GET，不携带任何 Cookie）
  */
-export async function fetchSongAudioUrl(songId: number | string, baseUrl?: string, cookie?: string): Promise<string | null> {
+export async function fetchSongAudioUrl(songId: number | string, baseUrl?: string): Promise<string | null> {
   const target = baseUrl || getSavedApiUrl()
-  const c = cookie || getSavedCookie()
   if (!target) return null
 
-  // 提取纯数字 id
   const cleanId = String(songId).replace(/\D/g, '')
   if (!cleanId) return null
 
   try {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 4000)
-    // 优先调用极速 /song/url 接口 (实测 1 秒即返)
-    const url = `${target}/song/url?id=${cleanId}&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const url = `${target}/song/url?id=${cleanId}&timestamp=${Date.now()}`
     const res = await fetch(url, { signal: controller.signal })
     clearTimeout(timer)
     const json = await res.json()
@@ -348,11 +161,10 @@ export async function fetchSongAudioUrl(songId: number | string, baseUrl?: strin
 }
 
 /**
- * 批量解析歌曲真实 CDN 直链（一次请求解析整张歌单，响应极快）
+ * 批量解析歌曲真实 CDN 直链（纯只读 GET，不携带任何 Cookie）
  */
-export async function fetchBatchSongAudioUrls(songIds: (number | string)[], baseUrl?: string, cookie?: string): Promise<Record<string, string>> {
+export async function fetchBatchSongAudioUrls(songIds: (number | string)[], baseUrl?: string): Promise<Record<string, string>> {
   const target = baseUrl || getSavedApiUrl()
-  const c = cookie || getSavedCookie()
   if (!target || songIds.length === 0) return {}
 
   const cleanIds = songIds.map(id => String(id).replace(/\D/g, '')).filter(Boolean)
@@ -363,7 +175,7 @@ export async function fetchBatchSongAudioUrls(songIds: (number | string)[], base
     const idStr = cleanIds.join(',')
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 8000)
-    const url = `${target}/song/url?id=${idStr}&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const url = `${target}/song/url?id=${idStr}&timestamp=${Date.now()}`
     const res = await fetch(url, { signal: controller.signal })
     clearTimeout(timer)
     const json = await res.json()
@@ -383,15 +195,14 @@ export async function fetchBatchSongAudioUrls(songIds: (number | string)[], base
 }
 
 /**
- * 8. 全网曲库云搜索
+ * 全网曲库云搜索（纯只读 GET，不携带任何 Cookie）
  */
-export async function searchNeteaseSongs(keyword: string, baseUrl?: string, cookie?: string): Promise<Track[]> {
+export async function searchNeteaseSongs(keyword: string, baseUrl?: string): Promise<Track[]> {
   const target = baseUrl || getSavedApiUrl()
-  const c = cookie || getSavedCookie()
   if (!target) return []
 
   try {
-    const url = `${target}/cloudsearch?keywords=${encodeURIComponent(keyword)}&type=1&limit=20&realIP=116.25.146.177&timestamp=${Date.now()}${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const url = `${target}/cloudsearch?keywords=${encodeURIComponent(keyword)}&type=1&limit=20&timestamp=${Date.now()}`
     const res = await fetch(url)
     const json = await res.json()
 

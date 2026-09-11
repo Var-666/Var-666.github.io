@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useNeteaseAuth } from '@/composables/useNeteaseAuth'
-import { RECOMMENDED_VERCEL_DEPLOY_URL } from '@/services/neteaseApi'
 import type { Track } from '@/data/playlist'
 
 const {
@@ -34,39 +33,20 @@ const {
 } = useAudioPlayer()
 
 const {
-  isLoggedIn,
-  isAuthLoading,
-  userInfo,
   stationUser,
   userPlaylists,
   currentLoadingPlaylistId,
   apiUrl,
   isApiConnected,
-  qrImg,
-  qrStatusText,
-  qrStatusCode,
-  isQrLoading,
-  startQrLogin,
-  stopQrPolling,
-  refreshQr,
+  apiLatency,
+  apiTesting,
+  apiTestMessage,
+  testCurrentApi,
   syncOwnerData,
-  checkCurrentLoginStatus,
   loadPlaylistTracks,
-  resetToStationMode,
-  handleLogout,
 } = useNeteaseAuth()
 
-const displayUser = computed(() => {
-  if (isLoggedIn.value && userInfo.value) {
-    return userInfo.value
-  }
-  return stationUser.value
-})
-
-const isVip = computed(() => {
-  if (!isLoggedIn.value || !userInfo.value) return false
-  return userInfo.value.vipType === 11 || (userInfo.value.vipType != null && userInfo.value.vipType > 0)
-})
+const displayUser = computed(() => stationUser.value)
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let animId: number | null = null
@@ -78,43 +58,6 @@ const hotTags = ['夏天的风', '起风了', '坂本龙一', '千与千寻', '�
 
 // 弹窗状态
 const showNeteaseModal = ref(false)
-const showQrAuth = ref(false)
-
-// 监听弹窗开启和关闭
-watch(showNeteaseModal, (isOpen) => {
-  if (!isOpen) {
-    showQrAuth.value = false
-    stopQrPolling()
-  }
-})
-
-watch(showQrAuth, (isQr) => {
-  if (isQr) {
-    startQrLogin()
-  } else {
-    stopQrPolling()
-  }
-})
-
-function handleStartAuth() {
-  showQrAuth.value = true
-}
-
-function handleBackToStation() {
-  showQrAuth.value = false
-  stopQrPolling()
-}
-
-watch(isLoggedIn, (loggedIn) => {
-  if (loggedIn) {
-    showQrAuth.value = false
-  }
-})
-
-function onLogout() {
-  handleLogout()
-  showQrAuth.value = false
-}
 
 async function handleSelectNeteasePlaylist(playlistId: number) {
   const tracks = await loadPlaylistTracks(playlistId)
@@ -325,16 +268,15 @@ watch(isExpanded, (val) => {
             </div>
 
             <div class="top-bar-right">
-              <!-- 用户徽章 / 电台状态（区分登录与公开电台模式） -->
+              <!-- 用户徽章 / 电台状态 -->
               <div
                 class="user-profile-badge"
                 @click="showNeteaseModal = true"
-                :title="isLoggedIn ? '已连接网易云账号 · 点击管理' : '站长精选公开电台 · 访客免登录'"
+                title="站长精选公开电台 · 点击查看空间与节点状态"
               >
-                <img :src="displayUser.avatarUrl" alt="avatar" class="user-avatar-mini" />
-                <span class="user-nickname-mini">{{ displayUser.nickname }}</span>
-                <span v-if="isLoggedIn && isVip" class="vip-mini-tag">VIP</span>
-                <span v-else-if="!isLoggedIn" class="radio-mini-tag">电台</span>
+                <img :src="stationUser.avatarUrl" alt="avatar" class="user-avatar-mini" />
+                <span class="user-nickname-mini">{{ stationUser.nickname }}</span>
+                <span class="radio-mini-tag">电台</span>
               </div>
 
               <button class="icon-btn-close" @click="toggleExpand" aria-label="收起播放器">
@@ -504,10 +446,10 @@ watch(isExpanded, (val) => {
             </div>
           </div>
 
-          <!-- TAB 4: 网易云用户私人歌单 (User Playlists View) -->
+          <!-- TAB 4: 站长精选公开歌单 (User Playlists View) -->
           <div v-show="activeTab === 'user-playlists'" class="tab-view-user-playlists">
             <div class="playlist-header">
-              <span>{{ displayUser.nickname }} 的{{ isLoggedIn ? '网易云私人歌单' : '精选公开歌单' }} ({{ userPlaylists.length }})</span>
+              <span>{{ stationUser.nickname }} 的精选公开歌单 ({{ userPlaylists.length }})</span>
               <span class="playlist-hint">点击载入整张歌单播放</span>
             </div>
             <div class="user-playlists-grid">
@@ -588,116 +530,62 @@ watch(isExpanded, (val) => {
       </div>
     </Transition>
 
-    <!-- 3. 网易云登录与歌单同步弹窗 (NetEase Login Modal) -->
+    <!-- 3. 网易云电台与节点状态弹窗 (NetEase Station Modal) -->
     <Transition name="modal-pop">
       <div v-if="showNeteaseModal" class="login-modal-overlay" @click.self="showNeteaseModal = false">
         <div class="login-card glass-card">
           <div class="login-header">
             <div class="header-left">
-              <span class="cloud-icon">☁️</span>
-              <span class="login-title">{{ isLoggedIn ? '网易云音乐中心' : '网易云音乐连接中心' }}</span>
+              <span class="cloud-icon">📻</span>
+              <span class="login-title">站长专属音乐空间</span>
             </div>
             <button class="icon-btn-close" @click="showNeteaseModal = false">×</button>
           </div>
 
-          <!-- 模式 1：已登录用户展示 -->
-          <div v-if="isLoggedIn && !showQrAuth" class="logged-in-profile">
-            <div class="profile-main">
-              <img :src="userInfo?.avatarUrl" alt="avatar" class="profile-avatar" />
-              <div class="profile-info">
-                <div class="name-row">
-                  <span class="profile-name">{{ userInfo?.nickname }}</span>
-                  <span v-if="isVip" class="vip-tag">黑胶VIP</span>
-                  <span v-else class="normal-user-tag">标准用户</span>
-                </div>
-                <span class="profile-uid">UID: {{ userInfo?.userId }} · 个人网易云账号</span>
-                <span class="profile-playlists-count">已同步 {{ userPlaylists.length }} 个私人歌单</span>
-              </div>
-            </div>
-
-            <div class="station-desc-box">
-              <span class="station-icon">✅</span>
-              <div class="station-text">
-                <strong>网易云账号已连接</strong>
-                <p>已通过专属 API 节点建立有效会话，享有您的私人收藏与当前账号对应音质。</p>
-              </div>
-            </div>
-
-            <div class="profile-actions">
-              <button class="action-btn-sync" @click="checkCurrentLoginStatus">🔄 刷新状态</button>
-              <button class="action-btn-auth" @click="handleStartAuth" title="使用手机扫码切换网易云账号">
-                📲 换号登录
-              </button>
-              <button class="action-btn-logout" @click="onLogout" title="退出登录并返回站长公开电台">
-                🚪 退出登录
-              </button>
-            </div>
-          </div>
-
-          <!-- 模式 2：未登录（站长公开电台 / 访客收听模式） -->
-          <div v-else-if="!isLoggedIn && !showQrAuth" class="logged-in-profile">
+          <!-- 站长电台展示 -->
+          <div class="logged-in-profile">
             <div class="profile-main">
               <img :src="stationUser.avatarUrl" alt="avatar" class="profile-avatar" />
               <div class="profile-info">
                 <div class="name-row">
                   <span class="profile-name">{{ stationUser.nickname }}</span>
-                  <span class="station-tag">公开电台</span>
+                  <span class="station-tag">精选电台</span>
                 </div>
                 <span class="profile-uid">UID: {{ stationUser.userId }} · 站长音乐空间</span>
-                <span class="profile-playlists-count">已同步 {{ userPlaylists.length }} 个公开歌单 · 免登录畅听</span>
+                <span class="profile-playlists-count">已同步 {{ userPlaylists.length }} 个公开歌单 · 访客免登录畅听</span>
               </div>
             </div>
 
             <div class="station-desc-box visitor">
-              <span class="station-icon">📻</span>
+              <span class="station-icon">🛡️</span>
               <div class="station-text">
-                <strong>站长公开电台（访客收听模式）</strong>
-                <p>当前为免登录访客电台，可直接播放站长精选公开曲目。如需同步您的私人歌单或解锁无损全曲，可使用手机扫码登录。</p>
+                <strong>纯只读安全网关 · 免登录畅听</strong>
+                <p>已启用服务端只读白名单防护，所有访客免登录畅听精选公开曲目与全曲音频，服务端凭证隔离保护。</p>
+              </div>
+            </div>
+
+            <!-- API 节点状态 -->
+            <div class="api-node-status-card">
+              <div class="node-status-row">
+                <span class="node-label">API 节点</span>
+                <span class="node-value">{{ apiUrl || 'https://api.hi-var.top' }}</span>
+              </div>
+              <div class="node-status-row">
+                <span class="node-label">连通状态</span>
+                <span class="node-badge" :class="{ connected: isApiConnected }">
+                  <span class="status-pulse-dot" v-if="isApiConnected"></span>
+                  {{ apiTestMessage || (isApiConnected ? `已连接 (${apiLatency}ms)` : '连接中断') }}
+                </span>
               </div>
             </div>
 
             <div class="profile-actions">
-              <button class="action-btn-sync" @click="syncOwnerData">🔄 刷新电台</button>
-              <button class="action-btn-auth primary" @click="handleStartAuth">
-                📲 扫码登录网易云
+              <button class="action-btn-sync" @click="syncOwnerData" title="重新从网易云同步最新歌单">
+                🔄 刷新歌单
               </button>
-            </div>
-          </div>
-
-          <!-- 模式 3：扫码授权/切换账号 -->
-          <div v-else class="login-body">
-            <div class="qr-box">
-              <div class="qr-frame-wrap" :class="{ expired: qrStatusCode === 800 }">
-                <div v-if="isQrLoading" class="qr-loading-layer">
-                  <span class="btn-spinner large"></span>
-                  <span class="loading-sub">生成授权码中...</span>
-                </div>
-                <img v-else-if="qrImg" :src="qrImg" alt="QR Code" class="qr-image" />
-
-                <!-- 二维码失效遮罩 -->
-                <div v-if="qrStatusCode === 800" class="qr-expired-overlay" @click="refreshQr">
-                  <span>⚠️ 二维码已失效</span>
-                  <button class="btn-refresh-qr">点击刷新</button>
-                </div>
-              </div>
-
-              <div class="qr-status-pill" :class="[`status-${qrStatusCode}`]">
-                <span class="status-pulse-dot" v-if="qrStatusCode === 801 || qrStatusCode === 802"></span>
-                <span>{{ qrStatusText || '请打开网易云音乐手机 App 扫码' }}</span>
-              </div>
-
-              <p class="qr-app-tip">
-                使用手机【网易云音乐】App 扫码即可连接您的个人账号
-              </p>
-
-              <div class="qr-bottom-actions">
-                <button class="btn-qr-action" @click="handleBackToStation">
-                  ← 返回电台
-                </button>
-                <button class="btn-qr-action" @click="refreshQr" title="刷新二维码">
-                  🔄 刷新二维码
-                </button>
-              </div>
+              <button class="action-btn-auth primary" :disabled="apiTesting" @click="testCurrentApi(true)" title="测速当前 API 节点">
+                ⚡ {{ apiTesting ? '测速中...' : '节点测速' }}
+              </button>
             </div>
           </div>
         </div>
@@ -2337,6 +2225,53 @@ watch(isExpanded, (val) => {
   color: var(--color-text-light);
   line-height: 1.4;
   margin: 0;
+}
+
+/* API 节点状态卡片 */
+.api-node-status-card {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.node-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.76rem;
+}
+
+.node-label {
+  color: var(--color-text-light);
+  font-weight: 500;
+}
+
+.node-value {
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  font-size: 0.72rem;
+}
+
+.node-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  background: rgba(220, 38, 38, 0.1);
+  color: #DC2626;
+  font-family: var(--font-mono);
+}
+
+.node-badge.connected {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  font-weight: 500;
 }
 
 .profile-actions {

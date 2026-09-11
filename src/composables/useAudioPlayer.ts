@@ -2,7 +2,6 @@ import { ref, computed } from 'vue'
 import { INITIAL_PLAYLIST, type Track } from '@/data/playlist'
 import {
   getSavedApiUrl,
-  getSavedCookie,
   fetchSongAudioUrl,
   fetchBatchSongAudioUrls,
   searchNeteaseSongs,
@@ -90,7 +89,7 @@ async function prefetchPlaylistAudioUrls(tracks: Track[]) {
 
   const ids = neteaseTracks.map(t => t.id.replace('netease-', ''))
   try {
-    const urlMap = await fetchBatchSongAudioUrls(ids, getSavedApiUrl(), getSavedCookie())
+    const urlMap = await fetchBatchSongAudioUrls(ids, getSavedApiUrl())
     for (const t of tracks) {
       const songId = t.id.replace('netease-', '')
       if (urlMap[songId]) {
@@ -144,7 +143,7 @@ function play() {
     const songId = track.id.replace('netease-', '')
     const apiUrl = getSavedApiUrl()
     if (apiUrl) {
-      fetchSongAudioUrl(songId, apiUrl, getSavedCookie()).then((resolvedUrl) => {
+      fetchSongAudioUrl(songId, apiUrl).then((resolvedUrl) => {
         if (resolvedUrl && track.audioUrl !== resolvedUrl) {
           track.audioUrl = resolvedUrl
           track.isFull = true
@@ -195,7 +194,7 @@ function selectTrack(index: number) {
     const songId = track.id.replace('netease-', '')
     const apiUrl = getSavedApiUrl()
     if (apiUrl) {
-      fetchSongAudioUrl(songId, apiUrl, getSavedCookie()).then((resolvedUrl) => {
+      fetchSongAudioUrl(songId, apiUrl).then((resolvedUrl) => {
         if (resolvedUrl && track.audioUrl !== resolvedUrl) {
           track.audioUrl = resolvedUrl
           track.isFull = true
@@ -281,7 +280,7 @@ async function searchMusic(query: string) {
     let directAudio = `https://music.163.com/song/media/outer/url?id=${songId}.mp3`
 
     if (apiUrl) {
-      const resolved = await fetchSongAudioUrl(songId, apiUrl, getSavedCookie())
+      const resolved = await fetchSongAudioUrl(songId, apiUrl)
       if (resolved) directAudio = resolved
     }
 
@@ -325,7 +324,7 @@ async function searchMusic(query: string) {
   const apiUrl = getSavedApiUrl()
   if (apiUrl) {
     try {
-      const songs = await searchNeteaseSongs(trimmed, apiUrl, getSavedCookie())
+      const songs = await searchNeteaseSongs(trimmed, apiUrl)
       if (songs.length > 0) {
         searchResults.value = songs
         isSearching.value = false
