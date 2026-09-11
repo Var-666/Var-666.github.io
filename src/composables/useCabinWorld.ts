@@ -28,6 +28,13 @@ export interface InteractiveItem {
   isNearby: boolean
 }
 
+// 预分配全局静态向量（零 GC 内存垃圾）
+const _tempMoveDir = new THREE.Vector3()
+const _tempCamTarget = new THREE.Vector3()
+const _tempOffset = new THREE.Vector3()
+const _upVec = new THREE.Vector3(0, 1, 0)
+const _projectedVec = new THREE.Vector3()
+
 export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
   const store = useCabinStore()
 
@@ -36,11 +43,17 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
   const nearbyItem = ref<InteractiveItem | null>(null)
   const isLoaded = ref(false)
 
+  // 触摸与移动端虚拟摇杆输入向量
+  const joystickVector = { x: 0, y: 0 }
+  function setJoystickMove(x: number, y: number) {
+    joystickVector.x = Math.max(-1, Math.min(1, x))
+    joystickVector.y = Math.max(-1, Math.min(1, y))
+  }
+
   // Three.js 核心对象
   let renderer: THREE.WebGLRenderer | null = null
   let scene: THREE.Scene | null = null
   let camera: THREE.PerspectiveCamera | null = null
-  let animFrameId: number | null = null
 
   // 角色控制器（1:1 还原红帽探险家）
   let characterCtrl: CabinCharacterController | null = null
@@ -168,18 +181,21 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     camera.position.copy(cameraTarget).add(cameraOffset)
     camera.lookAt(cameraTarget)
 
-    // 3. 渲染器配置
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' })
+    // 3. 渲染器配置（移动端降低 DPR 与阴影采样，防过热与掉电）
+    const isMobile = typeof window !== 'undefined' && (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768)
+    const maxDpr = isMobile ? 1.25 : 1.75
+
+    renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: false, powerPreference: 'high-performance' })
     renderer.setSize(width, height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxDpr))
     renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.shadowMap.type = isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 1.18
     containerRef.value.appendChild(renderer.domElement)
 
     // 4. 灯光系统（1:1 营造设计图中的暖黄灯火与室外冷月光对比）
-    setupLights()
+    setupLights(isMobile)
 
     // 5. 建造 1:1 木屋微缩场景
     buildCabinDiorama()
@@ -188,22 +204,27 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     buildPlayer()
 
     // 7. 初始化交互状态
-    updateInteractiveItemsState()
+    updateInteractiveItemsState(true)
 
-    // 8. 事件监听
+    // 8. 事件监听（包含鼠标、键盘与触控）
     window.addEventListener('resize', onResize)
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
     containerRef.value.addEventListener('mousedown', onMouseDown)
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onMouseUp)
+    containerRef.value.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: true })
+    window.addEventListener('touchend', onTouchEnd, { passive: true })
 
     isLoaded.value = true
-    animate()
+
+    // 9. 按需启动可见性监听与帧循环
+    setupVisibilityListeners()
   }
 
   // 灯光系统配置
-  function setupLights() {
+  function setupLights(isMobile = false) {
     if (!scene) return
 
     flickeringLights.length = 0
@@ -216,8 +237,8 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     const dirLight = new THREE.DirectionalLight(0xdcecf8, 0.8)
     dirLight.position.set(12, 18, 8)
     dirLight.castShadow = true
-    dirLight.shadow.mapSize.width = 1024
-    dirLight.shadow.mapSize.height = 1024
+    dirLight.shadow.mapSize.width = isMobile ? 512 : 1024
+    dirLight.shadow.mapSize.height = isMobile ? 512 : 1024
     dirLight.shadow.camera.near = 0.5
     dirLight.shadow.camera.far = 40
     const d = 10
@@ -1195,32 +1216,38 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
   function updatePlayer(delta: number) {
     if (!characterCtrl) return
 
-    const moveDir = new THREE.Vector3(0, 0, 0)
+    _tempMoveDir.set(0, 0, 0)
     if (keys.w) {
-      moveDir.x -= 1
-      moveDir.z -= 1
+      _tempMoveDir.x -= 1
+      _tempMoveDir.z -= 1
     }
     if (keys.s) {
-      moveDir.x += 1
-      moveDir.z += 1
+      _tempMoveDir.x += 1
+      _tempMoveDir.z += 1
     }
     if (keys.a) {
-      moveDir.x -= 1
-      moveDir.z += 1
+      _tempMoveDir.x -= 1
+      _tempMoveDir.z += 1
     }
     if (keys.d) {
-      moveDir.x += 1
-      moveDir.z -= 1
+      _tempMoveDir.x += 1
+      _tempMoveDir.z -= 1
     }
 
-    isMoving = moveDir.lengthSq() > 0.01
+    // 叠加移动端虚拟摇杆输入 (Isometric 斜等轴测投影映射)
+    if (Math.abs(joystickVector.x) > 0.05 || Math.abs(joystickVector.y) > 0.05) {
+      _tempMoveDir.x += (joystickVector.x - joystickVector.y)
+      _tempMoveDir.z += (-joystickVector.x - joystickVector.y)
+    }
+
+    isMoving = _tempMoveDir.lengthSq() > 0.01
 
     const speed = 4.2
     if (isMoving) {
-      moveDir.normalize()
-      playerVelocity.copy(moveDir).multiplyScalar(speed)
+      _tempMoveDir.normalize()
+      playerVelocity.copy(_tempMoveDir).multiplyScalar(speed)
 
-      const targetRotation = Math.atan2(moveDir.x, moveDir.z)
+      const targetRotation = Math.atan2(_tempMoveDir.x, _tempMoveDir.z)
       let diff = targetRotation - playerRotation
       while (diff < -Math.PI) diff += Math.PI * 2
       while (diff > Math.PI) diff -= Math.PI * 2
@@ -1275,8 +1302,23 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     return false
   }
 
-  function updateInteractiveItemsState() {
+  // 节流与复用更新交互物品状态（避免 60fps 频繁触发 Vue 响应式穿透）
+  let lastUiUpdateTime = 0
+  const UI_UPDATE_INTERVAL = 80
+  let lastPlayerX = -999
+  let lastPlayerZ = -999
+
+  function updateInteractiveItemsState(force = false) {
     if (!camera || !containerRef.value) return
+
+    const now = performance.now()
+    const moved = Math.abs(playerPos.x - lastPlayerX) > 0.015 || Math.abs(playerPos.z - lastPlayerZ) > 0.015
+    if (!force && !moved && now - lastUiUpdateTime < UI_UPDATE_INTERVAL) {
+      return
+    }
+    lastUiUpdateTime = now
+    lastPlayerX = playerPos.x
+    lastPlayerZ = playerPos.z
 
     const width = containerRef.value.clientWidth
     const height = containerRef.value.clientHeight
@@ -1286,13 +1328,14 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
 
     const updatedList: InteractiveItem[] = []
 
-    for (const item of interactablesData) {
+    for (let i = 0; i < interactablesData.length; i++) {
+      const item = interactablesData[i]
       const dist = Math.hypot(playerPos.x - item.pos.x, playerPos.z - item.pos.z)
       const isNear = dist < 2.4
 
-      const projected = item.promptPos.clone().project(camera)
-      const screenX = (projected.x * 0.5 + 0.5) * width
-      const screenY = (-(projected.y * 0.5) + 0.5) * height
+      _projectedVec.copy(item.promptPos).project(camera)
+      const screenX = (_projectedVec.x * 0.5 + 0.5) * width
+      const screenY = (-(_projectedVec.y * 0.5) + 0.5) * height
 
       const itemState: InteractiveItem = {
         ...item,
@@ -1313,9 +1356,67 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     nearbyItem.value = closest
   }
 
-  // 渲染主循环
+  // 触屏滑动旋转视角支持
+  let isTouchDragging = false
+  let previousTouchPos = { x: 0, y: 0 }
+
+  function onTouchStart(e: TouchEvent) {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0]
+      const isBottomLeft = touch.clientX < 150 && touch.clientY > window.innerHeight - 200
+      const isBottomRight = touch.clientX > window.innerWidth - 120 && touch.clientY > window.innerHeight - 200
+      if (isBottomLeft || isBottomRight) return
+
+      isTouchDragging = true
+      previousTouchPos = { x: touch.clientX, y: touch.clientY }
+    }
+  }
+
+  function onTouchMove(e: TouchEvent) {
+    if (!isTouchDragging || e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - previousTouchPos.x
+    const deltaY = touch.clientY - previousTouchPos.y
+    previousTouchPos = { x: touch.clientX, y: touch.clientY }
+
+    cameraExtraAngleX += deltaX * 0.003
+    cameraExtraAngleY = Math.max(-0.2, Math.min(0.2, cameraExtraAngleY + deltaY * 0.003))
+  }
+
+  function onTouchEnd() {
+    isTouchDragging = false
+  }
+
+  // 渲染主循环控制与可见性管理
+  let animFrameId: number | null = null
+  let isRendering = false
+  let isIntersecting = false
+  let isPageVisible = !document.hidden
+  let isReducedMotion = typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false
+
+  function startAnimation() {
+    if (isRendering || !isIntersecting || !isPageVisible || isReducedMotion) {
+      if (isReducedMotion && isIntersecting && isPageVisible && renderer && scene && camera) {
+        renderer.render(scene, camera)
+      }
+      return
+    }
+    isRendering = true
+    lastTime = performance.now()
+    animFrameId = requestAnimationFrame(animate)
+  }
+
+  function stopAnimation() {
+    isRendering = false
+    if (animFrameId !== null) {
+      cancelAnimationFrame(animFrameId)
+      animFrameId = null
+    }
+  }
+
   let lastTime = performance.now()
   function animate() {
+    if (!isRendering) return
     animFrameId = requestAnimationFrame(animate)
 
     const now = performance.now()
@@ -1353,14 +1454,15 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
       dustParticles.rotation.y += delta * 0.02
     }
 
-    // 6. 相机平滑阻尼跟随主角
-    cameraTarget.lerp(new THREE.Vector3(playerPos.x, 1.2, playerPos.z), 0.08)
+    // 6. 相机平滑阻尼跟随主角（零 Vector3 内存分配）
+    _tempCamTarget.set(playerPos.x, 1.2, playerPos.z)
+    cameraTarget.lerp(_tempCamTarget, 0.08)
 
-    const currentOffset = cameraOffset.clone()
-    currentOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraExtraAngleX)
+    _tempOffset.copy(cameraOffset)
+    _tempOffset.applyAxisAngle(_upVec, cameraExtraAngleX)
 
     if (camera) {
-      camera.position.copy(cameraTarget).add(currentOffset)
+      camera.position.copy(cameraTarget).add(_tempOffset)
       camera.position.y += cameraExtraAngleY * 10
       camera.lookAt(cameraTarget)
     }
@@ -1371,6 +1473,11 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     // 8. 渲染
     if (renderer && scene && camera) {
       renderer.render(scene, camera)
+    }
+
+    // 尊重减弱动效偏好：若开启则渲染一帧后休眠
+    if (isReducedMotion) {
+      stopAnimation()
     }
   }
 
@@ -1383,17 +1490,74 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     renderer.setSize(width, height)
   }
 
+  let intersectionObserver: IntersectionObserver | null = null
+  let handleVisibilityChange: (() => void) | null = null
+  let handleMotionChange: ((e: MediaQueryListEvent) => void) | null = null
+
+  function setupVisibilityListeners() {
+    if (containerRef.value) {
+      intersectionObserver = new IntersectionObserver((entries) => {
+        const entry = entries[0]
+        isIntersecting = entry ? entry.isIntersecting : false
+        if (isIntersecting) {
+          startAnimation()
+        } else {
+          stopAnimation()
+        }
+      }, {
+        rootMargin: '150px 0px',
+        threshold: 0.02,
+      })
+      intersectionObserver.observe(containerRef.value)
+    }
+
+    handleVisibilityChange = () => {
+      isPageVisible = !document.hidden
+      if (isPageVisible && isIntersecting) {
+        startAnimation()
+      } else {
+        stopAnimation()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    handleMotionChange = (e: MediaQueryListEvent) => {
+      isReducedMotion = e.matches
+      if (isReducedMotion) {
+        stopAnimation()
+        if (renderer && scene && camera) renderer.render(scene, camera)
+      } else {
+        startAnimation()
+      }
+    }
+    motionQuery.addEventListener('change', handleMotionChange)
+  }
+
   function cleanup() {
-    if (animFrameId !== null) cancelAnimationFrame(animFrameId)
+    stopAnimation()
+
+    intersectionObserver?.disconnect()
+    intersectionObserver = null
+
+    if (handleVisibilityChange) {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+    if (handleMotionChange) {
+      window.matchMedia('(prefers-reduced-motion: reduce)').removeEventListener('change', handleMotionChange)
+    }
 
     window.removeEventListener('resize', onResize)
     window.removeEventListener('keydown', onKeyDown)
     window.removeEventListener('keyup', onKeyUp)
     if (containerRef.value) {
       containerRef.value.removeEventListener('mousedown', onMouseDown)
+      containerRef.value.removeEventListener('touchstart', onTouchStart)
     }
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)
+    window.removeEventListener('touchmove', onTouchMove)
+    window.removeEventListener('touchend', onTouchEnd)
 
     renderer?.dispose()
     if (renderer?.domElement && containerRef.value) {
@@ -1414,5 +1578,6 @@ export function useCabinWorld(containerRef: Ref<HTMLElement | null>) {
     nearbyItem,
     isLoaded,
     handleInteract,
+    setJoystickMove,
   }
 }

@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import NavBar from '@/components/NavBar.vue'
 import HeroSection from '@/components/HeroSection.vue'
 import AboutSection from '@/components/AboutSection.vue'
 import NowSection from '@/components/NowSection.vue'
 import SkillsSection from '@/components/SkillsSection.vue'
 import PortfolioSection from '@/components/PortfolioSection.vue'
-import CabinSection from '@/components/CabinSection.vue'
 import ContactSection from '@/components/ContactSection.vue'
 import CustomCursor from '@/components/CustomCursor.vue'
 import MusicPlayer from '@/components/MusicPlayer.vue'
+
+const CabinSection = defineAsyncComponent(() => import('@/components/CabinSection.vue'))
 
 const showBackToTop = ref(false)
 

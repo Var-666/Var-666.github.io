@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useCabinWorld } from '@/composables/useCabinWorld'
 import { useCabinStore } from '@/composables/useCabinStore'
 import CabinDrawer from '@/components/CabinDrawer.vue'
@@ -16,7 +16,75 @@ const {
   openDrawer,
 } = useCabinStore()
 
-const { interactiveItems, nearbyItem, isLoaded, handleInteract } = useCabinWorld(viewportRef)
+const { interactiveItems, nearbyItem, isLoaded, handleInteract, setJoystickMove } = useCabinWorld(viewportRef)
+
+const isTouchDevice = ref(false)
+const joystickBaseRef = ref<HTMLElement | null>(null)
+const joystickThumb = ref({ x: 0, y: 0 })
+let joystickTouchId: number | null = null
+let joystickCenter = { x: 0, y: 0 }
+const maxJoystickRadius = 38
+
+onMounted(() => {
+  isTouchDevice.value =
+    typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 900)
+})
+
+function handleJoystickStart(e: TouchEvent) {
+  if (joystickTouchId !== null) return
+  const touch = e.changedTouches[0]
+  joystickTouchId = touch.identifier
+
+  if (joystickBaseRef.value) {
+    const rect = joystickBaseRef.value.getBoundingClientRect()
+    joystickCenter = {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    }
+  } else {
+    joystickCenter = { x: touch.clientX, y: touch.clientY }
+  }
+  updateJoystick(touch.clientX, touch.clientY)
+}
+
+function handleJoystickMove(e: TouchEvent) {
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const touch = e.changedTouches[i]
+    if (touch.identifier === joystickTouchId) {
+      updateJoystick(touch.clientX, touch.clientY)
+      break
+    }
+  }
+}
+
+function updateJoystick(clientX: number, clientY: number) {
+  const dx = clientX - joystickCenter.x
+  const dy = clientY - joystickCenter.y
+  const dist = Math.hypot(dx, dy)
+  const angle = Math.atan2(dy, dx)
+  const clampedDist = Math.min(dist, maxJoystickRadius)
+
+  const thumbX = Math.cos(angle) * clampedDist
+  const thumbY = Math.sin(angle) * clampedDist
+  joystickThumb.value = { x: thumbX, y: thumbY }
+
+  // 归一化输入向量 (-1 ~ 1)，注意屏幕 Y 轴向下为正，游戏摇杆上推为正
+  const normX = thumbX / maxJoystickRadius
+  const normY = -thumbY / maxJoystickRadius
+  setJoystickMove(normX, normY)
+}
+
+function handleJoystickEnd(e: TouchEvent) {
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === joystickTouchId) {
+      joystickTouchId = null
+      joystickThumb.value = { x: 0, y: 0 }
+      setJoystickMove(0, 0)
+      break
+    }
+  }
+}
 
 function triggerItem(item: any) {
   if (item.drawerType === 'crystal') {
@@ -150,6 +218,41 @@ function triggerItem(item: any) {
       <div class="hint-group">
         <span class="hint-icon">🖱️</span>
         <span class="hint-label">Look Around</span>
+      </div>
+    </div>
+
+    <!-- 移动端虚拟摇杆 (Bottom-Left) -->
+    <div
+      v-if="isTouchDevice"
+      class="cabin-joystick-zone"
+      @touchstart.stop.prevent="handleJoystickStart"
+      @touchmove.stop.prevent="handleJoystickMove"
+      @touchend.stop.prevent="handleJoystickEnd"
+      @touchcancel.stop.prevent="handleJoystickEnd"
+    >
+      <div class="joystick-base" ref="joystickBaseRef">
+        <div class="joystick-ring"></div>
+        <div
+          class="joystick-thumb"
+          :style="{ transform: `translate(${joystickThumb.x}px, ${joystickThumb.y}px)` }"
+        ></div>
+      </div>
+    </div>
+
+    <!-- 移动端快捷交互按钮 (Bottom-Right) -->
+    <div v-if="isTouchDevice" class="cabin-mobile-actions">
+      <button
+        v-if="nearbyItem"
+        class="mobile-interact-btn is-active"
+        @click.stop="triggerItem(nearbyItem)"
+        aria-label="交互"
+      >
+        <span class="mobile-btn-icon">{{ nearbyItem.icon }}</span>
+        <span class="mobile-btn-text">{{ nearbyItem.drawerType === 'crystal' ? '拾取' : '打开' }}</span>
+      </button>
+      <div v-else class="mobile-interact-btn is-idle">
+        <span class="mobile-btn-icon">🌲</span>
+        <span class="mobile-btn-text">靠近物品</span>
       </div>
     </div>
 
@@ -561,9 +664,123 @@ function triggerItem(item: any) {
   transform: translate(-50%, -20px) scale(0.9);
 }
 
+/* ── 移动端虚拟摇杆与操作按钮 ── */
+.cabin-joystick-zone {
+  position: absolute;
+  bottom: 24px;
+  left: 20px;
+  width: 120px;
+  height: 120px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.joystick-base {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: rgba(22, 27, 34, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.joystick-ring {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+
+.joystick-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #70a1ff, #3867d6);
+  box-shadow: 0 3px 12px rgba(56, 103, 214, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  transition: transform 0.04s ease-out;
+}
+
+.cabin-mobile-actions {
+  position: absolute;
+  bottom: 28px;
+  right: 20px;
+  z-index: 25;
+}
+
+.mobile-interact-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(22, 27, 34, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+
+.mobile-interact-btn.is-active {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+  animation: pulse-action 1.8s infinite;
+  transform: scale(1.05);
+}
+
+.mobile-interact-btn.is-idle {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mobile-btn-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.mobile-btn-text {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+@keyframes pulse-action {
+  0%, 100% { transform: scale(1.05); box-shadow: 0 0 16px rgba(16, 185, 129, 0.5); }
+  50% { transform: scale(1.12); box-shadow: 0 0 24px rgba(16, 185, 129, 0.85); }
+}
+
 @media (max-width: 900px) {
   .cabin-controls-hint {
     display: none;
+  }
+
+  .cabin-hud-card {
+    top: 76px;
+    bottom: auto;
+    left: 16px;
+    padding: 6px 14px 6px 10px;
+    transform: scale(0.92);
+    transform-origin: top left;
   }
 }
 </style>
