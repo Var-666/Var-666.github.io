@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useNeteaseAuth } from '@/composables/useNeteaseAuth'
 import { RECOMMENDED_VERCEL_DEPLOY_URL } from '@/services/neteaseApi'
@@ -37,6 +37,7 @@ const {
   isLoggedIn,
   isAuthLoading,
   userInfo,
+  stationUser,
   userPlaylists,
   currentLoadingPlaylistId,
   apiUrl,
@@ -49,9 +50,23 @@ const {
   stopQrPolling,
   refreshQr,
   syncOwnerData,
+  checkCurrentLoginStatus,
   loadPlaylistTracks,
   resetToStationMode,
+  handleLogout,
 } = useNeteaseAuth()
+
+const displayUser = computed(() => {
+  if (isLoggedIn.value && userInfo.value) {
+    return userInfo.value
+  }
+  return stationUser.value
+})
+
+const isVip = computed(() => {
+  if (!isLoggedIn.value || !userInfo.value) return false
+  return userInfo.value.vipType === 11 || (userInfo.value.vipType != null && userInfo.value.vipType > 0)
+})
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let animId: number | null = null
@@ -88,6 +103,17 @@ function handleStartAuth() {
 function handleBackToStation() {
   showQrAuth.value = false
   stopQrPolling()
+}
+
+watch(isLoggedIn, (loggedIn) => {
+  if (loggedIn) {
+    showQrAuth.value = false
+  }
+})
+
+function onLogout() {
+  handleLogout()
+  showQrAuth.value = false
 }
 
 async function handleSelectNeteasePlaylist(playlistId: number) {
@@ -299,15 +325,16 @@ watch(isExpanded, (val) => {
             </div>
 
             <div class="top-bar-right">
-              <!-- 站长专属黑胶电台徽章（全体访客与移动端免登录） -->
+              <!-- 用户徽章 / 电台状态（区分登录与公开电台模式） -->
               <div
                 class="user-profile-badge"
                 @click="showNeteaseModal = true"
-                title="站长专属黑胶电台 · 全天候免登录畅听"
+                :title="isLoggedIn ? '已连接网易云账号 · 点击管理' : '站长精选公开电台 · 访客免登录'"
               >
-                <img :src="userInfo?.avatarUrl" alt="avatar" class="user-avatar-mini" />
-                <span class="user-nickname-mini">{{ userInfo?.nickname || 'var' }}</span>
-                <span class="vip-mini-tag">VIP</span>
+                <img :src="displayUser.avatarUrl" alt="avatar" class="user-avatar-mini" />
+                <span class="user-nickname-mini">{{ displayUser.nickname }}</span>
+                <span v-if="isLoggedIn && isVip" class="vip-mini-tag">VIP</span>
+                <span v-else-if="!isLoggedIn" class="radio-mini-tag">电台</span>
               </div>
 
               <button class="icon-btn-close" @click="toggleExpand" aria-label="收起播放器">
@@ -480,7 +507,7 @@ watch(isExpanded, (val) => {
           <!-- TAB 4: 网易云用户私人歌单 (User Playlists View) -->
           <div v-show="activeTab === 'user-playlists'" class="tab-view-user-playlists">
             <div class="playlist-header">
-              <span>{{ userInfo?.nickname }} 的网易云歌单 ({{ userPlaylists.length }})</span>
+              <span>{{ displayUser.nickname }} 的{{ isLoggedIn ? '网易云私人歌单' : '精选公开歌单' }} ({{ userPlaylists.length }})</span>
               <span class="playlist-hint">点击载入整张歌单播放</span>
             </div>
             <div class="user-playlists-grid">
@@ -573,37 +600,71 @@ watch(isExpanded, (val) => {
             <button class="icon-btn-close" @click="showNeteaseModal = false">×</button>
           </div>
 
-          <!-- 模式 1：站长专属电台展示 -->
-          <div v-if="!showQrAuth" class="logged-in-profile">
+          <!-- 模式 1：已登录用户展示 -->
+          <div v-if="isLoggedIn && !showQrAuth" class="logged-in-profile">
             <div class="profile-main">
               <img :src="userInfo?.avatarUrl" alt="avatar" class="profile-avatar" />
               <div class="profile-info">
                 <div class="name-row">
-                  <span class="profile-name">{{ userInfo?.nickname || 'var' }}</span>
-                  <span class="vip-tag">黑胶VIP</span>
+                  <span class="profile-name">{{ userInfo?.nickname }}</span>
+                  <span v-if="isVip" class="vip-tag">黑胶VIP</span>
+                  <span v-else class="normal-user-tag">标准用户</span>
                 </div>
-                <span class="profile-uid">UID: {{ userInfo?.userId }} · 站长音乐电台</span>
-                <span class="profile-playlists-count">已同步 {{ userPlaylists.length }} 个精选歌单 · 全曲免登录</span>
+                <span class="profile-uid">UID: {{ userInfo?.userId }} · 个人网易云账号</span>
+                <span class="profile-playlists-count">已同步 {{ userPlaylists.length }} 个私人歌单</span>
               </div>
             </div>
 
             <div class="station-desc-box">
-              <span class="station-icon">📻</span>
+              <span class="station-icon">✅</span>
               <div class="station-text">
-                <strong>站长专属免登录电台已激活</strong>
-                <p>已接入 Vercel 专属云解析节点，全网所有访客及移动设备均可直接畅享完整无损全曲，无需任何账号登录。</p>
+                <strong>网易云账号已连接</strong>
+                <p>已通过专属 API 节点建立有效会话，享有您的私人收藏与当前账号对应音质。</p>
               </div>
             </div>
 
             <div class="profile-actions">
-              <button class="action-btn-sync" @click="syncOwnerData">🔄 刷新歌单</button>
-              <button class="action-btn-auth" @click="handleStartAuth" title="使用手机扫码更新账号或切换歌单">
-                📲 扫码授权 / 换号
+              <button class="action-btn-sync" @click="checkCurrentLoginStatus">🔄 刷新状态</button>
+              <button class="action-btn-auth" @click="handleStartAuth" title="使用手机扫码切换网易云账号">
+                📲 换号登录
+              </button>
+              <button class="action-btn-logout" @click="onLogout" title="退出登录并返回站长公开电台">
+                🚪 退出登录
               </button>
             </div>
           </div>
 
-          <!-- 模式 2：扫码授权/切换账号 -->
+          <!-- 模式 2：未登录（站长公开电台 / 访客收听模式） -->
+          <div v-else-if="!isLoggedIn && !showQrAuth" class="logged-in-profile">
+            <div class="profile-main">
+              <img :src="stationUser.avatarUrl" alt="avatar" class="profile-avatar" />
+              <div class="profile-info">
+                <div class="name-row">
+                  <span class="profile-name">{{ stationUser.nickname }}</span>
+                  <span class="station-tag">公开电台</span>
+                </div>
+                <span class="profile-uid">UID: {{ stationUser.userId }} · 站长音乐空间</span>
+                <span class="profile-playlists-count">已同步 {{ userPlaylists.length }} 个公开歌单 · 免登录畅听</span>
+              </div>
+            </div>
+
+            <div class="station-desc-box visitor">
+              <span class="station-icon">📻</span>
+              <div class="station-text">
+                <strong>站长公开电台（访客收听模式）</strong>
+                <p>当前为免登录访客电台，可直接播放站长精选公开曲目。如需同步您的私人歌单或解锁无损全曲，可使用手机扫码登录。</p>
+              </div>
+            </div>
+
+            <div class="profile-actions">
+              <button class="action-btn-sync" @click="syncOwnerData">🔄 刷新电台</button>
+              <button class="action-btn-auth primary" @click="handleStartAuth">
+                📲 扫码登录网易云
+              </button>
+            </div>
+          </div>
+
+          <!-- 模式 3：扫码授权/切换账号 -->
           <div v-else class="login-body">
             <div class="qr-box">
               <div class="qr-frame-wrap" :class="{ expired: qrStatusCode === 800 }">
@@ -626,7 +687,7 @@ watch(isExpanded, (val) => {
               </div>
 
               <p class="qr-app-tip">
-                使用手机【网易云音乐】App 扫码可更新站长 VIP 凭证或同步新歌单
+                使用手机【网易云音乐】App 扫码即可连接您的个人账号
               </p>
 
               <div class="qr-bottom-actions">
@@ -2205,6 +2266,33 @@ watch(isExpanded, (val) => {
   font-weight: 700;
 }
 
+.station-tag {
+  font-size: 0.6rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--color-accent);
+  color: white;
+  font-weight: 600;
+}
+
+.normal-user-tag {
+  font-size: 0.6rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--color-text-light);
+  color: white;
+  font-weight: 500;
+}
+
+.radio-mini-tag {
+  font-size: 0.6rem;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: rgba(124, 140, 110, 0.15);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
 .profile-uid {
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -2224,6 +2312,11 @@ watch(isExpanded, (val) => {
   border-radius: var(--radius-sm);
   border-left: 3px solid var(--color-accent);
   align-items: center;
+}
+
+.station-desc-box.visitor {
+  border-left-color: var(--color-warm, #C49774);
+  background: rgba(196, 151, 116, 0.08);
 }
 
 .station-icon {
@@ -2260,6 +2353,7 @@ watch(isExpanded, (val) => {
   font-size: 0.8rem;
   font-weight: 500;
   transition: background 0.2s;
+  cursor: pointer;
 }
 
 .action-btn-sync:hover {
@@ -2281,6 +2375,33 @@ watch(isExpanded, (val) => {
 .action-btn-auth:hover {
   color: var(--color-accent);
   border-color: var(--color-accent);
+}
+
+.action-btn-auth.primary {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
+.action-btn-auth.primary:hover {
+  background: var(--color-accent-dark);
+}
+
+.action-btn-logout {
+  padding: 9px 12px;
+  background: transparent;
+  color: var(--color-text-lighter);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.action-btn-logout:hover {
+  color: #DC2626;
+  border-color: #DC2626;
 }
 
 /* 进出过渡 */

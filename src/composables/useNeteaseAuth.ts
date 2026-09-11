@@ -11,6 +11,7 @@ import {
   getQrKey,
   createQrImage,
   checkQrStatus,
+  fetchLoginStatus,
   fetchUserAccount,
   fetchUserPlaylists,
   fetchPlaylistTracks,
@@ -32,14 +33,14 @@ export interface NeteasePlaylist {
   playCount?: number
 }
 
-// 站长专属电台 UID 与默认资料预设（真实网易云账户: 不可以叫我憨憨）
+// 站长专属公开电台 UID 与默认资料预设（真实网易云账户: 不可以叫我憨憨）
 export const OWNER_UID = '3986148741'
 export const DEFAULT_OWNER_USER: NeteaseUser = {
   userId: OWNER_UID,
   nickname: '不可以叫我憨憨',
   avatarUrl: 'https://p1.music.126.net/SUeqMM8HOIpHv9Nhl9qt9w==/109951165647004069.jpg?param=200y200',
-  vipType: 11,
-  signature: '站长专属音乐电台 · 全天候免登录畅听',
+  vipType: 0,
+  signature: '站长公开精选电台 · 访客免登录畅听',
 }
 
 export const DEFAULT_OWNER_PLAYLISTS: NeteasePlaylist[] = [
@@ -69,10 +70,11 @@ export const DEFAULT_OWNER_PLAYLISTS: NeteasePlaylist[] = [
 const STORAGE_KEY = 'var_netease_auth_profile_v1'
 
 // ── 模块级响应式状态（全局单例） ──
-const isLoggedIn = ref(true) // 默认开启站长专属电台模式
+const isLoggedIn = ref(false) // 默认未登录，经由 /login/status 真实探测后确定
 const isAuthLoading = ref(false)
 const authError = ref('')
-const userInfo = ref<NeteaseUser>({ ...DEFAULT_OWNER_USER })
+const userInfo = ref<NeteaseUser | null>(null) // 当前登录用户（未登录为 null）
+const stationUser = ref<NeteaseUser>({ ...DEFAULT_OWNER_USER }) // 站长公开电台资料
 const userPlaylists = ref<NeteasePlaylist[]>([...DEFAULT_OWNER_PLAYLISTS])
 const currentLoadingPlaylistId = ref<number | null>(null)
 
@@ -93,34 +95,31 @@ let currentQrKey: string | null = null
 let qrPollingTimer: number | null = null
 
 export function useNeteaseAuth() {
-  function initAuth() {
+  async function initAuth() {
     apiUrl.value = getSavedApiUrl()
 
-    let hasCachedUser = false
+    // 1. 先尝试读取本地缓存凭证
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
         const parsed = JSON.parse(saved)
         if (parsed && parsed.userInfo) {
           userInfo.value = parsed.userInfo
-          userPlaylists.value = parsed.userPlaylists && parsed.userPlaylists.length > 0 ? parsed.userPlaylists : [...DEFAULT_OWNER_PLAYLISTS]
+          if (parsed.userPlaylists && parsed.userPlaylists.length > 0) {
+            userPlaylists.value = parsed.userPlaylists
+          }
           isLoggedIn.value = true
-          hasCachedUser = true
         }
       }
     } catch {
       // ignore
     }
 
-    // 若本地没有额外缓存，默认直接使用站长电台身份
-    if (!hasCachedUser) {
-      userInfo.value = { ...DEFAULT_OWNER_USER }
-      userPlaylists.value = [...DEFAULT_OWNER_PLAYLISTS]
-      isLoggedIn.value = true
-    }
-
-    // 后台静默同步站长真实头像与全部歌单
+    // 2. 静默拉取站长公开电台最新歌单
     syncOwnerData()
+
+    // 3. 真实探针：通过 /login/status 校验当前实际在线状态
+    checkCurrentLoginStatus()
 
     if (apiUrl.value) {
       testCurrentApi(false)
@@ -128,7 +127,59 @@ export function useNeteaseAuth() {
   }
 
   /**
-   * 后台自动同步站长网易云真实公开歌单与资料
+   * 探针：调用 /login/status 获取真实登录态
+   */
+  async function checkCurrentLoginStatus(): Promise<boolean> {
+    const targetApi = apiUrl.value || DEFAULT_NETEASE_API_URL
+    const savedCookie = getSavedCookie()
+
+    try {
+      const result = await fetchLoginStatus(targetApi, savedCookie)
+      if (result.isLoggedIn && result.profile) {
+        const p = result.profile
+        const acc = result.account
+        const realUser: NeteaseUser = {
+          userId: p.userId,
+          nickname: p.nickname,
+          avatarUrl: (p.avatarUrl || '').replace('http://', 'https://'),
+          vipType: acc?.vipType ?? p.vipType ?? 0,
+          signature: p.signature || '',
+        }
+        userInfo.value = realUser
+        isLoggedIn.value = true
+
+        // 同步已登录用户的个人歌单
+        const rawList = await fetchUserPlaylists(p.userId, targetApi, savedCookie)
+        if (rawList && rawList.length > 0) {
+          const playlists: NeteasePlaylist[] = rawList.map((item: any) => ({
+            id: item.id,
+            name: item.name || '我的歌单',
+            coverImgUrl: (item.coverImgUrl || '').replace('http://', 'https://') + '?param=200y200',
+            trackCount: item.trackCount || 0,
+            playCount: item.playCount || 0,
+          }))
+          userPlaylists.value = playlists
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ userInfo: realUser, userPlaylists: playlists }))
+          } catch { /* ignore */ }
+        }
+        return true
+      }
+    } catch (err) {
+      console.warn('[useNeteaseAuth] 真实登录态探测异常:', err)
+    }
+
+    // 若未登录或已失效：还原为访客模式
+    isLoggedIn.value = false
+    userInfo.value = null
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch { /* ignore */ }
+    return false
+  }
+
+  /**
+   * 后台自动同步站长网易云真实公开歌单与资料（无需登录）
    */
   async function syncOwnerData() {
     const targetApi = apiUrl.value || DEFAULT_NETEASE_API_URL
@@ -139,11 +190,11 @@ export function useNeteaseAuth() {
         const creator = firstPl.creator || {}
 
         if (creator.nickname) {
-          userInfo.value = {
+          stationUser.value = {
             userId: OWNER_UID,
             nickname: creator.nickname || DEFAULT_OWNER_USER.nickname,
             avatarUrl: (creator.avatarUrl || DEFAULT_OWNER_USER.avatarUrl).replace('http://', 'https://'),
-            vipType: creator.vipType || 11,
+            vipType: creator.vipType ?? 0,
             signature: creator.signature || DEFAULT_OWNER_USER.signature,
           }
         }
@@ -156,12 +207,9 @@ export function useNeteaseAuth() {
           playCount: item.playCount || 0,
         }))
 
-        userPlaylists.value = playlists
-
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ userInfo: userInfo.value, userPlaylists: playlists }))
-        } catch {
-          // ignore
+        // 仅在未登录个人账号时，歌单列表展示站长公开电台
+        if (!isLoggedIn.value) {
+          userPlaylists.value = playlists
         }
       }
     } catch (err) {
@@ -292,7 +340,7 @@ export function useNeteaseAuth() {
           userId: profile.userId,
           nickname: profile.nickname,
           avatarUrl: (profile.avatarUrl || '').replace('http://', 'https://'),
-          vipType: profile.vipType || 1,
+          vipType: profile.vipType ?? 0,
           signature: profile.signature || '',
         }
 
@@ -351,9 +399,14 @@ export function useNeteaseAuth() {
   function resetToStationMode() {
     stopQrPolling()
     clearAuthData()
-    userInfo.value = { ...DEFAULT_OWNER_USER }
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // ignore
+    }
+    userInfo.value = null
     userPlaylists.value = [...DEFAULT_OWNER_PLAYLISTS]
-    isLoggedIn.value = true
+    isLoggedIn.value = false
     syncOwnerData()
   }
 
@@ -370,6 +423,7 @@ export function useNeteaseAuth() {
     isAuthLoading,
     authError,
     userInfo,
+    stationUser,
     userPlaylists,
     currentLoadingPlaylistId,
 
@@ -390,7 +444,10 @@ export function useNeteaseAuth() {
     refreshQr,
 
     syncOwnerData,
+    checkCurrentLoginStatus,
     loadPlaylistTracks,
     resetToStationMode,
+    handleLogout: resetToStationMode,
   }
 }
+

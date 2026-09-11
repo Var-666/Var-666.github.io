@@ -185,6 +185,43 @@ export async function checkQrStatus(key: string, baseUrl?: string): Promise<QrCh
   }
 }
 
+export interface LoginStatusResult {
+  isLoggedIn: boolean
+  profile: any | null
+  account: any | null
+}
+
+/**
+ * 获取真实登录状态（通过网易云官方 /login/status 探针）
+ */
+export async function fetchLoginStatus(baseUrl?: string, cookie?: string): Promise<LoginStatusResult> {
+  const target = baseUrl || getSavedApiUrl()
+  const c = cookie || getSavedCookie()
+  if (!target) return { isLoggedIn: false, profile: null, account: null }
+
+  try {
+    const url = `${target}/login/status?timestamp=${Date.now()}&realIP=116.25.146.177${c ? `&cookie=${encodeURIComponent(c)}` : ''}`
+    const res = await fetch(url)
+    const json = await res.json()
+    const data = json?.data || json
+    const profile = data?.profile || null
+    const account = data?.account || null
+    const isAnonymous = account?.anonimousUser === true
+
+    if (profile && profile.userId && !isAnonymous) {
+      return {
+        isLoggedIn: true,
+        profile,
+        account,
+      }
+    }
+  } catch (err) {
+    console.warn('[NeteaseApi] 检查真实登录状态失败:', err)
+  }
+
+  return { isLoggedIn: false, profile: null, account: null }
+}
+
 /**
  * 4. 获取当前登录用户账号信息
  */
