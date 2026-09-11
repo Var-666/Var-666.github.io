@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { INITIAL_PLAYLIST, type Track } from '@/data/playlist'
 import {
+  DEFAULT_NETEASE_API_URL,
   getSavedApiUrl,
   saveApiUrl as persistApiUrl,
   getSavedCookie,
@@ -130,7 +131,7 @@ export function useNeteaseAuth() {
    * 后台自动同步站长网易云真实公开歌单与资料
    */
   async function syncOwnerData() {
-    const targetApi = apiUrl.value || 'https://personly-use.vercel.app'
+    const targetApi = apiUrl.value || DEFAULT_NETEASE_API_URL
     try {
       const rawList = await fetchUserPlaylists(OWNER_UID, targetApi)
       if (rawList && rawList.length > 0) {
@@ -218,7 +219,7 @@ export function useNeteaseAuth() {
   async function startQrLogin() {
     stopQrPolling()
 
-    const targetApi = apiUrl.value || 'https://personly-use.vercel.app'
+    const targetApi = apiUrl.value || DEFAULT_NETEASE_API_URL
     isQrLoading.value = true
     qrStatusText.value = '正在向 API 获取登录凭证...'
     qrStatusCode.value = null
@@ -283,7 +284,7 @@ export function useNeteaseAuth() {
 
   async function syncUserProfileAfterLogin(cookie?: string) {
     isAuthLoading.value = true
-    const targetApi = apiUrl.value || 'https://personly-use.vercel.app'
+    const targetApi = apiUrl.value || DEFAULT_NETEASE_API_URL
     try {
       const profile = await fetchUserAccount(targetApi, cookie)
       if (profile) {
@@ -327,7 +328,7 @@ export function useNeteaseAuth() {
    */
   async function loadPlaylistTracks(playlistId: number): Promise<Track[]> {
     currentLoadingPlaylistId.value = playlistId
-    const targetApi = apiUrl.value || 'https://personly-use.vercel.app'
+    const targetApi = apiUrl.value || DEFAULT_NETEASE_API_URL
     try {
       const tracks = await fetchPlaylistTracks(playlistId, targetApi)
       if (tracks.length > 0) {

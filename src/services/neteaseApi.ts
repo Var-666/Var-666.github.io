@@ -2,6 +2,12 @@ import type { Track } from '@/data/playlist'
 
 const STORAGE_API_KEY = 'var_netease_api_url'
 const STORAGE_COOKIE_KEY = 'var_netease_cookie'
+export const DEFAULT_NETEASE_API_URL = 'https://api.hi-var.top'
+
+const LEGACY_API_URLS = new Set([
+  'https://personly-use.vercel.app',
+  'https://music-api.varhello99.workers.dev',
+])
 
 // 官方 Vercel 1-Click Deploy 模板链接 (使用 2025/2026 社区活跃维护的增强版)
 export const RECOMMENDED_VERCEL_DEPLOY_URL = 'https://vercel.com/new/clone?repository-url=https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced'
@@ -10,12 +16,17 @@ export function getSavedApiUrl(): string {
   try {
     const saved = localStorage.getItem(STORAGE_API_KEY)
     if (saved && saved.trim()) {
-      return saved.trim().replace(/\/+$/, '')
+      const normalized = saved.trim().replace(/\/+$/, '')
+      if (!LEGACY_API_URLS.has(normalized)) {
+        return normalized
+      }
+
+      localStorage.setItem(STORAGE_API_KEY, DEFAULT_NETEASE_API_URL)
     }
     // 默认直接绑定你的专属生产域名
-    return 'https://personly-use.vercel.app'
+    return DEFAULT_NETEASE_API_URL
   } catch {
-    return 'https://personly-use.vercel.app'
+    return DEFAULT_NETEASE_API_URL
   }
 }
 

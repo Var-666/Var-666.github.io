@@ -6,6 +6,7 @@ import AboutSection from '@/components/AboutSection.vue'
 import NowSection from '@/components/NowSection.vue'
 import SkillsSection from '@/components/SkillsSection.vue'
 import PortfolioSection from '@/components/PortfolioSection.vue'
+import CabinSection from '@/components/CabinSection.vue'
 import ContactSection from '@/components/ContactSection.vue'
 import CustomCursor from '@/components/CustomCursor.vue'
 import MusicPlayer from '@/components/MusicPlayer.vue'
@@ -38,6 +39,7 @@ onUnmounted(() => {
     <NowSection />
     <SkillsSection />
     <PortfolioSection />
+    <CabinSection />
     <ContactSection />
   </main>
 
