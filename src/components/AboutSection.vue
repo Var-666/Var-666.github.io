@@ -18,9 +18,9 @@ interface StatItem {
 }
 
 const stats = ref<StatItem[]>([
-  { end: 5, suffix: '+', label: '年经验', current: '0+' },
-  { end: 30, suffix: '+', label: '已完成项目', current: '0+' },
-  { end: 100, suffix: '%', label: '创作热情', current: '0%' },
+  { end: 3, suffix: '+', label: '年代码修行', current: '0+' },
+  { end: 365, suffix: '+', label: '持续探索天数', current: '0+' },
+  { end: 100, suffix: '%', label: '造物与美学热情', current: '0%' },
 ])
 
 let countersStarted = false

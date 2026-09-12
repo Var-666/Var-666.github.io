@@ -22,7 +22,7 @@ function onMove(e: MouseEvent) {
 
   const t = e.target as HTMLElement
   isHover.value = !!t.closest(
-    'a, button, [data-hover], .portfolio-card, .skill-card, .social-btn, .nav-link, .mobile-link, input, textarea'
+    'a, button, [data-hover], .skill-tag, .social-btn, .nav-link, .mobile-link, input, textarea'
   )
 }
 

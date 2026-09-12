@@ -311,13 +311,6 @@ function quickNavigate(href: string) {
                 <span class="ib-sub">技术栈与设计工具</span>
               </div>
             </button>
-            <button class="index-btn" @click="quickNavigate('#portfolio')">
-              <span class="ib-icon">💼</span>
-              <div class="ib-text">
-                <span class="ib-title">精选作品</span>
-                <span class="ib-sub">全部数字项目完整详情</span>
-              </div>
-            </button>
             <button class="index-btn" @click="quickNavigate('#contact')">
               <span class="ib-icon">✉️</span>
               <div class="ib-text">
