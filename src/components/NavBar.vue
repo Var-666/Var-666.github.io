@@ -5,9 +5,13 @@ import { useLiveStatus } from '@/composables/useLiveStatus'
 const { timeStr, city } = useLiveStatus()
 
 const scrolled = ref(false)
+const isHidden = ref(false)
 const mobileMenuOpen = ref(false)
 const scrollProgress = ref(0)
 const activeSection = ref('hero')
+
+let lastScrollY = 0
+const SCROLL_DELTA_THRESHOLD = 6 // 小抖动不触发，防止滚动吸附震颤
 
 const navLinks = [
   { label: '首页', href: '#hero', id: 'hero' },
@@ -19,11 +23,29 @@ const navLinks = [
 ]
 
 function handleScroll() {
-  scrolled.value = window.scrollY > 50
+  const currentY = window.scrollY
+  scrolled.value = currentY > 40
+
+  // 向下滚动缩小并自动滑出视口，向上滑动立即平滑浮现
+  if (!mobileMenuOpen.value) {
+    if (currentY <= 60) {
+      isHidden.value = false
+    } else if (currentY > lastScrollY + SCROLL_DELTA_THRESHOLD && currentY > 100) {
+      // 正在向下滚动
+      isHidden.value = true
+    } else if (currentY < lastScrollY - SCROLL_DELTA_THRESHOLD) {
+      // 正在向上轻微滚动
+      isHidden.value = false
+    }
+  } else {
+    isHidden.value = false
+  }
+
+  lastScrollY = Math.max(0, currentY)
 
   // 滚动进度条
   const total = document.documentElement.scrollHeight - window.innerHeight
-  scrollProgress.value = total > 0 ? (window.scrollY / total) * 100 : 0
+  scrollProgress.value = total > 0 ? (currentY / total) * 100 : 0
 
   // 活跃板块检测
   const sections = ['contact', 'cabin', 'skills', 'now', 'about', 'hero']
@@ -52,7 +74,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <nav class="navbar" :class="{ scrolled, 'menu-open': mobileMenuOpen }">
+  <nav class="navbar" :class="{ scrolled, hidden: isHidden, 'menu-open': mobileMenuOpen }">
     <div class="nav-container container">
       <!-- Logo -->
       <a class="nav-logo" href="#hero" @click.prevent="scrollTo('#hero')">
@@ -127,15 +149,47 @@ onUnmounted(() => {
   height: var(--nav-height);
   display: flex;
   align-items: center;
-  transition: all var(--transition);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.3s var(--ease),
+              background 0.3s var(--ease),
+              box-shadow 0.3s var(--ease),
+              border-color 0.3s var(--ease);
+  will-change: transform, height;
 }
 
+/* 向下滚动自动滑出视口 (Hide on Scroll Down) */
+.navbar.hidden {
+  transform: translateY(-100%);
+}
+
+/* 滚动缩小态 (Compact Shrink State) */
 .navbar.scrolled {
-  background: rgba(245, 240, 235, 0.75);
+  height: 56px;
+  background: rgba(245, 240, 235, 0.84);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 20px -2px rgba(44, 38, 33, 0.08);
+}
+
+.navbar.scrolled .logo-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 0.76rem;
+}
+
+.navbar.scrolled .logo-text {
+  font-size: 1.15rem;
+}
+
+.navbar.scrolled .nav-link {
+  padding: 5px 12px;
+  font-size: 0.85rem;
+}
+
+.navbar.scrolled .nav-live-pill {
+  padding: 4px 10px;
+  font-size: 0.74rem;
 }
 
 .nav-container {
@@ -425,6 +479,10 @@ onUnmounted(() => {
 
   .navbar.menu-open .mobile-toggle span {
     background: var(--color-text-inv);
+  }
+
+  .navbar.scrolled {
+    height: 50px;
   }
 }
 </style>
