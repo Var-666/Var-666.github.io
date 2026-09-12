@@ -32,6 +32,8 @@ const {
   searchMusic,
   playSearchResult,
   setPlaylist,
+  playMode,
+  togglePlayMode,
 } = useAudioPlayer()
 
 const {
@@ -101,55 +103,81 @@ function handleVolumeChange(e: Event) {
   setVolume(val / 100)
 }
 
-// ── 真实声波频谱 Canvas 绘制 ──
-function drawSpectrum() {
+const playModeTitle = computed(() => {
+  if (playMode.value === 'sequence') return '列表循环 (点击切换为单曲循环)'
+  if (playMode.value === 'loop-one') return '单曲循环 (点击切换为随机播放)'
+  return '随机播放 (点击切换为列表循环)'
+})
+
+// ── 真实声波频谱 Canvas 绘制 (修复 2x DPR 坐标系错位) ──
+function initCanvasDpr() {
   const canvas = canvasRef.value
   if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const rect = canvas.getBoundingClientRect()
+  if (rect.width > 0 && rect.height > 0) {
+    canvas.width = Math.round(rect.width * dpr)
+    canvas.height = Math.round(rect.height * dpr)
+  }
+}
 
-  const barCount = 30
-  const dataArray = new Uint8Array(barCount)
+function drawSpectrum() {
+  if (animId !== null) cancelAnimationFrame(animId)
+
+  const barCount = 32
+  const dataArray = new Float32Array(barCount)
 
   const render = () => {
     animId = requestAnimationFrame(render)
+    const canvas = canvasRef.value
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
-    const width = canvas.width
-    const height = canvas.height
-    ctx.clearRect(0, 0, width, height)
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const w = canvas.offsetWidth
+    const h = canvas.offsetHeight
+    if (w <= 0 || h <= 0) return
 
-    const t = Date.now() * 0.0045
+    // 重置变换矩阵并清空
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.scale(dpr, dpr)
+
+    const t = Date.now() * 0.0035
     if (isPlaying.value) {
       for (let i = 0; i < barCount; i++) {
-        // 多重复合正弦波产生极具音乐感的跳动频谱
-        const wave1 = Math.sin(t * 1.8 + i * 0.35) * 45 + 50
-        const wave2 = Math.cos(t * 1.1 - i * 0.22) * 25
-        const wave3 = Math.sin(t * 3.4 + i * 0.65) * 18
-        dataArray[i] = Math.max(12, Math.min(230, wave1 + wave2 + wave3))
+        const wave1 = Math.sin(t * 2.2 + i * 0.36) * 0.38 + 0.46
+        const wave2 = Math.cos(t * 1.3 - i * 0.22) * 0.22
+        const wave3 = Math.sin(t * 3.8 + i * 0.65) * 0.14
+        const targetVal = Math.max(0.1, Math.min(0.96, wave1 + wave2 + wave3))
+        dataArray[i] += (targetVal - dataArray[i]) * 0.22
       }
     } else {
       for (let i = 0; i < barCount; i++) {
-        dataArray[i] = Math.sin(i * 0.35 + t * 0.3) * 4 + 8
+        const targetVal = Math.sin(i * 0.4 + t * 0.7) * 0.03 + 0.06
+        dataArray[i] += (targetVal - dataArray[i]) * 0.1
       }
     }
 
-    const barWidth = (width / barCount) * 0.65
-    const gap = (width - barWidth * barCount) / (barCount - 1)
+    const barWidth = Math.max(2.5, (w / barCount) * 0.58)
+    const totalBarsWidth = barWidth * barCount
+    const gap = Math.max(1.8, (w - totalBarsWidth) / (barCount - 1))
 
     for (let i = 0; i < barCount; i++) {
-      const value = dataArray[i] || 0
-      const barHeight = Math.max(3, (value / 255) * (height * 0.9))
-
+      const val = dataArray[i] || 0.06
+      const barHeight = Math.max(3, val * (h * 0.9))
       const x = i * (barWidth + gap)
-      const y = height - barHeight
+      const y = (h - barHeight) / 2
 
-      const gradient = ctx.createLinearGradient(0, y, 0, height)
-      gradient.addColorStop(0, 'rgba(124, 140, 110, 0.95)')
-      gradient.addColorStop(1, 'rgba(196, 168, 130, 0.35)')
+      const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight)
+      gradient.addColorStop(0, '#7C8C6E')
+      gradient.addColorStop(0.5, '#99A889')
+      gradient.addColorStop(1, '#C4A882')
 
       ctx.fillStyle = gradient
       ctx.beginPath()
-      ctx.roundRect(x, y, barWidth, barHeight, [2, 2, 0, 0])
+      ctx.roundRect(x, y, barWidth, barHeight, [2, 2, 2, 2])
       ctx.fill()
     }
   }
@@ -158,12 +186,7 @@ function drawSpectrum() {
 }
 
 onMounted(() => {
-  if (canvasRef.value) {
-    canvasRef.value.width = canvasRef.value.offsetWidth * 2
-    canvasRef.value.height = canvasRef.value.offsetHeight * 2
-    const ctx = canvasRef.value.getContext('2d')
-    if (ctx) ctx.scale(2, 2)
-  }
+  initCanvasDpr()
   drawSpectrum()
 })
 
@@ -174,13 +197,18 @@ onUnmounted(() => {
 watch(isExpanded, (val) => {
   if (val) {
     setTimeout(() => {
-      if (canvasRef.value) {
-        canvasRef.value.width = canvasRef.value.offsetWidth * 2
-        canvasRef.value.height = canvasRef.value.offsetHeight * 2
-        const ctx = canvasRef.value.getContext('2d')
-        if (ctx) ctx.scale(2, 2)
-      }
-    }, 60)
+      initCanvasDpr()
+      drawSpectrum()
+    }, 80)
+  }
+})
+
+watch(activeTab, (tab) => {
+  if (tab === 'player') {
+    setTimeout(() => {
+      initCanvasDpr()
+      drawSpectrum()
+    }, 40)
   }
 })
 </script>
@@ -237,9 +265,37 @@ watch(isExpanded, (val) => {
     <Transition name="modal-pop">
       <div v-if="isExpanded" class="player-overlay" @click.self="toggleExpand">
         <div class="player-card glass-card">
-          <!-- 卡片顶部 Tab 栏与用户登录态 -->
-          <div class="card-top-bar">
-            <div class="nav-tabs">
+          <!-- 双层顶栏：第一层电台身份与收起，第二层全宽分段控制选项卡 -->
+          <div class="card-header-suite">
+            <div class="header-identity-row">
+              <div
+                class="station-identity"
+                @click="showNeteaseModal = true"
+                title="站长精选音乐电台 · 点击查看空间与节点状态"
+              >
+                <div class="station-avatar-wrap">
+                  <img :src="stationUser.avatarUrl" alt="avatar" class="station-avatar" />
+                  <span class="station-status-dot" :class="{ connected: isApiConnected }"></span>
+                </div>
+                <div class="station-meta">
+                  <div class="station-name-row">
+                    <span class="station-title">{{ stationUser.nickname }}</span>
+                    <span class="station-live-pill">专属电台</span>
+                  </div>
+                  <span class="station-sub">免登录畅听 · {{ userPlaylists.length }} 张精选歌单</span>
+                </div>
+              </div>
+
+              <button class="icon-btn-close" @click="toggleExpand" aria-label="收起播放器">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- 全宽分段 Tab 栏 (Segmented Tabs) -->
+            <div class="segmented-tabs-bar">
               <button
                 class="tab-btn"
                 :class="{ active: activeTab === 'player' }"
@@ -269,47 +325,45 @@ watch(isExpanded, (val) => {
                 精选歌单 ({{ userPlaylists.length }})
               </button>
             </div>
-
-            <div class="top-bar-right">
-              <!-- 用户徽章 / 电台状态 -->
-              <div
-                class="user-profile-badge"
-                @click="showNeteaseModal = true"
-                title="站长精选公开电台 · 点击查看空间与节点状态"
-              >
-                <img :src="stationUser.avatarUrl" alt="avatar" class="user-avatar-mini" />
-                <span class="user-nickname-mini">{{ stationUser.nickname }}</span>
-                <span class="radio-mini-tag">电台</span>
-              </div>
-
-              <button class="icon-btn-close" @click="toggleExpand" aria-label="收起播放器">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
           </div>
 
           <!-- TAB 1: 唱机主视角 (Player View) -->
           <div v-show="activeTab === 'player'" class="tab-view-player">
             <div class="turntable-deck">
-              <!-- 唱臂 -->
-              <div class="turntable-arm" :class="{ playing: isPlaying }">
-                <div class="arm-base"></div>
-                <div class="arm-rod"></div>
-                <div class="arm-head"></div>
+              <!-- 底盘与黑胶唱片 -->
+              <div class="turntable-platter">
+                <div class="vinyl-record" :class="{ spinning: isPlaying }">
+                  <div class="vinyl-groove g-1"></div>
+                  <div class="vinyl-groove g-2"></div>
+                  <div class="vinyl-groove g-3"></div>
+                  <div class="vinyl-light-reflection"></div>
+                  <!-- 唱片中心真实封面轮盘 -->
+                  <div class="vinyl-label">
+                    <img :src="currentTrack.coverUrl" alt="cover" class="label-img" />
+                    <div class="label-spindle"></div>
+                  </div>
+                </div>
               </div>
 
-              <!-- 黑胶唱片 -->
-              <div class="vinyl-record" :class="{ spinning: isPlaying }">
-                <div class="vinyl-groove g-1"></div>
-                <div class="vinyl-groove g-2"></div>
-                <div class="vinyl-groove g-3"></div>
-                <div class="vinyl-light-reflection"></div>
-                <!-- 唱片中心真实封面轮盘 -->
-                <div class="vinyl-label">
-                  <img :src="currentTrack.coverUrl" alt="cover" class="label-img" />
-                  <div class="label-spindle"></div>
+              <!-- 唱臂停放支架 (Rest Post) -->
+              <div class="arm-rest-post" title="唱臂复位支架">
+                <div class="rest-cradle"></div>
+              </div>
+
+              <!-- 拟物唱臂总成 (Tonearm Assembly) -->
+              <div class="tonearm-assembly" :class="{ playing: isPlaying }">
+                <!-- 唱臂枢轴底座 -->
+                <div class="arm-pivot-chassis">
+                  <div class="pivot-bearing"></div>
+                </div>
+                <!-- 臂杆平衡配重 -->
+                <div class="arm-counterweight"></div>
+                <!-- 唱臂金属杆 -->
+                <div class="arm-tube">
+                  <!-- 唱头/唱针总成 -->
+                  <div class="arm-headshell">
+                    <div class="arm-stylus"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -317,7 +371,7 @@ watch(isExpanded, (val) => {
             <!-- 曲目信息 -->
             <div class="track-meta">
               <div class="title-row">
-                <h3 class="track-title">{{ currentTrack.title }}</h3>
+                <h3 class="track-title" :title="currentTrack.title">{{ currentTrack.title }}</h3>
                 <span v-if="playbackStatus === 'resolving'" class="full-song-tag resolving">
                   ● 解析直链中...
                 </span>
@@ -459,34 +513,72 @@ watch(isExpanded, (val) => {
             </div>
           </div>
 
-          <!-- TAB 4: 站长精选公开歌单 (User Playlists View) -->
+          <!-- TAB 4: 站长精选公开歌单 (User Playlists View - 优雅单列防溢出) -->
           <div v-show="activeTab === 'user-playlists'" class="tab-view-user-playlists">
             <div class="playlist-header">
               <span>{{ stationUser.nickname }} 的精选公开歌单 ({{ userPlaylists.length }})</span>
               <span class="playlist-hint">点击载入整张歌单播放</span>
             </div>
-            <div class="user-playlists-grid">
+            <div class="user-playlists-scroll-area">
               <div
                 v-for="pl in userPlaylists"
                 :key="pl.id"
-                class="user-playlist-card"
+                class="user-playlist-card-row"
                 :class="{ loading: currentLoadingPlaylistId === pl.id }"
                 @click="handleSelectNeteasePlaylist(pl.id)"
               >
                 <div class="card-cover-wrap">
                   <img :src="pl.coverImgUrl" alt="cover" class="pl-cover" />
-                  <span v-if="currentLoadingPlaylistId === pl.id" class="pl-loading-tag">载入中...</span>
+                  <span v-if="currentLoadingPlaylistId === pl.id" class="pl-loading-overlay">
+                    <span class="loading-spinner-mini"></span>
+                  </span>
+                  <span v-else class="pl-play-hover-icon">▶</span>
                 </div>
                 <div class="pl-info">
-                  <span class="pl-name">{{ pl.name }}</span>
-                  <span class="pl-count">{{ pl.trackCount }} 首歌曲</span>
+                  <span class="pl-name" :title="pl.name">{{ pl.name }}</span>
+                  <span class="pl-count">{{ pl.trackCount }} 首歌曲 · 站长专属</span>
                 </div>
+                <button class="pl-load-btn" :disabled="currentLoadingPlaylistId === pl.id">
+                  {{ currentLoadingPlaylistId === pl.id ? '载入中...' : '载入歌单' }}
+                </button>
               </div>
             </div>
           </div>
 
           <!-- 底部控制栏 (在所有 Tab 下常驻) -->
           <div class="controls-deck">
+            <!-- 播放模式切换 (顺序 / 单曲循环 / 随机) -->
+            <button
+              class="control-icon-btn mode-btn"
+              @click="togglePlayMode"
+              :title="`播放模式: ${playModeTitle} (点击切换)`"
+              :aria-label="`播放模式: ${playModeTitle}`"
+            >
+              <!-- 顺序播放 -->
+              <svg v-if="playMode === 'sequence'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+              <!-- 单曲循环 -->
+              <svg v-else-if="playMode === 'loop-one'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                <text x="12" y="15" font-size="8" font-family="monospace" font-weight="bold" fill="currentColor" text-anchor="middle">1</text>
+              </svg>
+              <!-- 随机播放 -->
+              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 3 21 3 21 8" />
+                <line x1="4" y1="20" x2="21" y2="3" />
+                <polyline points="21 16 21 21 16 21" />
+                <line x1="15" y1="15" x2="21" y2="21" />
+                <line x1="4" y1="4" x2="9" y2="9" />
+              </svg>
+            </button>
+
             <!-- 上一首 -->
             <button class="control-icon-btn" @click="prevTrack" title="上一首">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -517,7 +609,7 @@ watch(isExpanded, (val) => {
 
             <!-- 音量控制 -->
             <div class="volume-box">
-              <button class="control-icon-btn" @click="toggleMute" title="静音切换">
+              <button class="control-icon-btn vol-btn" @click="toggleMute" title="静音切换">
                 <svg v-if="isMuted || volume === 0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   <line x1="23" y1="9" x2="17" y2="15" />
@@ -816,147 +908,212 @@ watch(isExpanded, (val) => {
   flex-direction: column;
 }
 
-/* 顶栏 Tab 与用户登录态 */
-.card-top-bar {
+/* ── 顶栏套件：双层结构 (Dual-tier Header Suite) ── */
+.card-header-suite {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 14px;
 }
 
-.nav-tabs {
+.header-identity-row {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.station-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 4px 10px 4px 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-alt);
+  border: 1px solid var(--border-light);
+  transition: all 0.25s var(--ease);
+  min-width: 0;
+  max-width: calc(100% - 44px);
+}
+
+.station-identity:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.station-avatar-wrap {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.station-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.station-status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #9CA3AF;
+  border: 2px solid var(--color-bg);
+  transition: background 0.3s;
+}
+
+.station-status-dot.connected {
+  background: #10B981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+.station-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.station-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.station-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.station-live-pill {
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border: 1px solid rgba(124, 140, 110, 0.3);
+  padding: 0 6px;
+  border-radius: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.station-sub {
+  font-size: 0.68rem;
+  color: var(--color-text-lighter);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-btn-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-lighter);
+  background: var(--color-bg-alt);
+  border: 1px solid var(--border-light);
+  transition: all 0.2s;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.icon-btn-close:hover {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: rotate(90deg);
+}
+
+/* 全宽分段 Tab 栏 (Segmented Tabs) */
+.segmented-tabs-bar {
+  display: flex;
   background: var(--color-bg-alt);
   padding: 3px;
   border-radius: var(--radius-full);
+  border: 1px solid var(--border-light);
+  width: 100%;
+  gap: 3px;
 }
 
 .tab-btn {
-  padding: 5px 10px;
-  font-size: 0.72rem;
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 0.74rem;
   border-radius: var(--radius-full);
   color: var(--color-text-lighter);
-  transition: all 0.2s;
+  transition: all 0.25s var(--ease);
   font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tab-btn:hover {
+  color: var(--color-text);
 }
 
 .tab-btn.active {
   background: white;
   color: var(--color-accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .tab-btn.highlight {
   color: var(--color-accent);
 }
 
-.top-bar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.netease-pill-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background: rgba(220, 38, 38, 0.08);
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  color: #DC2626;
-  border-radius: var(--radius-full);
-  font-size: 0.72rem;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.netease-pill-btn:hover {
-  background: rgba(220, 38, 38, 0.15);
-  transform: translateY(-1px);
-}
-
-.user-profile-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px 3px 4px;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.user-profile-badge:hover {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
-}
-
-.user-avatar-mini {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.user-nickname-mini {
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--color-text);
-  max-width: 70px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.vip-mini-tag {
-  font-size: 0.58rem;
-  font-weight: 700;
-  color: #DC2626;
-  background: rgba(220, 38, 38, 0.1);
-  padding: 0 3px;
-  border-radius: 2px;
-}
-
-.icon-btn-close {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+/* ── 拟物黑胶唱机 (Authentic Turntable) ── */
+.turntable-deck {
+  position: relative;
+  width: 220px;
+  height: 205px;
+  margin: 0 auto 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-lighter);
-  background: var(--color-bg-alt);
-  transition: all 0.2s;
 }
 
-.icon-btn-close:hover {
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  transform: rotate(90deg);
-}
-
-/* ── 拟物黑胶唱机 ── */
-.turntable-deck {
+.turntable-platter {
+  width: 194px;
+  height: 194px;
+  border-radius: 50%;
+  background: #1B1815;
   position: relative;
-  width: 200px;
-  height: 200px;
-  margin: 0 auto 12px;
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.38),
+    inset 0 0 0 3px #2A2621,
+    inset 0 0 0 5px rgba(255, 255, 255, 0.04);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .vinyl-record {
-  width: 180px;
-  height: 180px;
+  width: 182px;
+  height: 182px;
   border-radius: 50%;
-  background: #141210;
+  background: radial-gradient(circle, #24201D 0%, #12100E 100%);
   position: relative;
-  box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -964,7 +1121,7 @@ watch(isExpanded, (val) => {
 }
 
 .vinyl-record.spinning {
-  animation: vinyl-spin 10s linear infinite;
+  animation: vinyl-spin 12s linear infinite;
 }
 
 @keyframes vinyl-spin {
@@ -975,28 +1132,47 @@ watch(isExpanded, (val) => {
 .vinyl-groove {
   position: absolute;
   border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.05);
 }
 
-.g-1 { width: 155px; height: 155px; }
-.g-2 { width: 125px; height: 125px; }
-.g-3 { width: 95px; height: 95px; }
+.g-1 {
+  width: 154px;
+  height: 154px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.g-2 {
+  width: 124px;
+  height: 124px;
+  border: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.g-3 {
+  width: 96px;
+  height: 96px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
 
 .vinyl-light-reflection {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, transparent 40%, rgba(255, 255, 255, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.09) 0%,
+    transparent 40%,
+    rgba(255, 255, 255, 0.06) 65%,
+    transparent 100%
+  );
   pointer-events: none;
   z-index: 3;
 }
 
 .vinyl-label {
-  width: 78px;
-  height: 78px;
+  width: 74px;
+  height: 74px;
   border-radius: 50%;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 0 4px #141210, 0 0 16px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 4px #141210, 0 0 18px rgba(0, 0, 0, 0.6);
   z-index: 2;
 }
 
@@ -1014,60 +1190,116 @@ watch(isExpanded, (val) => {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #141210;
-  border: 3px solid #E5DFD7;
+  background: #1C1A17;
+  border: 3px solid #D6CEBE;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
 }
 
-/* 唱臂 */
-.turntable-arm {
+/* 唱臂停放支架 (Rest Post) */
+.arm-rest-post {
   position: absolute;
-  top: 4px;
-  right: 10px;
-  width: 50px;
-  height: 90px;
+  top: 14px;
+  right: 36px;
+  width: 12px;
+  height: 18px;
   pointer-events: none;
-  z-index: 5;
-  transform-origin: top right;
-  transform: rotate(-25deg);
-  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 4;
 }
 
-.turntable-arm.playing {
-  transform: rotate(0deg);
+.rest-cradle {
+  width: 10px;
+  height: 16px;
+  background: #686158;
+  border-radius: 2px;
+  border-top: 3px solid #D6CEBE;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.arm-base {
+/* 拟物唱臂总成 (Tonearm Kinematics) */
+.tonearm-assembly {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 60px;
+  height: 115px;
+  pointer-events: none;
+  z-index: 8;
+  transform-origin: 45px 14px;
+  transform: rotate(-26deg);
+  transition: transform 0.8s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.tonearm-assembly.playing {
+  transform: rotate(8deg);
+}
+
+.arm-pivot-chassis {
   position: absolute;
   top: 0;
   right: 0;
-  width: 16px;
-  height: 16px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: #7C8C6E;
-  border: 3px solid #E5DFD7;
+  background: radial-gradient(circle, #D8D1C3 0%, #857B71 60%, #423C36 100%);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.arm-rod {
-  position: absolute;
-  top: 10px;
-  right: 7px;
-  width: 3px;
-  height: 68px;
-  background: linear-gradient(to bottom, #A8A097, #5C554E);
-  border-radius: 2px;
-  transform: rotate(18deg);
-  transform-origin: top center;
-}
-
-.arm-head {
-  position: absolute;
-  bottom: 12px;
-  left: 16px;
+.pivot-bearing {
   width: 10px;
-  height: 14px;
-  background: #C4A882;
+  height: 10px;
+  border-radius: 50%;
+  background: #1F1C18;
+  border: 2px solid #AEA497;
+}
+
+.arm-counterweight {
+  position: absolute;
+  top: -6px;
+  right: 9px;
+  width: 14px;
+  height: 12px;
   border-radius: 2px;
-  transform: rotate(15deg);
+  background: linear-gradient(to bottom, #595147, #38332D);
+  border: 1px solid #73695D;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.arm-tube {
+  position: absolute;
+  top: 18px;
+  right: 14px;
+  width: 3.5px;
+  height: 82px;
+  background: linear-gradient(to bottom, #E8E2D6, #A69E93 75%, #59524A);
+  border-radius: 2px;
+  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+.arm-headshell {
+  position: absolute;
+  bottom: -8px;
+  left: -4px;
+  width: 12px;
+  height: 18px;
+  background: #C4A882;
+  border-radius: 3px;
+  transform: rotate(18deg);
+  box-shadow: 1px 3px 6px rgba(0, 0, 0, 0.35);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.arm-stylus {
+  position: absolute;
+  bottom: 0;
+  left: 4px;
+  width: 2.5px;
+  height: 4px;
+  background: #E11D48;
+  border-radius: 1px;
+  box-shadow: 0 0 4px #E11D48;
 }
 
 /* 曲目信息 */
@@ -1529,75 +1761,118 @@ watch(isExpanded, (val) => {
   color: var(--color-text-lighter);
 }
 
-/* ── TAB 4: 网易云用户歌单卡片网格 ── */
+/* ── TAB 4: 网易云用户歌单卡片列表 (单列防溢出) ── */
 .tab-view-user-playlists {
   display: flex;
   flex-direction: column;
   height: 330px;
 }
 
-.user-playlists-grid {
+.user-playlists-scroll-area {
   flex: 1;
   overflow-y: auto;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
 }
 
-.user-playlist-card {
+.user-playlists-scroll-area::-webkit-scrollbar {
+  width: 5px;
+}
+
+.user-playlists-scroll-area::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 10px;
+}
+
+.user-playlist-card-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px;
+  gap: 12px;
+  padding: 8px 12px;
   background: var(--color-bg-alt);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid transparent;
+  transition: all 0.22s var(--ease);
+  border: 1px solid var(--border-light);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.user-playlist-card:hover {
+.user-playlist-card-row:hover {
   background: var(--color-accent-soft);
-  border-color: rgba(124, 140, 110, 0.3);
-  transform: translateY(-2px);
+  border-color: rgba(124, 140, 110, 0.4);
+  transform: translateY(-1px);
 }
 
 .card-cover-wrap {
   position: relative;
   width: 44px;
   height: 44px;
+  border-radius: 6px;
+  overflow: hidden;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .pl-cover {
   width: 100%;
   height: 100%;
-  border-radius: 6px;
   object-fit: cover;
+  display: block;
 }
 
-.pl-loading-tag {
+.pl-play-hover-icon {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.45);
   color: white;
-  font-size: 0.6rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  font-size: 0.82rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.user-playlist-card-row:hover .pl-play-hover-icon {
+  opacity: 1;
+}
+
+.pl-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner-mini {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
 .pl-info {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 
 .pl-name {
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.82rem;
+  font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
@@ -1609,13 +1884,33 @@ watch(isExpanded, (val) => {
   color: var(--color-text-lighter);
 }
 
+.pl-load-btn {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-accent);
+  background: white;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.pl-load-btn:hover {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
 /* ── 底部控制栏 ── */
 .controls-deck {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 12px;
+  padding-top: 14px;
   border-top: 1px solid var(--border-light);
+  margin-top: 4px;
 }
 
 .control-icon-btn {
@@ -1626,6 +1921,9 @@ watch(isExpanded, (val) => {
   justify-content: center;
   border-radius: 50%;
   color: var(--color-text-light);
+  background: transparent;
+  border: none;
+  cursor: pointer;
   transition: all 0.25s var(--ease-spring);
 }
 
@@ -1635,32 +1933,52 @@ watch(isExpanded, (val) => {
   transform: scale(1.12);
 }
 
+.control-icon-btn.mode-btn {
+  color: var(--color-text-lighter);
+}
+
+.control-icon-btn.mode-btn:hover {
+  color: var(--color-accent);
+}
+
 .main-play-btn {
-  width: 52px;
-  height: 52px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: var(--color-accent);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px var(--color-accent-glow-strong);
-  transition: all 0.3s var(--ease-spring);
+  box-shadow: 0 6px 20px var(--color-accent-glow-strong);
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-spring);
 }
 
 .main-play-btn:hover {
   transform: scale(1.08);
   background: var(--color-accent-dark);
+  box-shadow: 0 8px 24px var(--color-accent-glow-strong);
+}
+
+.main-play-btn:active {
+  transform: scale(0.95);
 }
 
 .volume-box {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+}
+
+.vol-btn {
+  width: 30px;
+  height: 30px;
 }
 
 .volume-slider {
-  width: 65px;
+  width: 60px;
   height: 4px;
   -webkit-appearance: none;
   background: var(--color-bg-alt);
@@ -2431,10 +2749,19 @@ watch(isExpanded, (val) => {
     padding: 6px 10px 6px 6px;
   }
   .capsule-info { max-width: 85px; }
-  .player-card { padding: 18px; }
-  .turntable-deck { width: 170px; height: 170px; }
-  .vinyl-record { width: 160px; height: 160px; }
+  .player-card { padding: 16px; max-width: 92vw; }
+  .turntable-deck { width: 180px; height: 175px; }
+  .turntable-platter { width: 164px; height: 164px; }
+  .vinyl-record { width: 154px; height: 154px; }
+  .g-1 { width: 130px; height: 130px; }
+  .g-2 { width: 104px; height: 104px; }
+  .g-3 { width: 80px; height: 80px; }
+  .vinyl-label { width: 62px; height: 62px; }
+  .tonearm-assembly { width: 50px; height: 100px; transform-origin: 38px 12px; }
+  .arm-tube { height: 70px; }
+  .arm-rest-post { top: 12px; right: 30px; }
   .volume-slider { width: 45px; }
-  .user-playlists-grid { grid-template-columns: 1fr; }
+  .tab-btn { font-size: 0.7rem; padding: 5px 2px; }
+  .station-title { max-width: 100px; }
 }
 </style>

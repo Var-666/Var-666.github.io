@@ -8,6 +8,7 @@ import {
 } from '@/services/neteaseApi'
 
 export type PlaybackStatus = 'idle' | 'resolving' | 'loading' | 'playing' | 'paused' | 'error'
+export type PlayMode = 'sequence' | 'loop-one' | 'shuffle'
 
 // ── 全局单例响应式状态 ──
 const playlist = ref<Track[]>([...INITIAL_PLAYLIST])
@@ -19,6 +20,7 @@ const duration = ref(INITIAL_PLAYLIST[0]?.duration || 312)
 const volume = ref(1.0)
 const isMuted = ref(false)
 const isExpanded = ref(false)
+const playMode = ref<PlayMode>('sequence')
 
 // 明确的状态机与错误状态
 const playbackStatus = ref<PlaybackStatus>('idle')
@@ -73,7 +75,7 @@ function initAudioEngine() {
   })
 
   audioEl.addEventListener('ended', () => {
-    nextTrack()
+    handleTrackEnded()
   })
 
   audioEl.addEventListener('playing', () => {
@@ -352,12 +354,57 @@ function selectTrack(index: number, autoPlay = true) {
   }
 }
 
+function togglePlayMode() {
+  if (playMode.value === 'sequence') {
+    playMode.value = 'loop-one'
+  } else if (playMode.value === 'loop-one') {
+    playMode.value = 'shuffle'
+  } else {
+    playMode.value = 'sequence'
+  }
+}
+
+function getRandomTrackIndex(): number {
+  if (playlist.value.length <= 1) return 0
+  let nextIdx = Math.floor(Math.random() * playlist.value.length)
+  if (nextIdx === currentTrackIndex.value) {
+    nextIdx = (nextIdx + 1) % playlist.value.length
+  }
+  return nextIdx
+}
+
+function handleTrackEnded() {
+  if (playMode.value === 'loop-one') {
+    seek(0)
+    play()
+    return
+  }
+  if (playMode.value === 'shuffle') {
+    const nextIdx = getRandomTrackIndex()
+    selectTrack(nextIdx, true)
+    return
+  }
+  nextTrack()
+}
+
 function nextTrack() {
+  if (playlist.value.length === 0) return
+  if (playMode.value === 'shuffle') {
+    const nextIdx = getRandomTrackIndex()
+    selectTrack(nextIdx, true)
+    return
+  }
   const nextIdx = (currentTrackIndex.value + 1) % playlist.value.length
   selectTrack(nextIdx, true)
 }
 
 function prevTrack() {
+  if (playlist.value.length === 0) return
+  if (playMode.value === 'shuffle') {
+    const prevIdx = getRandomTrackIndex()
+    selectTrack(prevIdx, true)
+    return
+  }
   const prevIdx = (currentTrackIndex.value - 1 + playlist.value.length) % playlist.value.length
   selectTrack(prevIdx, true)
 }
@@ -584,5 +631,7 @@ export function useAudioPlayer() {
     searchMusic,
     playSearchResult,
     setPlaylist,
+    playMode,
+    togglePlayMode,
   }
 }
