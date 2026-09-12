@@ -281,8 +281,6 @@ function triggerItem(item: any) {
   background: #19211e;
   overflow: hidden;
   user-select: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* 全屏沉浸模式 */

@@ -41,7 +41,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section id="skills" class="section section-alt" ref="sectionRef">
+  <section id="skills" class="section" ref="sectionRef">
     <div class="container">
       <div class="section-header reveal">
         <h2 class="section-title">技能与工具</h2>
@@ -75,10 +75,40 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- 波浪过渡至林中小屋夜幕 -->
+    <div class="skills-wave">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 72" preserveAspectRatio="none">
+        <path d="M0,36 C240,72 480,0 720,36 C960,72 1200,0 1440,36 L1440,72 L0,72 Z" fill="#19211e"/>
+      </svg>
+    </div>
   </section>
 </template>
 
 <style scoped>
+#skills {
+  background-color: var(--color-bg);
+  position: relative;
+  padding-bottom: calc(var(--section-padding) + 36px);
+}
+
+/* 波浪过渡 */
+.skills-wave {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  pointer-events: none;
+  line-height: 0;
+}
+
+.skills-wave svg {
+  width: 100%;
+  height: 72px;
+  display: block;
+}
+
 .skill-groups {
   display: flex;
   flex-direction: column;

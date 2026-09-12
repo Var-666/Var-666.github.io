@@ -58,12 +58,6 @@ onMounted(async () => {
 
 <template>
   <section id="contact" class="section section-dark" ref="sectionRef">
-    <!-- 波浪过渡分隔 -->
-    <div class="contact-wave">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 72" preserveAspectRatio="none">
-        <path d="M0,36 C240,0 480,72 720,36 C960,0 1200,72 1440,36 L1440,0 L0,0 Z" fill="#F5F0EB"/>
-      </svg>
-    </div>
     <div class="container">
       <div class="section-header reveal">
         <h2 class="section-title">与我联系</h2>
@@ -195,21 +189,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* 波浪分隔 */
-.contact-wave {
-  position: absolute;
-  top: -1px;
-  left: 0;
-  right: 0;
-  z-index: 1;
-  pointer-events: none;
-  line-height: 0;
-}
-
-.contact-wave svg {
-  width: 100%;
-  height: 72px;
-  display: block;
+/* 联系区夜色平滑延续与沉浸渐变 */
+#contact.section-dark {
+  background: linear-gradient(180deg, #19211e 0%, #221d19 28%, #2C2621 70%);
+  position: relative;
 }
 
 .contact-grid {
