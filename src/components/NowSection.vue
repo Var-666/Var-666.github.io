@@ -79,7 +79,7 @@ onMounted(async () => {
     <div class="container">
       <!-- 标题 -->
       <div class="section-header reveal">
-        <span class="section-index">( 02 ) 此时此刻 · NOW</span>
+        <span class="section-index">此时此刻 · NOW</span>
         <h2 class="section-title">活在当下的呼吸感</h2>
         <p class="section-subtitle">
           受 Derek Sivers 的 /now 理念启发 · 记录我当前的实时状态与近况足迹

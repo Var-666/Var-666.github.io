@@ -116,12 +116,12 @@ function triggerItem(item: any) {
       <div class="header-brand">
         <span class="brand-icon">🌲</span>
         <div class="brand-text-group">
-          <span class="brand-title">My Little Web</span>
-          <span class="brand-sub">EXPLORE · DISCOVER · LEARN · BUILD</span>
+          <span class="brand-title">var's Cabin</span>
+          <span class="brand-sub">EXPLORE · CREATE · IMAGINE</span>
         </div>
       </div>
       <div class="header-actions">
-        <span class="header-quote">"A more curious internet."</span>
+        <span class="header-quote">在代码与自然之间漫步</span>
         <button class="fullscreen-toggle-btn" @click="toggleFullscreen" title="切换全屏沉浸模式">
           <svg v-if="!isFullscreen" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
@@ -768,6 +768,11 @@ function triggerItem(item: any) {
 }
 
 @media (max-width: 900px) {
+  .cabin-section {
+    height: min(520px, 65vh);
+    touch-action: pan-y;
+  }
+
   .cabin-controls-hint {
     display: none;
   }

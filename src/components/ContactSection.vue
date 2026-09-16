@@ -16,10 +16,8 @@ interface SocialLink {
 }
 
 const socialLinks: SocialLink[] = [
-  { name: 'GitHub', icon: 'GH', href: '#', color: '#333' },
+  { name: 'GitHub', icon: 'GH', href: 'https://github.com/Var-666', color: '#333' },
   { name: '邮箱', icon: '✉', href: 'mailto:hello@vardev.cc', color: '#7C8C6E' },
-  { name: '微信', icon: 'WX', href: '#', color: '#07C160' },
-  { name: '掘金', icon: 'JJ', href: '#', color: '#1E80FF' },
 ]
 
 const formData = ref({

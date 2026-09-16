@@ -439,7 +439,8 @@ function scrollToAbout() {
 }
 
 @media (max-width: 480px) {
-  .hero-name { font-size: 3rem; }
+  .hero-name { font-size: clamp(2.5rem, 12vw, 3rem); }
   .hero-title { font-size: 0.9rem; }
+  .scroll-indicator { bottom: max(24px, env(safe-area-inset-bottom, 16px)); }
 }
 </style>

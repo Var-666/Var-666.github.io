@@ -94,7 +94,30 @@ onMounted(async () => {
           <div class="avatar-frame">
             <div class="avatar-placeholder">
               <div class="avatar-inner">
-                <span class="avatar-char">V</span>
+                <svg viewBox="0 0 48 48" width="100%" height="100%" class="avatar-svg">
+                  <!-- 背景圆 -->
+                  <circle cx="24" cy="24" r="24" fill="#3a5a6b" />
+                  <!-- 蓝色工装夹克领口与白衬衫 -->
+                  <path d="M10 44 C10 35, 17 33, 24 33 C31 33, 38 35, 38 44 Z" fill="#253545" />
+                  <path d="M14 44 C14 36, 18 34, 24 34 C30 34, 34 36, 34 44 Z" fill="#4a738c" />
+                  <path d="M22 34 L24 37 L26 34 Z" fill="#ffffff" />
+                  <!-- 小人脸蛋 -->
+                  <circle cx="24" cy="24" r="10.5" fill="#ffd3b6" />
+                  <!-- 栗色刘海与鬓发 -->
+                  <path d="M15 21 Q19 25 24 20 Q29 25 33 21 Q30 14 24 14 Q18 14 15 21 Z" fill="#3d271d" />
+                  <!-- 萌系大眼睛 -->
+                  <circle cx="20.5" cy="23.5" r="1.5" fill="#1e272e" />
+                  <circle cx="27.5" cy="23.5" r="1.5" fill="#1e272e" />
+                  <!-- 脸颊红晕 -->
+                  <ellipse cx="18.5" cy="26.5" rx="2.2" ry="1.2" fill="#ff7979" opacity="0.65" />
+                  <ellipse cx="29.5" cy="26.5" rx="2.2" ry="1.2" fill="#ff7979" opacity="0.65" />
+                  <!-- 微笑小嘴 -->
+                  <path d="M22 26.5 Q24 28.5 26 26.5" stroke="#b33939" stroke-width="1.2" stroke-linecap="round" fill="none" />
+                  <!-- 标志性深红便帽 (Red Beanie) -->
+                  <path d="M12 18 C12 8, 36 8, 36 18 Z" fill="#bd2a2a" />
+                  <!-- 便帽卷边厚圈 -->
+                  <rect x="11" y="16" width="26" height="4.5" rx="2.2" fill="#9e2020" />
+                </svg>
               </div>
             </div>
             <!-- 脉冲光环 -->
