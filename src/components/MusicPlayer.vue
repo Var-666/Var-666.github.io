@@ -326,9 +326,11 @@ watch(activeTab, (tab) => {
               </button>
             </div>
           </div>
-
-          <!-- TAB 1: 唱机主视角 (Player View) -->
-          <div v-show="activeTab === 'player'" class="tab-view-player">
+          <!-- Tab 内容区域容器 (统一高度 + 平滑过渡) -->
+          <div class="tab-views-container">
+            <!-- TAB 1: 唱机主视角 (Player View) -->
+            <Transition name="tab-fade" mode="out-in">
+            <div v-if="activeTab === 'player'" key="player" class="tab-view-player">
             <div class="turntable-deck">
               <!-- 底盘与黑胶唱片 -->
               <div class="turntable-platter">
@@ -409,9 +411,11 @@ watch(activeTab, (tab) => {
               </div>
             </div>
           </div>
+          </Transition>
 
           <!-- TAB 2: 在线搜歌视角 (Search View) -->
-          <div v-show="activeTab === 'search'" class="tab-view-search">
+          <Transition name="tab-fade" mode="out-in">
+          <div v-if="activeTab === 'search'" key="search" class="tab-view-search">
             <div class="search-input-box">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
                 <circle cx="11" cy="11" r="8" />
@@ -483,9 +487,11 @@ watch(activeTab, (tab) => {
               </div>
             </div>
           </div>
+          </Transition>
 
           <!-- TAB 3: 当前播放列表视角 (Playlist View) -->
-          <div v-show="activeTab === 'playlist'" class="tab-view-playlist">
+          <Transition name="tab-fade" mode="out-in">
+          <div v-if="activeTab === 'playlist'" key="playlist" class="tab-view-playlist">
             <div class="playlist-header">
               <span>当前播放列表 ({{ playlist.length }} 首)</span>
               <span class="playlist-hint">支持自动顺次连播</span>
@@ -512,9 +518,11 @@ watch(activeTab, (tab) => {
               </div>
             </div>
           </div>
+          </Transition>
 
-          <!-- TAB 4: 站长精选公开歌单 (User Playlists View - 优雅单列防溢出) -->
-          <div v-show="activeTab === 'user-playlists'" class="tab-view-user-playlists">
+          <!-- TAB 4: 站长精选公开歌单 (User Playlists View) -->
+          <Transition name="tab-fade" mode="out-in">
+          <div v-if="activeTab === 'user-playlists'" key="user-playlists" class="tab-view-user-playlists">
             <div class="playlist-header">
               <span>{{ stationUser.nickname }} 的精选公开歌单 ({{ userPlaylists.length }})</span>
               <span class="playlist-hint">点击载入整张歌单播放</span>
@@ -543,6 +551,8 @@ watch(activeTab, (tab) => {
                 </button>
               </div>
             </div>
+          </div>
+          </Transition>
           </div>
 
           <!-- 底部控制栏 (在所有 Tab 下常驻) -->
@@ -715,20 +725,20 @@ watch(activeTab, (tab) => {
   gap: 12px;
   padding: 6px 14px 6px 6px;
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px) saturate(1.3);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-full);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   cursor: pointer;
   transition: all 0.35s var(--ease-spring);
   user-select: none;
 }
 
 .player-capsule:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   border-color: rgba(124, 140, 110, 0.4);
-  box-shadow: 0 12px 36px var(--color-accent-glow);
+  box-shadow: 0 14px 40px var(--color-accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .capsule-vinyl {
@@ -898,6 +908,7 @@ watch(activeTab, (tab) => {
 .player-card {
   width: 100%;
   max-width: 460px;
+  max-height: 90vh;
   padding: 22px;
   position: relative;
   background: var(--color-bg);
@@ -906,6 +917,7 @@ watch(activeTab, (tab) => {
   box-shadow: 0 24px 64px -12px rgba(44, 38, 33, 0.25);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* ── 顶栏套件：双层结构 (Dual-tier Header Suite) ── */
@@ -913,7 +925,8 @@ watch(activeTab, (tab) => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 2px;
 }
 
 .header-identity-row {
@@ -1068,6 +1081,7 @@ watch(activeTab, (tab) => {
 
 .tab-btn:hover {
   color: var(--color-text);
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .tab-btn.active {
@@ -1079,6 +1093,30 @@ watch(activeTab, (tab) => {
 
 .tab-btn.highlight {
   color: var(--color-accent);
+}
+
+/* ── Tab 内容区域容器 ── */
+.tab-views-container {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Tab 切换淡入淡出过渡 */
+.tab-fade-enter-active {
+  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+.tab-fade-leave-active {
+  transition: opacity 0.15s var(--ease), transform 0.15s var(--ease);
+}
+.tab-fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.tab-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 /* ── 拟物黑胶唱机 (Authentic Turntable) ── */
@@ -1395,36 +1433,71 @@ watch(activeTab, (tab) => {
 
 .progress-bar-container {
   width: 100%;
-  height: 6px;
-  background: var(--color-bg-alt);
-  border-radius: var(--radius-full);
+  height: 20px;
+  display: flex;
+  align-items: center;
   cursor: pointer;
   position: relative;
-  overflow: hidden;
+}
+
+.progress-bar-container::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--color-bg-alt);
+  border-radius: var(--radius-full);
 }
 
 .progress-fill-bar {
-  height: 100%;
-  background: var(--color-accent);
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-light));
   border-radius: var(--radius-full);
   position: relative;
   transition: width 0.1s linear;
+  z-index: 1;
+}
+
+.progress-thumb {
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%) scale(0);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 2px 6px var(--color-accent-glow);
+  transition: transform 0.2s var(--ease-spring);
+}
+
+.progress-bar-container:hover .progress-thumb {
+  transform: translateY(-50%) scale(1);
+}
+
+.progress-bar-container:hover .progress-fill-bar {
+  height: 5px;
 }
 
 .time-labels {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--color-text-lighter);
-  margin-top: 6px;
+  margin-top: 4px;
+  letter-spacing: 0.02em;
 }
 
 /* ── TAB 2: 在线搜歌界面 ── */
 .tab-view-search {
   display: flex;
   flex-direction: column;
-  height: 330px;
+  min-height: 320px;
+  max-height: 380px;
 }
 
 .search-input-box {
@@ -1567,12 +1640,14 @@ watch(activeTab, (tab) => {
   border-radius: var(--radius-sm);
   background: var(--color-bg-alt);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.22s var(--ease);
+  border-left: 3px solid transparent;
 }
 
 .search-item:hover {
   background: var(--color-accent-soft);
-  transform: translateX(3px);
+  border-left-color: var(--color-accent);
+  transform: translateX(2px);
 }
 
 .item-thumb {
@@ -1647,7 +1722,8 @@ watch(activeTab, (tab) => {
 .tab-view-playlist {
   display: flex;
   flex-direction: column;
-  height: 330px;
+  min-height: 320px;
+  max-height: 380px;
 }
 
 .playlist-header {
@@ -1681,16 +1757,19 @@ watch(activeTab, (tab) => {
   border-radius: var(--radius-sm);
   background: var(--color-bg-alt);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.22s var(--ease);
+  border-left: 3px solid transparent;
 }
 
 .playlist-row:hover {
   background: var(--color-accent-soft);
+  border-left-color: rgba(124, 140, 110, 0.3);
+  transform: translateX(2px);
 }
 
 .playlist-row.active {
   background: var(--color-accent-soft);
-  border-left: 3px solid var(--color-accent);
+  border-left-color: var(--color-accent);
 }
 
 .row-cover {
@@ -1765,7 +1844,8 @@ watch(activeTab, (tab) => {
 .tab-view-user-playlists {
   display: flex;
   flex-direction: column;
-  height: 330px;
+  min-height: 320px;
+  max-height: 380px;
 }
 
 .user-playlists-scroll-area {
@@ -1908,9 +1988,10 @@ watch(activeTab, (tab) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 14px;
+  padding: 16px 4px 2px;
   border-top: 1px solid var(--border-light);
-  margin-top: 4px;
+  margin-top: 6px;
+  gap: 4px;
 }
 
 .control-icon-btn {
@@ -1925,12 +2006,17 @@ watch(activeTab, (tab) => {
   border: none;
   cursor: pointer;
   transition: all 0.25s var(--ease-spring);
+  flex-shrink: 0;
 }
 
 .control-icon-btn:hover {
   color: var(--color-accent);
   background: var(--color-accent-soft);
   transform: scale(1.12);
+}
+
+.control-icon-btn:active {
+  transform: scale(0.95);
 }
 
 .control-icon-btn.mode-btn {
@@ -1942,8 +2028,8 @@ watch(activeTab, (tab) => {
 }
 
 .main-play-btn {
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background: var(--color-accent);
   color: white;
@@ -1954,22 +2040,23 @@ watch(activeTab, (tab) => {
   border: none;
   cursor: pointer;
   transition: all 0.25s var(--ease-spring);
+  flex-shrink: 0;
 }
 
 .main-play-btn:hover {
   transform: scale(1.08);
   background: var(--color-accent-dark);
-  box-shadow: 0 8px 24px var(--color-accent-glow-strong);
+  box-shadow: 0 8px 28px var(--color-accent-glow-strong);
 }
 
 .main-play-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
 }
 
 .volume-box {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .vol-btn {
@@ -2724,22 +2811,30 @@ watch(activeTab, (tab) => {
 /* 进出过渡 */
 .capsule-fade-enter-active,
 .capsule-fade-leave-active {
-  transition: all 0.3s var(--ease);
+  transition: all 0.35s var(--ease);
 }
-.capsule-fade-enter-from,
+.capsule-fade-enter-from {
+  opacity: 0;
+  transform: translateY(24px) scale(0.88);
+}
 .capsule-fade-leave-to {
   opacity: 0;
-  transform: translateY(20px) scale(0.9);
+  transform: translateY(16px) scale(0.92);
 }
 
-.modal-pop-enter-active,
-.modal-pop-leave-active {
-  transition: all 0.35s var(--ease-spring);
+.modal-pop-enter-active {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
 }
-.modal-pop-enter-from,
+.modal-pop-leave-active {
+  transition: all 0.25s var(--ease);
+}
+.modal-pop-enter-from {
+  opacity: 0;
+  transform: scale(0.88) translateY(20px);
+}
 .modal-pop-leave-to {
   opacity: 0;
-  transform: scale(0.92);
+  transform: scale(0.94) translateY(10px);
 }
 
 @media (max-width: 600px) {
@@ -2763,5 +2858,13 @@ watch(activeTab, (tab) => {
   .volume-slider { width: 45px; }
   .tab-btn { font-size: 0.7rem; padding: 5px 2px; }
   .station-title { max-width: 100px; }
+  .tab-views-container { min-height: 280px; }
+  .tab-view-search,
+  .tab-view-playlist,
+  .tab-view-user-playlists {
+    min-height: 280px;
+    max-height: 50vh;
+  }
+  .main-play-btn { width: 46px; height: 46px; }
 }
 </style>
