@@ -58,6 +58,14 @@ const {
   isInstrumental,
 } = useLyrics()
 
+const currentActiveLyricText = computed(() => {
+  if (isLoadingLyrics.value) return '正在获取歌词...'
+  if (isInstrumental.value) return '♪ 纯音乐 · 静心沉浸聆听'
+  if (!currentLyrics.value || currentLyrics.value.length === 0) return '纯净律动 · 随音符漫步'
+  const activeLine = currentLyrics.value[currentLineIndex.value]
+  return activeLine?.text || '自然回响 · 诗意流淌'
+})
+
 // ── 播放器导航标签 ──
 export type ConsoleTab = 'player' | 'lyrics' | 'search' | 'playlist' | 'user-playlists'
 const activeTab = ref<ConsoleTab>('player')
@@ -347,16 +355,16 @@ onUnmounted(() => {
 <template>
   <div class="artisan-music-scope">
     <!-- ══════════════════════════════════════════════════════ -->
-    <!-- 1. 悬浮精致唱片徽章胶囊 (Floating Vinyl Capsule)         -->
+    <!-- 1. 悬浮釉面陶瓷小骨牌胶囊 (Ceramic Domino Capsule)       -->
     <!-- ══════════════════════════════════════════════════════ -->
     <Transition name="capsule-pop">
       <div
         v-if="!isExpanded"
-        class="artisan-capsule"
+        class="ceramic-capsule-domino"
         @click="toggleExpand"
-        title="展开沉浸式黑胶唱机与歌词"
+        title="展开陶瓷瓷砖黑胶唱机与歌词"
       >
-        <!-- 实体黑胶唱片微型滑出效果 -->
+        <!-- 实体黑胶微型唱套与探出小唱片 -->
         <div class="capsule-sleeve">
           <img :src="currentTrack.coverUrl" alt="cover" class="capsule-sleeve-cover" />
           <div class="capsule-mini-disc" :class="{ spinning: isPlaying }">
@@ -373,7 +381,7 @@ onUnmounted(() => {
           <span class="capsule-artist">{{ currentTrack.artist }}</span>
         </div>
 
-        <!-- 莫兰迪绿声波微动条 -->
+        <!-- 莫兰迪绿微波条 -->
         <div class="capsule-pulse-wave">
           <span class="p-bar pb-1" :class="{ play: isPlaying }"></span>
           <span class="p-bar pb-2" :class="{ play: isPlaying }"></span>
@@ -399,13 +407,13 @@ onUnmounted(() => {
     </Transition>
 
     <!-- ══════════════════════════════════════════════════════ -->
-    <!-- 2. 展开态沉浸式艺术唱机 (Artisan Studio Player)          -->
+    <!-- 2. 展开态：釉面陶瓷砖 Bento 网格唱机 (Ceramic Bento Deck)-->
     <!-- ══════════════════════════════════════════════════════ -->
     <Transition name="studio-fade">
       <div v-if="isExpanded" class="studio-scrim" @click.self="toggleExpand">
-        <div class="artisan-player-card">
-          <!-- ── 顶栏：电台认证与优雅导航 ── -->
-          <div class="artisan-header-suite">
+        <div class="ceramic-mosaic-tray">
+          <!-- ── 瓷砖 01: 顶栏电台与导航瓷片 (Nav Header Tile) ── -->
+          <div class="ceramic-tile tile-header">
             <div class="station-meta-row">
               <div
                 class="station-capsule-chip"
@@ -419,13 +427,13 @@ onUnmounted(() => {
                 <div class="chip-text-wrap">
                   <div class="chip-title">
                     <span class="nick">{{ stationUser.nickname }}</span>
-                    <span class="station-mark">音乐空间</span>
+                    <span class="station-mark">陶瓷工坊</span>
                   </div>
                   <span class="sub">{{ userPlaylists.length }} 张精选歌单 · 诗意流淌</span>
                 </div>
               </div>
 
-              <button class="studio-close-pill" @click="toggleExpand" aria-label="收起播放器">
+              <button class="ceramic-close-btn" @click="toggleExpand" aria-label="收起播放器">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
@@ -433,17 +441,17 @@ onUnmounted(() => {
               </button>
             </div>
 
-            <!-- 雅致分段选项卡 (Sliding Indicator Tabs) -->
-            <div class="artisan-nav-bar">
+            <!-- 釉面分段选项卡 -->
+            <div class="ceramic-nav-tabs">
               <button
-                class="artisan-tab"
+                class="ceramic-tab"
                 :class="{ active: activeTab === 'player' }"
                 @click="activeTab = 'player'"
               >
-                唱盘
+                唱机
               </button>
               <button
-                class="artisan-tab"
+                class="ceramic-tab"
                 :class="{ active: activeTab === 'lyrics' }"
                 @click="activeTab = 'lyrics'"
               >
@@ -451,21 +459,21 @@ onUnmounted(() => {
                 <span v-if="hasLyrics" class="lyrics-live-pip"></span>
               </button>
               <button
-                class="artisan-tab"
+                class="ceramic-tab"
                 :class="{ active: activeTab === 'search' }"
                 @click="activeTab = 'search'"
               >
                 搜歌
               </button>
               <button
-                class="artisan-tab"
+                class="ceramic-tab"
                 :class="{ active: activeTab === 'playlist' }"
                 @click="activeTab = 'playlist'"
               >
                 队列 ({{ playlist.length }})
               </button>
               <button
-                class="artisan-tab highlight"
+                class="ceramic-tab highlight"
                 :class="{ active: activeTab === 'user-playlists' }"
                 @click="activeTab = 'user-playlists'"
               >
@@ -474,102 +482,117 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- ── 中部主舞台 (Main Interactive Viewport) ── -->
-          <div class="artisan-body-viewport">
-            <!-- 视角 01: 实体黑胶唱片封套交互 (Vinyl Sleeve & Record Experience) -->
-            <div v-if="activeTab === 'player'" class="view-player-deck">
-              <!-- 核心唱片封套联动舞台 -->
+          <!-- ── 中部主视口：Bento 瓷砖拼贴或专用视窗 ── -->
+          <div class="ceramic-body-viewport">
+            <!-- 视角 01: Bento 瓷砖拼贴 (Ceramic Bento Grid) -->
+            <div v-if="activeTab === 'player'" class="ceramic-bento-grid">
+              <!-- Bento Tile 1: 实体黑胶唱片瓷片 (Vinyl Master Tile) -->
               <div
-                class="sleeve-disc-stage"
+                class="ceramic-tile tile-vinyl"
                 @click="activeTab = 'lyrics'"
-                title="点击封套或唱片翻转至歌词视窗"
+                title="点击翻转至诗板歌词视窗"
               >
-                <!-- 黑胶唱片本体 (从封套中滑出并旋转) -->
-                <div
-                  class="artisan-vinyl-disc"
-                  :class="{ playing: isPlaying }"
-                >
-                  <div class="disc-rotator" :class="{ spinning: isPlaying }">
-                    <div class="disc-groove dg-1"></div>
-                    <div class="disc-groove dg-2"></div>
-                    <div class="disc-groove dg-3"></div>
-                    <div class="disc-sheen"></div>
-                    <div class="disc-center-hub">
-                      <div class="hub-brass-spindle"></div>
+                <div class="tile-header-bar">
+                  <span class="tile-code-tag">VINYL // 01</span>
+                  <span class="tile-hint-action">歌词 ⇄</span>
+                </div>
+
+                <!-- 核心封套与唱片联动舞台 -->
+                <div class="sleeve-disc-stage">
+                  <div
+                    class="artisan-vinyl-disc"
+                    :class="{ playing: isPlaying }"
+                  >
+                    <div class="disc-rotator" :class="{ spinning: isPlaying }">
+                      <div class="disc-groove dg-1"></div>
+                      <div class="disc-groove dg-2"></div>
+                      <div class="disc-groove dg-3"></div>
+                      <div class="disc-sheen"></div>
+                      <div class="disc-center-hub">
+                        <div class="hub-brass-spindle"></div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <!-- 实体方形黑胶封套 (Physical Album Jacket) -->
-                <div class="artisan-album-sleeve">
-                  <img :src="currentTrack.coverUrl" alt="album cover" class="sleeve-artwork" />
-                  <div class="sleeve-paper-spine"></div>
-                  <div class="sleeve-edge-sheen"></div>
-                  <div class="sleeve-pocket-shadow"></div>
-                </div>
-
-                <!-- 交互悬浮提示 -->
-                <div class="sleeve-interaction-tip">
-                  <span>查看歌词 ⇄</span>
+                  <div class="artisan-album-sleeve">
+                    <img :src="currentTrack.coverUrl" alt="album cover" class="sleeve-artwork" />
+                    <div class="sleeve-paper-spine"></div>
+                    <div class="sleeve-edge-sheen"></div>
+                    <div class="sleeve-pocket-shadow"></div>
+                  </div>
                 </div>
               </div>
 
-              <!-- 曲目信息区域 -->
-              <div class="track-title-card">
-                <div class="title-with-pill">
+              <!-- Bento Tile 2: 旋律与声波瓷片 (Melody & Wave Tile) -->
+              <div class="ceramic-tile tile-melody-wave">
+                <div class="tile-header-bar">
+                  <span class="tile-code-tag">WAVE // 02</span>
+                  <span v-if="playbackStatus === 'resolving'" class="tile-status-tag resolving">● 解析中</span>
+                  <span v-else-if="playbackStatus === 'error'" class="tile-status-tag error">⚠️ 受阻</span>
+                  <span v-else-if="currentTrack.isTrial" class="tile-status-tag trial">30s 试听</span>
+                  <span v-else class="tile-status-tag full">完整全曲</span>
+                </div>
+
+                <div class="track-title-block">
                   <h3 class="track-hero-name" :title="currentTrack.title">{{ currentTrack.title }}</h3>
-                  <span v-if="playbackStatus === 'resolving'" class="artisan-tag resolving">
-                    ● 解析直链中
-                  </span>
-                  <span v-else-if="playbackStatus === 'error'" class="artisan-tag error" :title="playbackError">
-                    ⚠️ 播放受阻
-                  </span>
-                  <span v-else class="artisan-tag" :class="{ full: currentTrack.isFull, trial: currentTrack.isTrial }">
-                    {{ currentTrack.isTrial ? '◐ 试听采样 (30秒)' : (currentTrack.isFull ? '● 完整全曲' : '○ 试听采样') }}
-                  </span>
+                  <p class="track-author-line">{{ currentTrack.artist }} · 《{{ currentTrack.album }}》</p>
                 </div>
-                <p class="track-author-line">
-                  <span v-if="playbackStatus === 'error' && playbackError" class="err-text">{{ playbackError }}</span>
-                  <span v-else>{{ currentTrack.artist }} · 《{{ currentTrack.album }}》</span>
-                </p>
-              </div>
 
-              <!-- 莫兰迪自然流体频谱 Canvas -->
-              <div class="artisan-wave-box">
-                <canvas ref="canvasRef" class="artisan-wave-canvas"></canvas>
-              </div>
+                <!-- 莫兰迪自然流体声波 Canvas -->
+                <div class="artisan-wave-box">
+                  <canvas ref="canvasRef" class="artisan-wave-canvas"></canvas>
+                </div>
 
-              <!-- 精致细线交互进度条 -->
-              <div class="artisan-progress-module">
-                <div
-                  class="progress-touch-zone"
-                  @pointerdown="handleProgressPointerDown"
-                  @mousemove="handleProgressMouseMove"
-                  @mouseleave="handleProgressMouseLeave"
-                >
+                <!-- 细线拖拽进度条 -->
+                <div class="artisan-progress-module">
                   <div
-                    v-if="showHoverTooltip"
-                    class="progress-hover-bubble"
-                    :style="{ left: `${hoverTooltipX}px` }"
+                    class="progress-touch-zone"
+                    @pointerdown="handleProgressPointerDown"
+                    @mousemove="handleProgressMouseMove"
+                    @mouseleave="handleProgressMouseLeave"
                   >
-                    {{ formatTime(hoverPct * (duration || 180)) }}
+                    <div
+                      v-if="showHoverTooltip"
+                      class="progress-hover-bubble"
+                      :style="{ left: `${hoverTooltipX}px` }"
+                    >
+                      {{ formatTime(hoverPct * (duration || 180)) }}
+                    </div>
+
+                    <div class="progress-track-bg"></div>
+                    <div class="progress-track-fill" :style="{ width: `${progressPercent}%` }">
+                      <div class="progress-track-thumb" :class="{ dragging: isScrubbing, active: isPlaying }"></div>
+                    </div>
                   </div>
 
-                  <div class="progress-track-bg"></div>
-                  <div class="progress-track-fill" :style="{ width: `${progressPercent}%` }">
-                    <div class="progress-track-thumb" :class="{ dragging: isScrubbing, active: isPlaying }"></div>
+                  <div class="progress-time-row">
+                    <span class="time-elapsed">{{ formatTime(displayCurrentTime) }}</span>
+                    <span class="time-total">{{ formatTime(duration) }}</span>
                   </div>
                 </div>
+              </div>
 
-                <div class="progress-time-row">
-                  <span class="time-elapsed">{{ formatTime(displayCurrentTime) }}</span>
-                  <span class="time-total">{{ formatTime(duration) }}</span>
+              <!-- Bento Tile 3: 随行歌词速览瓷片 (Quick Lyric Glance Tile) -->
+              <div
+                class="ceramic-tile tile-lyric-glance"
+                @click="activeTab = 'lyrics'"
+                title="点击展开全屏陶瓷诗板"
+              >
+                <div class="glance-left-col">
+                  <span class="glance-pulse-dot" :class="{ pulsing: isPlaying }"></span>
+                  <span class="glance-caption">实时随行</span>
+                </div>
+                <div class="glance-center-text">
+                  <p class="glance-lyric-line">{{ currentActiveLyricText }}</p>
+                </div>
+                <div class="glance-right-col">
+                  <span class="glance-jump-pill">展开诗板 →</span>
                 </div>
               </div>
             </div>
 
-            <!-- 视角 02: 诗集式大字呼吸歌词视窗 (Poetic Lyrics) -->
-            <div v-else-if="activeTab === 'lyrics'" class="view-lyrics-deck">
+            <!-- 视角 02: 陶瓷诗板歌词全屏视窗 (Porcelain Poetry Tablet) -->
+            <div v-else-if="activeTab === 'lyrics'" class="ceramic-tile view-lyrics-deck">
               <div class="lyrics-zen-header">
                 <div class="zen-dot-group">
                   <span class="zen-dot" :class="{ pulsing: isPlaying }"></span>
@@ -625,7 +648,7 @@ onUnmounted(() => {
             </div>
 
             <!-- 视角 03: 曲库搜歌 (Search View) -->
-            <div v-else-if="activeTab === 'search'" class="view-search-deck">
+            <div v-else-if="activeTab === 'search'" class="ceramic-tile view-search-deck">
               <div class="search-input-capsule">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-lens-svg">
                   <circle cx="11" cy="11" r="8" />
@@ -690,7 +713,7 @@ onUnmounted(() => {
             </div>
 
             <!-- 视角 04: 当前队列 (Queue View) -->
-            <div v-else-if="activeTab === 'playlist'" class="view-queue-deck">
+            <div v-else-if="activeTab === 'playlist'" class="ceramic-tile view-queue-deck">
               <div class="queue-status-bar">
                 <span>播放列表 ({{ playlist.length }})</span>
                 <span class="queue-mode-tag">{{ playModeTitle }}</span>
@@ -717,7 +740,7 @@ onUnmounted(() => {
             </div>
 
             <!-- 视角 05: 站长精选公开歌单 (Curated Playlists View) -->
-            <div v-else-if="activeTab === 'user-playlists'" class="view-playlists-deck">
+            <div v-else-if="activeTab === 'user-playlists'" class="ceramic-tile view-playlists-deck">
               <div class="playlists-status-bar">
                 <span>{{ stationUser.nickname }} · 日常精选歌单 ({{ userPlaylists.length }})</span>
                 <span class="playlists-hint">点击载入整张歌单</span>
@@ -749,11 +772,11 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- ── 底部控制栏：陶瓷触感按键组 (Tactile Controls Deck) ── -->
-          <div class="artisan-controls-deck">
+          <!-- ── 瓷砖 03: 触控陶瓷控制台 (Tactile Ceramic Controls Tile) ── -->
+          <div class="ceramic-tile tile-controls">
             <!-- 播放模式切换 -->
             <button
-              class="artisan-btn btn-mode"
+              class="ceramic-btn btn-mode"
               @click="togglePlayMode"
               :title="`播放模式: ${playModeTitle}`"
             >
@@ -780,15 +803,15 @@ onUnmounted(() => {
             </button>
 
             <!-- 上一首 -->
-            <button class="artisan-btn" @click="prevTrack" title="上一首">
+            <button class="ceramic-btn" @click="prevTrack" title="上一首">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="19 20 9 12 19 4 19 20" />
                 <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2" />
               </svg>
             </button>
 
-            <!-- 主播放/暂停 (莫兰迪绿核心水滴按键) -->
-            <button class="artisan-play-master" @click="togglePlay" :aria-label="isPlaying ? '暂停' : '播放'">
+            <!-- 主播放/暂停 (莫兰迪绿釉面水滴凸起大按键) -->
+            <button class="ceramic-play-master" @click="togglePlay" :aria-label="isPlaying ? '暂停' : '播放'">
               <span v-if="isLoading" class="master-spinner"></span>
               <svg v-else-if="!isPlaying" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="6 3 20 12 6 21 6 3" />
@@ -800,15 +823,15 @@ onUnmounted(() => {
             </button>
 
             <!-- 下一首 -->
-            <button class="artisan-btn" @click="nextTrack" title="下一首">
+            <button class="ceramic-btn" @click="nextTrack" title="下一首">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 4 15 12 5 20 5 4" />
                 <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" />
               </svg>
             </button>
 
-            <!-- 音量推子模块 -->
-            <div class="artisan-volume-bay">
+            <!-- 嵌入式陶瓷音量推子槽 -->
+            <div class="ceramic-volume-groove">
               <button class="volume-mute-toggle" @click="toggleMute" title="静音切换">
                 <svg v-if="isMuted || volume === 0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
@@ -825,7 +848,7 @@ onUnmounted(() => {
                 min="0"
                 max="100"
                 :value="isMuted ? 0 : volume * 100"
-                class="artisan-slider-input"
+                class="ceramic-slider-input"
                 @input="handleVolumeChange"
                 title="音量调节"
               />
@@ -840,7 +863,7 @@ onUnmounted(() => {
     <!-- ══════════════════════════════════════════════════════ -->
     <Transition name="diag-fade">
       <div v-if="showNeteaseModal" class="diag-scrim-mask" @click.self="showNeteaseModal = false">
-        <div class="diag-porcelain-card">
+        <div class="ceramic-tile diag-porcelain-card">
           <div class="diag-top-bar">
             <div class="diag-title-row">
               <span class="diag-tea">🍵</span>
@@ -884,11 +907,11 @@ onUnmounted(() => {
 
 <style scoped>
 /* ═══════════════════════════════════════════════════════════════
-   ARTISAN WABI-SABI MUSIC PLAYER — 侘寂大地自然美学设计系统
+   GLAZED CERAMIC TILE & BENTO GRID PLAYER — 釉面陶瓷砖拼贴设计系统
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── 1. 悬浮精致唱片胶囊 (Floating Capsule) ── */
-.artisan-capsule {
+/* ── 1. 悬浮釉面陶瓷骨牌胶囊 (Ceramic Domino Capsule) ── */
+.ceramic-capsule-domino {
   position: fixed;
   left: 24px;
   bottom: 28px;
@@ -897,28 +920,43 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   padding: 8px 14px 8px 10px;
-  background: #FAF7F2;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAF6F0 60%, #EFE8DE 100%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
   box-shadow:
-    0 16px 38px -6px rgba(44, 38, 33, 0.18),
-    0 4px 12px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.95),
+    inset -1.5px -1.5px 3px rgba(44, 38, 33, 0.08),
+    0 18px 40px -6px rgba(44, 38, 33, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.04);
   cursor: pointer;
   transition: all 0.3s var(--ease-spring);
   user-select: none;
+  position: fixed;
+  overflow: hidden;
 }
 
-.artisan-capsule:hover {
+.ceramic-capsule-domino::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, transparent 100%);
+  pointer-events: none;
+  border-radius: 24px 24px 0 0;
+}
+
+.ceramic-capsule-domino:hover {
   transform: translateY(-3px) scale(1.02);
   box-shadow:
-    0 22px 46px -6px rgba(44, 38, 33, 0.24),
-    0 6px 18px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 #FFFFFF;
-  border-color: rgba(124, 140, 110, 0.45);
+    inset 1.5px 1.5px 2px #FFFFFF,
+    inset -1.5px -1.5px 3px rgba(44, 38, 33, 0.06),
+    0 24px 48px -6px rgba(44, 38, 33, 0.25),
+    0 6px 16px rgba(0, 0, 0, 0.06);
+  border-color: rgba(124, 140, 110, 0.4);
 }
 
-/* 唱片微型滑出效果 */
 .capsule-sleeve {
   position: relative;
   width: 36px;
@@ -955,7 +993,7 @@ onUnmounted(() => {
   animation-play-state: paused;
 }
 
-.artisan-capsule:hover .capsule-mini-disc {
+.ceramic-capsule-domino:hover .capsule-mini-disc {
   left: 18px;
 }
 
@@ -976,13 +1014,12 @@ onUnmounted(() => {
   border: 1px solid #FAF7F2;
 }
 
-/* 胶囊文本 */
 .capsule-text-col {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  max-width: 140px;
+  max-width: 135px;
 }
 
 .capsule-title-line {
@@ -1027,7 +1064,6 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 
-/* 律动微波 */
 .capsule-pulse-wave {
   display: flex;
   align-items: flex-end;
@@ -1086,7 +1122,7 @@ onUnmounted(() => {
   animation: spin 0.8s linear infinite;
 }
 
-/* ── 2. 展开态艺术唱机卡片 (Artisan Studio Player) ── */
+/* ── 2. 展开态：釉面陶瓷嵌瓷托盘 (Ceramic Mosaic Tray) ── */
 .studio-scrim {
   position: fixed;
   inset: 0;
@@ -1100,28 +1136,74 @@ onUnmounted(() => {
   padding: 20px;
 }
 
-.artisan-player-card {
+.ceramic-mosaic-tray {
   width: 100%;
-  max-width: 460px;
-  background: #FAF7F2;
-  border: 1px solid var(--border-medium);
-  border-radius: 24px;
-  box-shadow:
-    0 32px 80px -12px rgba(28, 22, 18, 0.45),
-    0 8px 24px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  max-width: 486px;
+  background: #ECE5DC;
+  border: 1px solid rgba(214, 203, 191, 0.85);
+  border-radius: 26px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: 10px;
+  box-shadow:
+    0 34px 84px -10px rgba(28, 22, 18, 0.45),
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.7);
   position: relative;
+  user-select: none;
 }
 
-/* 顶栏套件 */
-.artisan-header-suite {
-  padding: 20px 24px 12px;
+/* 釉面陶瓷基础类 (Universal Glazed Ceramic Tile) */
+.ceramic-tile {
+  background: linear-gradient(145deg, #FFFFFF 0%, #FAF6F0 55%, #F2ECE1 100%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 18px;
+  box-shadow:
+    inset 1px 1px 2px 0px rgba(255, 255, 255, 0.95),
+    inset -1px -1px 2px 0px rgba(44, 38, 33, 0.07),
+    0 3px 12px -2px rgba(44, 38, 33, 0.07),
+    0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.28s var(--ease);
+}
+
+/* 釉面高光漫反射层 */
+.ceramic-tile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 46%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  border-radius: 18px 18px 0 0;
+  z-index: 1;
+}
+
+.ceramic-tile:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 1px 1px 2px 0px #FFFFFF,
+    inset -1px -1px 2px 0px rgba(44, 38, 33, 0.05),
+    0 8px 20px -3px rgba(44, 38, 33, 0.12),
+    0 2px 5px 0 rgba(0, 0, 0, 0.04);
+  border-color: rgba(124, 140, 110, 0.35);
+}
+
+/* ── 瓷砖 01: 顶栏电台与导航瓷片 (Header Tile) ── */
+.tile-header {
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 .station-meta-row {
@@ -1137,8 +1219,8 @@ onUnmounted(() => {
   cursor: pointer;
   padding: 4px 12px 4px 4px;
   border-radius: var(--radius-full);
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-light);
+  background: rgba(237, 230, 220, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   transition: all 0.25s var(--ease);
 }
 
@@ -1150,8 +1232,8 @@ onUnmounted(() => {
 
 .chip-avatar-box {
   position: relative;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
 }
 
 .chip-avatar {
@@ -1165,8 +1247,8 @@ onUnmounted(() => {
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #9CA3AF;
   border: 1.5px solid #FAF7F2;
@@ -1190,13 +1272,13 @@ onUnmounted(() => {
 
 .chip-title .nick {
   font-family: var(--font-serif);
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text);
 }
 
 .station-mark {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   padding: 1px 6px;
   border-radius: var(--radius-full);
   background: var(--color-accent);
@@ -1204,16 +1286,16 @@ onUnmounted(() => {
 }
 
 .chip-text-wrap .sub {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--color-text-lighter);
 }
 
-.studio-close-pill {
-  width: 32px;
-  height: 32px;
+.ceramic-close-btn {
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-light);
+  background: rgba(237, 230, 220, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   color: var(--color-text-lighter);
   display: flex;
   align-items: center;
@@ -1222,28 +1304,27 @@ onUnmounted(() => {
   transition: all 0.25s var(--ease);
 }
 
-.studio-close-pill:hover {
+.ceramic-close-btn:hover {
   background: #FFFFFF;
   color: var(--color-text);
-  border-color: var(--border-medium);
   transform: rotate(90deg);
 }
 
-/* 分段选项卡 */
-.artisan-nav-bar {
+/* 嵌瓷分段选项卡 */
+.ceramic-nav-tabs {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #EDE8E2;
+  background: #E5DED4;
   padding: 3px;
   border-radius: var(--radius-full);
-  border: 1px solid var(--border-light);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-.artisan-tab {
+.ceramic-tab {
   flex: 1;
   position: relative;
-  padding: 6px 0;
+  padding: 5px 0;
   font-size: 0.78rem;
   font-weight: 500;
   color: var(--color-text-light);
@@ -1253,78 +1334,115 @@ onUnmounted(() => {
   transition: all 0.22s var(--ease);
 }
 
-.artisan-tab:hover {
+.ceramic-tab:hover {
   color: var(--color-text);
 }
 
-.artisan-tab.active {
-  background: #FAF7F2;
+.ceramic-tab.active {
+  background: #FFFFFF;
   color: var(--color-text);
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(45, 40, 35, 0.08);
+  box-shadow:
+    0 2px 6px rgba(45, 40, 35, 0.1),
+    inset 0 1px 1px #FFFFFF;
 }
 
-.artisan-tab.highlight {
+.ceramic-tab.highlight {
   color: var(--color-accent);
 }
 
 .lyrics-live-pip {
   position: absolute;
-  top: 6px;
-  right: 14px;
+  top: 5px;
+  right: 12px;
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: var(--color-accent);
 }
 
-/* ── 主视口区域 (Card Body Viewport) ── */
-.artisan-body-viewport {
-  padding: 6px 24px 14px;
-  min-height: 360px;
-  max-height: 390px;
+/* ── 中部主视口容器 ── */
+.ceramic-body-viewport {
+  min-height: 290px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+}
+
+/* ── 视角 01: Bento 瓷砖拼贴网格 (Bento Grid) ── */
+.ceramic-bento-grid {
+  display: grid;
+  grid-template-columns: 195px 1fr;
+  grid-template-rows: auto auto;
+  gap: 10px;
+}
+
+/* 瓷片顶标通用栏 */
+.tile-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 4px;
+  z-index: 2;
   position: relative;
 }
 
-/* ── 视角 01: 黑胶唱片封套交互 (Sleeve & Vinyl Stage) ── */
-.view-player-deck {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.tile-code-tag {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text-lighter);
+  opacity: 0.8;
 }
 
-/* 封套与黑胶联动舞台 */
-.sleeve-disc-stage {
-  position: relative;
-  width: 250px;
-  height: 180px;
-  margin: 0 auto 10px;
+.tile-hint-action {
+  font-size: 0.68rem;
+  color: var(--color-accent);
+  background: rgba(124, 140, 110, 0.12);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  transition: all 0.2s;
+}
+
+.tile-vinyl:hover .tile-hint-action {
+  background: var(--color-accent);
+  color: #FFFFFF;
+}
+
+/* Bento Tile 1: 实体黑胶唱片瓷片 */
+.tile-vinyl {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding-left: 20px;
+  flex-direction: column;
   cursor: pointer;
 }
 
-/* 实体方形黑胶封套 */
+.tile-vinyl .sleeve-disc-stage {
+  position: relative;
+  width: 100%;
+  height: 154px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 14px;
+  margin-top: -4px;
+}
+
 .artisan-album-sleeve {
   position: relative;
-  width: 144px;
-  height: 144px;
+  width: 114px;
+  height: 114px;
   border-radius: 8px;
   overflow: hidden;
   box-shadow:
-    -6px 12px 30px rgba(45, 40, 35, 0.22),
-    0 2px 8px rgba(0, 0, 0, 0.1);
+    -5px 10px 24px rgba(45, 40, 35, 0.22),
+    0 2px 6px rgba(0, 0, 0, 0.1);
   z-index: 3;
   background: #252220;
   transition: transform 0.35s var(--ease-spring);
 }
 
-.sleeve-disc-stage:hover .artisan-album-sleeve {
+.tile-vinyl:hover .artisan-album-sleeve {
   transform: translateY(-2px) scale(1.02);
 }
 
@@ -1341,7 +1459,7 @@ onUnmounted(() => {
   left: 0;
   bottom: 0;
   width: 4px;
-  background: linear-gradient(to right, rgba(255, 255, 255, 0.3), transparent);
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.35), transparent);
 }
 
 .sleeve-edge-sheen {
@@ -1353,7 +1471,6 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* 封套右侧插口阴影 */
 .sleeve-pocket-shadow {
   position: absolute;
   top: 0;
@@ -1364,25 +1481,25 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* 黑胶唱片本体 (从封套中探出并自由旋转) */
+/* 黑胶唱片本体 (从瓷片封套中滑出并恒速旋转) */
 .artisan-vinyl-disc {
   position: absolute;
-  left: 60px;
-  width: 140px;
-  height: 140px;
+  left: 36px;
+  width: 112px;
+  height: 112px;
   border-radius: 50%;
   z-index: 2;
-  transform: translateX(24px);
+  transform: translateX(20px);
   transition: transform 0.5s var(--ease-spring);
   pointer-events: none;
 }
 
 .artisan-vinyl-disc.playing {
-  transform: translateX(54px);
+  transform: translateX(46px);
 }
 
-.sleeve-disc-stage:hover .artisan-vinyl-disc {
-  transform: translateX(64px);
+.tile-vinyl:hover .artisan-vinyl-disc {
+  transform: translateX(54px);
 }
 
 .disc-rotator {
@@ -1404,8 +1521,8 @@ onUnmounted(() => {
     ),
     radial-gradient(circle, #252220 0%, #12100E 100%);
   box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 1.5px rgba(255, 255, 255, 0.12);
+    0 8px 20px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   animation: disc-spin 10s linear infinite;
   animation-play-state: paused;
 }
@@ -1424,9 +1541,9 @@ onUnmounted(() => {
   border-radius: 50%;
   pointer-events: none;
 }
-.dg-1 { width: 118px; height: 118px; border: 1px solid rgba(255, 255, 255, 0.04); }
-.dg-2 { width: 94px; height: 94px; border: 1px dashed rgba(255, 255, 255, 0.05); }
-.dg-3 { width: 72px; height: 72px; border: 1px solid rgba(255, 255, 255, 0.04); }
+.dg-1 { width: 94px; height: 94px; border: 1px solid rgba(255, 255, 255, 0.04); }
+.dg-2 { width: 74px; height: 74px; border: 1px dashed rgba(255, 255, 255, 0.05); }
+.dg-3 { width: 56px; height: 56px; border: 1px solid rgba(255, 255, 255, 0.04); }
 
 .disc-sheen {
   position: absolute;
@@ -1445,8 +1562,8 @@ onUnmounted(() => {
 }
 
 .disc-center-hub {
-  width: 48px;
-  height: 48px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: #C4A882;
   border: 2px solid #FAF7F2;
@@ -1458,93 +1575,65 @@ onUnmounted(() => {
 }
 
 .hub-brass-spindle {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #252220;
-  border: 1.5px solid #FAF7F2;
+  border: 1px solid #FAF7F2;
 }
 
-.sleeve-interaction-tip {
-  position: absolute;
-  bottom: 4px;
-  right: 10px;
-  padding: 3px 8px;
-  border-radius: var(--radius-full);
-  background: rgba(250, 247, 242, 0.95);
-  border: 1px solid var(--border-medium);
-  font-size: 0.68rem;
-  color: var(--color-accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  opacity: 0;
-  transition: opacity 0.25s var(--ease);
-  z-index: 4;
-}
-
-.sleeve-disc-stage:hover .sleeve-interaction-tip {
-  opacity: 1;
-}
-
-/* 曲目信息 */
-.track-title-card {
-  text-align: center;
-  margin-bottom: 6px;
-  width: 100%;
-}
-
-.title-with-pill {
+/* Bento Tile 2: 旋律与声波瓷片 */
+.tile-melody-wave {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+  padding: 0 14px 12px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.tile-status-tag {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.tile-status-tag.full {
+  background: rgba(124, 140, 110, 0.15);
+  color: var(--color-accent-dark);
+}
+.tile-status-tag.trial {
+  background: rgba(196, 168, 130, 0.2);
+  color: #9C723E;
+}
+.tile-status-tag.resolving {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563EB;
+}
+.tile-status-tag.error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #DC2626;
+}
+
+.track-title-block {
+  margin: 2px 0 6px;
+  z-index: 2;
 }
 
 .track-hero-name {
   font-family: var(--font-serif);
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 260px;
-  margin: 0;
-}
-
-.artisan-tag {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  padding: 1px 7px;
-  border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--color-text-lighter);
-}
-
-.artisan-tag.full {
-  background: rgba(124, 140, 110, 0.15);
-  color: var(--color-accent-dark);
-  font-weight: 500;
-}
-
-.artisan-tag.trial {
-  background: rgba(196, 168, 130, 0.2);
-  color: #B48855;
-  font-weight: 500;
-}
-
-.artisan-tag.resolving {
-  background: rgba(59, 130, 246, 0.12);
-  color: #2563EB;
-}
-
-.artisan-tag.error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #DC2626;
+  margin: 0 0 2px;
 }
 
 .track-author-line {
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   color: var(--color-text-lighter);
   white-space: nowrap;
   overflow: hidden;
@@ -1552,13 +1641,11 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.err-text { color: #DC2626; }
-
-/* 声波画布 */
 .artisan-wave-box {
   width: 100%;
-  height: 26px;
-  margin-bottom: 8px;
+  height: 24px;
+  margin: 4px 0;
+  z-index: 2;
 }
 
 .artisan-wave-canvas {
@@ -1567,17 +1654,17 @@ onUnmounted(() => {
   display: block;
 }
 
-/* 进度条 */
 .artisan-progress-module {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  z-index: 2;
 }
 
 .progress-touch-zone {
   position: relative;
-  height: 18px;
+  height: 16px;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -1586,14 +1673,14 @@ onUnmounted(() => {
 
 .progress-hover-bubble {
   position: absolute;
-  top: -24px;
+  top: -22px;
   transform: translateX(-50%);
-  padding: 2px 6px;
+  padding: 1px 5px;
   background: var(--color-text);
   color: #FAF7F2;
   border-radius: var(--radius-xs);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   pointer-events: none;
   white-space: nowrap;
 }
@@ -1601,7 +1688,7 @@ onUnmounted(() => {
 .progress-track-bg {
   width: 100%;
   height: 4px;
-  background: var(--border-medium);
+  background: #E5DDD3;
   border-radius: 2px;
 }
 
@@ -1623,7 +1710,7 @@ onUnmounted(() => {
   border-radius: 50%;
   background: #FFFFFF;
   border: 2px solid var(--color-accent);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
   transition: transform 0.2s var(--ease);
 }
 
@@ -1635,19 +1722,92 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--color-text-lighter);
 }
 
-/* ── 视角 02: 诗集式歌词视窗 ── */
+/* Bento Tile 3: 随行歌词速览瓷片 (Glance Lyric Tile) */
+.tile-lyric-glance {
+  grid-column: 1 / -1;
+  grid-row: 2 / 3;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  background: linear-gradient(145deg, #FAF7F2 0%, #F5EFE6 100%);
+}
+
+.glance-left-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+.glance-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #B4ACA2;
+}
+
+.glance-pulse-dot.pulsing {
+  background: var(--color-accent);
+  box-shadow: 0 0 6px var(--color-accent);
+  animation: zen-pulse 1.8s infinite;
+}
+
+.glance-caption {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-lighter);
+  letter-spacing: 0.04em;
+}
+
+.glance-center-text {
+  flex: 1;
+  min-width: 0;
+  z-index: 2;
+}
+
+.glance-lyric-line {
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  color: var(--color-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.glance-right-col {
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+.glance-jump-pill {
+  font-size: 0.7rem;
+  color: var(--color-accent-dark);
+  background: rgba(124, 140, 110, 0.12);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tile-lyric-glance:hover .glance-jump-pill {
+  background: var(--color-accent);
+  color: #FFFFFF;
+}
+
+/* ── 视角 02: 陶瓷诗板歌词全屏视窗 (Porcelain Poetry Tablet) ── */
 .view-lyrics-deck {
+  height: 300px;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  background: #F4EFEB;
-  border: 1px solid var(--border-light);
-  border-radius: 16px;
-  overflow: hidden;
 }
 
 .lyrics-zen-header {
@@ -1657,6 +1817,7 @@ onUnmounted(() => {
   padding: 10px 16px 6px;
   font-size: 0.72rem;
   color: var(--color-text-lighter);
+  z-index: 2;
 }
 
 .zen-dot-group {
@@ -1694,37 +1855,26 @@ onUnmounted(() => {
   overflow-x: hidden;
   padding: 0 20px;
   scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    black 16%,
-    black 84%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    black 16%,
-    black 84%,
-    transparent 100%
-  );
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 16%, black 84%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 16%, black 84%, transparent 100%);
+  z-index: 2;
 }
 .lyrics-zen-viewport::-webkit-scrollbar { display: none; }
 
 .poetry-spacer {
-  height: 110px;
+  height: 90px;
   flex-shrink: 0;
 }
 
 .lyrics-poetry-flow {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   text-align: center;
 }
 
 .poetry-line-item {
-  padding: 6px 12px;
+  padding: 5px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.28s var(--ease);
@@ -1733,7 +1883,7 @@ onUnmounted(() => {
 
 .poetry-original {
   font-family: var(--font-serif);
-  font-size: 0.98rem;
+  font-size: 0.96rem;
   line-height: 1.5;
   color: #8C8880;
   transition: all 0.25s var(--ease);
@@ -1741,10 +1891,10 @@ onUnmounted(() => {
 }
 
 .poetry-trans {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   line-height: 1.4;
   color: #A39F97;
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   transition: all 0.25s var(--ease);
 }
 
@@ -1753,14 +1903,14 @@ onUnmounted(() => {
 }
 
 .poetry-line-item.active .poetry-original {
-  font-size: 1.18rem;
+  font-size: 1.15rem;
   font-weight: 600;
   color: var(--color-accent-dark);
   text-shadow: 0 2px 10px rgba(124, 140, 110, 0.2);
 }
 
 .poetry-line-item.active .poetry-trans {
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   color: var(--color-text);
   font-weight: 500;
 }
@@ -1780,14 +1930,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 40px;
+  padding: 30px;
   color: var(--color-text-lighter);
   font-size: 0.88rem;
   text-align: center;
 }
 
 .inst-music-icon {
-  font-size: 2.2rem;
+  font-size: 2rem;
   color: var(--color-accent);
   opacity: 0.8;
   animation: float-note 3s ease-in-out infinite;
@@ -1807,17 +1957,18 @@ onUnmounted(() => {
 }
 
 .inst-desc {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--color-text-lighter);
   margin: 0;
 }
 
-/* ── 视角 03: 搜歌 ── */
+/* ── 视角 03: 曲库搜歌 ── */
 .view-search-deck {
+  height: 300px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  height: 100%;
+  padding: 12px 16px;
 }
 
 .search-input-capsule {
@@ -1828,11 +1979,10 @@ onUnmounted(() => {
   background: #F4EFEB;
   border: 1px solid var(--border-medium);
   border-radius: var(--radius);
+  z-index: 2;
 }
 
-.search-lens-svg {
-  color: var(--color-text-lighter);
-}
+.search-lens-svg { color: var(--color-text-lighter); }
 
 .search-text-input {
   flex: 1;
@@ -1840,7 +1990,7 @@ onUnmounted(() => {
   border: none;
   outline: none;
   color: var(--color-text);
-  font-size: 0.88rem;
+  font-size: 0.85rem;
 }
 
 .search-submit-btn {
@@ -1848,33 +1998,29 @@ onUnmounted(() => {
   background: var(--color-accent);
   color: #FFFFFF;
   border-radius: var(--radius-full);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.search-submit-btn:hover {
-  background: var(--color-accent-dark);
-}
+.search-submit-btn:hover { background: var(--color-accent-dark); }
 
 .hot-chips-bar {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  z-index: 2;
 }
 
-.chips-title {
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
-}
+.chips-title { font-size: 0.7rem; color: var(--color-text-lighter); }
 
 .hot-style-chip {
-  padding: 3px 10px;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-light);
+  padding: 2px 9px;
+  background: rgba(237, 230, 220, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: var(--radius-full);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--color-text-light);
   cursor: pointer;
   transition: all 0.2s;
@@ -1889,6 +2035,7 @@ onUnmounted(() => {
 .search-results-viewport {
   flex: 1;
   overflow-y: auto;
+  z-index: 2;
 }
 
 .results-feedback-state {
@@ -1899,8 +2046,8 @@ onUnmounted(() => {
   justify-content: center;
   gap: 8px;
   color: var(--color-text-lighter);
-  font-size: 0.85rem;
-  padding: 30px;
+  font-size: 0.82rem;
+  padding: 20px;
 }
 
 .search-gentle-card {
@@ -1908,22 +2055,14 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 30px;
+  padding: 24px;
   gap: 6px;
   text-align: center;
 }
 
-.gentle-icon { font-size: 1.6rem; color: var(--color-warm); }
-.gentle-title {
-  font-family: var(--font-serif);
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-.gentle-desc {
-  font-size: 0.78rem;
-  color: var(--color-text-lighter);
-}
+.gentle-icon { font-size: 1.5rem; color: var(--color-warm); }
+.gentle-title { font-family: var(--font-serif); font-size: 0.95rem; font-weight: 600; color: var(--color-text); }
+.gentle-desc { font-size: 0.76rem; color: var(--color-text-lighter); }
 
 .results-rows-list {
   display: flex;
@@ -1935,16 +2074,14 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 7px 10px;
   background: #F4EFEB;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.search-song-card:hover {
-  background: #EDE6DF;
-}
+.search-song-card:hover { background: #ECE5DC; }
 
 .song-card-thumb {
   width: 32px;
@@ -1961,7 +2098,7 @@ onUnmounted(() => {
 }
 
 .song-card-title {
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 500;
   color: var(--color-text);
   white-space: nowrap;
@@ -1970,7 +2107,7 @@ onUnmounted(() => {
 }
 
 .song-card-artist {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--color-text-lighter);
   white-space: nowrap;
   overflow: hidden;
@@ -1978,29 +2115,30 @@ onUnmounted(() => {
 }
 
 .song-play-action {
-  padding: 3px 10px;
+  padding: 3px 9px;
   border-radius: var(--radius-full);
   background: var(--color-accent);
   color: #FFFFFF;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   cursor: pointer;
 }
 
-/* ── 视角 04: 播放队列 ── */
+/* ── 视角 04: 当前队列 ── */
 .view-queue-deck {
+  height: 300px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 100%;
+  padding: 12px 16px;
 }
 
 .queue-status-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--color-text-lighter);
-  padding: 0 4px;
+  z-index: 2;
 }
 
 .queue-items-viewport {
@@ -2009,22 +2147,21 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  z-index: 2;
 }
 
 .queue-card-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 7px 10px;
   background: #F4EFEB;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.queue-card-row:hover {
-  background: #EDE6DF;
-}
+.queue-card-row:hover { background: #ECE5DC; }
 
 .queue-card-row.active {
   background: rgba(124, 140, 110, 0.12);
@@ -2033,9 +2170,9 @@ onUnmounted(() => {
 
 .queue-ordinal {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--color-text-lighter);
-  width: 20px;
+  width: 18px;
 }
 
 .queue-card-row.active .queue-ordinal {
@@ -2044,8 +2181,8 @@ onUnmounted(() => {
 }
 
 .queue-row-thumb {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-xs);
   object-fit: cover;
 }
@@ -2058,7 +2195,7 @@ onUnmounted(() => {
 }
 
 .queue-row-title {
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 500;
   color: var(--color-text);
   white-space: nowrap;
@@ -2067,7 +2204,7 @@ onUnmounted(() => {
 }
 
 .queue-row-artist {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--color-text-lighter);
   white-space: nowrap;
   overflow: hidden;
@@ -2075,7 +2212,7 @@ onUnmounted(() => {
 }
 
 .queue-active-badge {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: var(--color-accent-dark);
   background: rgba(124, 140, 110, 0.18);
   padding: 2px 6px;
@@ -2084,25 +2221,26 @@ onUnmounted(() => {
 
 .queue-row-dur {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--color-text-lighter);
 }
 
-/* ── 视角 05: 站长精选歌单 ── */
+/* ── 视角 05: 站长精选公开歌单 ── */
 .view-playlists-deck {
+  height: 300px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 100%;
+  padding: 12px 16px;
 }
 
 .playlists-status-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--color-text-lighter);
-  padding: 0 4px;
+  z-index: 2;
 }
 
 .playlists-cards-viewport {
@@ -2110,14 +2248,15 @@ onUnmounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
+  z-index: 2;
 }
 
 .playlist-banner-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: 10px;
+  padding: 8px 12px;
   background: #F4EFEB;
   border-radius: var(--radius);
   border: 1px solid var(--border-light);
@@ -2126,13 +2265,13 @@ onUnmounted(() => {
 }
 
 .playlist-banner-card:hover {
-  background: #EDE6DF;
+  background: #ECE5DC;
   border-color: var(--color-accent);
 }
 
 .pl-banner-thumb-wrap {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-xs);
   overflow: hidden;
   position: relative;
@@ -2159,12 +2298,12 @@ onUnmounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .pl-banner-title {
   font-family: var(--font-serif);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
@@ -2173,16 +2312,16 @@ onUnmounted(() => {
 }
 
 .pl-banner-sub {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--color-text-lighter);
 }
 
 .pl-mount-action {
-  padding: 5px 14px;
+  padding: 4px 12px;
   border-radius: var(--radius-full);
   background: var(--color-accent);
   color: #FFFFFF;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -2191,92 +2330,121 @@ onUnmounted(() => {
   background: var(--color-accent-dark);
 }
 
-/* ── 底部控制栏 (Controls Deck) ── */
-.artisan-controls-deck {
-  padding: 14px 24px 20px;
-  background: #F4EFEB;
-  border-top: 1px solid var(--border-light);
+/* ── 瓷砖 03: 触控陶瓷控制台 (Tile Controls) ── */
+.tile-controls {
+  padding: 10px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
-.artisan-btn {
+.ceramic-btn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #FAF7F2;
-  border: 1px solid var(--border-medium);
+  background: linear-gradient(145deg, #FFFFFF 0%, #FAF6F0 100%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
   color: var(--color-text);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    inset 1px 1px 1.5px #FFFFFF,
+    inset -1px -1px 2px rgba(44, 38, 33, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.05);
   transition: all 0.2s var(--ease);
   flex-shrink: 0;
+  z-index: 2;
 }
 
-.artisan-btn:hover {
+.ceramic-btn:hover {
   background: #FFFFFF;
   color: var(--color-accent);
   border-color: var(--color-accent);
   transform: translateY(-1px);
+  box-shadow:
+    inset 1px 1px 1.5px #FFFFFF,
+    0 4px 10px rgba(0, 0, 0, 0.08);
 }
 
-.artisan-btn:active {
-  transform: translateY(1px);
+.ceramic-btn:active {
+  transform: scale(0.92) translateY(1px);
 }
 
-.artisan-play-master {
-  width: 52px;
-  height: 52px;
+/* 主播放/暂停 (莫兰迪绿釉面水滴凸起大按键) */
+.ceramic-play-master {
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: linear-gradient(135deg, #8FA080 0%, #7C8C6E 60%, #68775B 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
   color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow:
+    inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.6),
+    inset -1.5px -1.5px 3px rgba(0, 0, 0, 0.2),
     0 8px 24px var(--color-accent-glow),
     0 2px 6px rgba(0, 0, 0, 0.08);
   transition: all 0.25s var(--ease-spring);
   flex-shrink: 0;
+  z-index: 2;
+  position: relative;
+  overflow: hidden;
 }
 
-.artisan-play-master:hover {
-  background: var(--color-accent-dark);
+.ceramic-play-master::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, transparent 100%);
+  border-radius: 50px 50px 0 0;
+  pointer-events: none;
+}
+
+.ceramic-play-master:hover {
+  background: linear-gradient(135deg, #99AA8A 0%, #728264 100%);
   transform: scale(1.06);
   box-shadow: 0 12px 28px var(--color-accent-glow-strong);
 }
 
-.artisan-play-master:active {
-  transform: scale(0.96);
+.ceramic-play-master:active {
+  transform: scale(0.94) translateY(1.5px);
 }
 
 .master-spinner {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border: 2px solid rgba(255, 255, 255, 0.35);
   border-top-color: #FFFFFF;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
-/* 音量推子 */
-.artisan-volume-bay {
+/* 嵌入式陶瓷音量推子槽 */
+.ceramic-volume-groove {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex: 1;
-  max-width: 120px;
+  max-width: 110px;
+  background: #E5DDD3;
+  padding: 3px 8px 3px 4px;
+  border-radius: var(--radius-full);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+  z-index: 2;
 }
 
 .volume-mute-toggle {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border: none;
   background: transparent;
   box-shadow: none;
@@ -2287,27 +2455,25 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.volume-mute-toggle:hover {
-  color: var(--color-text);
-}
+.volume-mute-toggle:hover { color: var(--color-text); }
 
-.artisan-slider-input {
+.ceramic-slider-input {
   flex: 1;
-  height: 4px;
+  height: 3.5px;
   -webkit-appearance: none;
-  background: var(--border-medium);
+  background: #D4C9BC;
   border-radius: 2px;
   outline: none;
 }
 
-.artisan-slider-input::-webkit-slider-thumb {
+.ceramic-slider-input::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: var(--color-accent);
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 /* ── 3. 电台状态弹窗 (Diagnostics) ── */
@@ -2326,100 +2492,75 @@ onUnmounted(() => {
 .diag-porcelain-card {
   width: 100%;
   max-width: 420px;
-  background: #FAF7F2;
-  border: 1px solid var(--border-medium);
   border-radius: 20px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
 
 .diag-top-bar {
-  padding: 16px 20px;
+  padding: 14px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border-light);
+  z-index: 2;
+  position: relative;
 }
 
-.diag-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.diag-tea { font-size: 1.2rem; }
-
-.diag-title {
-  font-family: var(--font-serif);
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
+.diag-title-row { display: flex; align-items: center; gap: 8px; }
+.diag-tea { font-size: 1.1rem; }
+.diag-title { font-family: var(--font-serif); font-size: 0.92rem; font-weight: 600; color: var(--color-text); }
 
 .diag-close-btn {
   background: transparent;
   border: none;
   color: var(--color-text-lighter);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   cursor: pointer;
 }
 .diag-close-btn:hover { color: var(--color-text); }
 
 .diag-content-body {
-  padding: 18px 20px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+  z-index: 2;
+  position: relative;
 }
 
 .station-owner-block {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
-  background: var(--color-bg-alt);
+  padding: 10px 12px;
+  background: rgba(237, 230, 220, 0.5);
   border-radius: var(--radius);
-  border: 1px solid var(--border-light);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .owner-circle-avatar {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.owner-meta-col {
-  display: flex;
-  flex-direction: column;
-}
-
-.owner-name-txt {
-  font-family: var(--font-serif);
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.owner-desc-txt {
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
-}
+.owner-meta-col { display: flex; flex-direction: column; }
+.owner-name-txt { font-family: var(--font-serif); font-size: 0.9rem; font-weight: 600; color: var(--color-text); }
+.owner-desc-txt { font-size: 0.7rem; color: var(--color-text-lighter); }
 
 .node-endpoint-block {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px;
-  background: var(--color-bg-alt);
+  gap: 7px;
+  padding: 12px;
+  background: rgba(237, 230, 220, 0.5);
   border-radius: var(--radius);
-  border: 1px solid var(--border-light);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
-.endpoint-caption {
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
-}
+.endpoint-caption { font-size: 0.7rem; color: var(--color-text-lighter); }
 
 .endpoint-status-line {
   display: flex;
@@ -2430,41 +2571,28 @@ onUnmounted(() => {
 
 .endpoint-status-line code {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--color-text);
   background: rgba(0, 0, 0, 0.04);
   padding: 2px 6px;
   border-radius: var(--radius-xs);
 }
 
-.endpoint-badge {
-  font-size: 0.68rem;
-  color: #DC2626;
-}
-.endpoint-badge.ok {
-  color: var(--color-accent-dark);
-  font-weight: 500;
-}
-
-.endpoint-msg {
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
-  margin: 0;
-}
+.endpoint-badge { font-size: 0.65rem; color: #DC2626; }
+.endpoint-badge.ok { color: var(--color-accent-dark); font-weight: 500; }
+.endpoint-msg { font-size: 0.7rem; color: var(--color-text-lighter); margin: 0; }
 
 .endpoint-test-action {
-  padding: 6px 14px;
+  padding: 5px 12px;
   background: var(--color-accent);
   color: #FFFFFF;
   border-radius: var(--radius-full);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   cursor: pointer;
   align-self: flex-start;
   transition: all 0.2s;
 }
-.endpoint-test-action:hover:not(:disabled) {
-  background: var(--color-accent-dark);
-}
+.endpoint-test-action:hover:not(:disabled) { background: var(--color-accent-dark); }
 
 /* ── 通用 Spinner ── */
 .artisan-spinner {
@@ -2505,21 +2633,54 @@ onUnmounted(() => {
 
 /* ── 移动端适配 ── */
 @media (max-width: 600px) {
-  .artisan-capsule {
-    left: 16px;
+  .ceramic-capsule-domino {
+    left: 14px;
     bottom: 20px;
     padding: 6px 12px 6px 8px;
   }
   .capsule-text-col { max-width: 95px; }
-  .studio-scrim { padding: 12px; }
-  .artisan-player-card { max-width: 100%; border-radius: 20px; }
-  .artisan-header-suite { padding: 16px 18px 10px; }
-  .artisan-body-viewport { min-height: 330px; max-height: 360px; padding: 4px 18px 10px; }
-  .sleeve-disc-stage { width: 200px; height: 140px; padding-left: 0; }
-  .artisan-album-sleeve { width: 110px; height: 110px; }
-  .artisan-vinyl-disc { width: 106px; height: 106px; left: 30px; }
-  .artisan-vinyl-disc.playing { transform: translateX(36px); }
-  .artisan-controls-deck { padding: 12px 18px 16px; }
-  .artisan-volume-bay { display: none; }
+  .studio-scrim { padding: 10px; }
+  .ceramic-mosaic-tray {
+    max-width: 100%;
+    border-radius: 20px;
+    padding: 8px;
+    gap: 8px;
+  }
+  .tile-header { padding: 10px 12px; }
+  .ceramic-bento-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 8px;
+  }
+  .tile-vinyl {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+  }
+  .tile-vinyl .sleeve-disc-stage {
+    height: 136px;
+    justify-content: center;
+    padding-left: 0;
+  }
+  .artisan-album-sleeve { width: 100px; height: 100px; }
+  .artisan-vinyl-disc { width: 98px; height: 98px; left: calc(50% - 50px); }
+  .artisan-vinyl-disc.playing { transform: translateX(34px); }
+  .tile-melody-wave {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+    padding: 0 12px 10px;
+  }
+  .tile-lyric-glance {
+    grid-column: 1 / 2;
+    grid-row: 3 / 4;
+    padding: 8px 12px;
+  }
+  .view-lyrics-deck,
+  .view-search-deck,
+  .view-queue-deck,
+  .view-playlists-deck {
+    height: 270px;
+  }
+  .tile-controls { padding: 8px 14px; }
+  .ceramic-volume-groove { display: none; }
 }
 </style>
