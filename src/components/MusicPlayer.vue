@@ -58,8 +58,8 @@ const {
   isInstrumental,
 } = useLyrics()
 
-// ── 硬件工作模式切换 ──
-// 'player' 唱机 | 'lyrics' 歌词终端 | 'search' 曲库检索 | 'playlist' 当前队列 | 'user-playlists' 精选唱片盒
+// ── 播放器导航标签 ──
+// 'player' 唱机 | 'lyrics' 歌词 | 'search' 搜歌 | 'playlist' 队列 | 'user-playlists' 歌单
 export type ConsoleTab = 'player' | 'lyrics' | 'search' | 'playlist' | 'user-playlists'
 const activeTab = ref<ConsoleTab>('player')
 
@@ -94,15 +94,7 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-function formatPreciseTime(seconds: number): string {
-  if (isNaN(seconds) || seconds < 0) return '00:00.0'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  const ms = Math.floor((seconds % 1) * 10)
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${ms}`
-}
-
-// ── 精密刻度寻轨器 (Precision Ruler Scrubber) ──
+// ── 交互式进度条 (拖拽拖动 + 悬停时间预览) ──
 const isScrubbing = ref(false)
 const scrubTime = ref(0)
 const hoverPct = ref(0)
@@ -175,19 +167,13 @@ function handleVolumeChange(e: Event) {
   setVolume(val / 100)
 }
 
-const playModeLabel = computed(() => {
-  if (playMode.value === 'sequence') return 'SEQ'
-  if (playMode.value === 'loop-one') return 'RPT-1'
-  return 'SHFL'
-})
-
-const playModeDescription = computed(() => {
-  if (playMode.value === 'sequence') return '顺序循环'
+const playModeTitle = computed(() => {
+  if (playMode.value === 'sequence') return '列表循环'
   if (playMode.value === 'loop-one') return '单曲循环'
   return '随机播放'
 })
 
-// ── 硬件 LED 点阵频段仪 (Segmented LED Ladder VU Meter) ──
+// ── 自然流体声波 Canvas (Morandi Organic Wave Visualizer) ──
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let animId: number | null = null
 
@@ -202,11 +188,10 @@ function initCanvasDpr() {
   }
 }
 
-function drawLedSpectrum() {
+function drawSpectrum() {
   if (animId !== null) cancelAnimationFrame(animId)
 
-  const barCount = 20
-  const segCount = 7 // 每个通道 7 级点阵 LED
+  const barCount = 28
   const dataArray = new Float32Array(barCount)
 
   const render = () => {
@@ -225,66 +210,44 @@ function drawLedSpectrum() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.scale(dpr, dpr)
 
-    const t = Date.now() * 0.0035
+    const t = Date.now() * 0.003
     if (isPlaying.value) {
       for (let i = 0; i < barCount; i++) {
         const centerDist = Math.abs(i - barCount / 2) / (barCount / 2)
-        const bellCurve = 1 - centerDist * 0.4
-        const wave1 = Math.sin(t * 3.0 + i * 0.45) * 0.4 + 0.48
-        const wave2 = Math.cos(t * 1.8 - i * 0.32) * 0.25
-        const wave3 = Math.sin(t * 5.0 + i * 0.8) * 0.15
-        const targetVal = Math.max(0.1, Math.min(0.98, (wave1 + wave2 + wave3) * bellCurve))
-        dataArray[i] += (targetVal - dataArray[i]) * 0.25
+        const bellCurve = 1 - centerDist * 0.45
+        const wave1 = Math.sin(t * 2.5 + i * 0.42) * 0.4 + 0.45
+        const wave2 = Math.cos(t * 1.6 - i * 0.28) * 0.25
+        const wave3 = Math.sin(t * 4.2 + i * 0.75) * 0.15
+        const targetVal = Math.max(0.12, Math.min(0.96, (wave1 + wave2 + wave3) * bellCurve))
+        dataArray[i] += (targetVal - dataArray[i]) * 0.22
       }
     } else {
       for (let i = 0; i < barCount; i++) {
-        const targetVal = 0.08
-        dataArray[i] += (targetVal - dataArray[i]) * 0.1
+        const targetVal = Math.sin(i * 0.35 + t * 0.8) * 0.03 + 0.07
+        dataArray[i] += (targetVal - dataArray[i]) * 0.08
       }
     }
 
-    const barWidth = Math.max(3, (w / barCount) * 0.55)
+    const barWidth = Math.max(2.5, (w / barCount) * 0.52)
     const totalBarsWidth = barWidth * barCount
-    const colGap = Math.max(2, (w - totalBarsWidth) / (barCount - 1))
-    const segHeight = Math.max(2, (h - (segCount - 1) * 2) / segCount)
-    const segGap = 2
+    const gap = Math.max(1.8, (w - totalBarsWidth) / (barCount - 1))
 
     for (let i = 0; i < barCount; i++) {
-      const activeSegs = Math.round((dataArray[i] || 0.05) * segCount)
-      const x = i * (barWidth + colGap)
+      const val = dataArray[i] || 0.06
+      const barHeight = Math.max(3.5, val * (h * 0.88))
+      const x = i * (barWidth + gap)
+      const y = (h - barHeight) / 2
 
-      for (let s = 0; s < segCount; s++) {
-        // 从底部往上算 (0 为最底层，segCount-1 为最顶层)
-        const y = h - (s + 1) * (segHeight + segGap)
-        const isLit = s < activeSegs
+      // 莫兰迪绿与大地暖金柔和渐变
+      const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight)
+      gradient.addColorStop(0, '#7C8C6E')
+      gradient.addColorStop(0.5, '#9AAB8B')
+      gradient.addColorStop(1, '#C4A882')
 
-        if (isLit) {
-          if (s >= segCount - 1) {
-            // 峰值红色报警
-            ctx.fillStyle = '#EF4444'
-            ctx.shadowColor = 'rgba(239, 68, 68, 0.6)'
-            ctx.shadowBlur = 4
-          } else if (s >= segCount - 3) {
-            // 中高段工业橙 (Teenage Engineering Signal Orange)
-            ctx.fillStyle = '#FF5500'
-            ctx.shadowColor = 'rgba(255, 85, 0, 0.5)'
-            ctx.shadowBlur = 3
-          } else {
-            // 基础段工业荧光翠绿
-            ctx.fillStyle = '#10B981'
-            ctx.shadowColor = 'rgba(16, 185, 129, 0.4)'
-            ctx.shadowBlur = 2
-          }
-        } else {
-          // 未点亮状态：微弱硬件暗透质感
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.06)'
-          ctx.shadowBlur = 0
-        }
-
-        ctx.beginPath()
-        ctx.roundRect(x, y, barWidth, segHeight, [1, 1, 1, 1])
-        ctx.fill()
-      }
+      ctx.fillStyle = gradient
+      ctx.beginPath()
+      ctx.roundRect(x, y, barWidth, barHeight, [barWidth / 2, barWidth / 2, barWidth / 2, barWidth / 2])
+      ctx.fill()
     }
   }
 
@@ -345,7 +308,7 @@ watch(activeTab, (tab) => {
   if (tab === 'player') {
     nextTick(() => {
       initCanvasDpr()
-      drawLedSpectrum()
+      drawSpectrum()
     })
   } else if (tab === 'lyrics') {
     nextTick(() => {
@@ -358,7 +321,7 @@ watch(isExpanded, (val) => {
   if (val && activeTab.value === 'player') {
     setTimeout(() => {
       initCanvasDpr()
-      drawLedSpectrum()
+      drawSpectrum()
     }, 100)
   }
 })
@@ -374,7 +337,7 @@ watch(currentLyrics, () => {
 
 onMounted(() => {
   initCanvasDpr()
-  drawLedSpectrum()
+  drawSpectrum()
 })
 
 onUnmounted(() => {
@@ -384,56 +347,50 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="te-audio-system">
+  <div class="morandi-player-wrapper">
     <!-- ══════════════════════════════════════════════════════ -->
-    <!-- 1. 悬浮遥控硬件胶囊 (Pocket Remote Dock)               -->
+    <!-- 1. 悬浮微胶囊态 (Floating Porcelain Capsule Dock)       -->
     <!-- ══════════════════════════════════════════════════════ -->
-    <Transition name="remote-pop">
+    <Transition name="capsule-fade">
       <div
         v-if="!isExpanded"
-        class="pocket-remote"
+        class="porcelain-capsule"
         @click="toggleExpand"
-        title="点击展开专业音频工作台"
+        title="点击展开专属音乐电台"
       >
-        <!-- 机械滚轮/微盘 (Motorized Mini Spool) -->
-        <div class="remote-spool-wrap">
-          <div class="remote-spool" :class="{ spinning: isPlaying }">
-            <span class="spool-spoke s1"></span>
-            <span class="spool-spoke s2"></span>
-            <span class="spool-spoke s3"></span>
-            <div class="spool-hub"></div>
+        <!-- 黑胶小唱片微盘 -->
+        <div class="capsule-vinyl-disk" :class="{ spinning: isPlaying }">
+          <img :src="currentTrack.coverUrl" alt="cover" class="capsule-thumb" />
+          <div class="vinyl-core-dot"></div>
+        </div>
+
+        <div class="capsule-meta">
+          <div class="capsule-title-row">
+            <span class="capsule-title">{{ currentTrack.title }}</span>
+            <span v-if="currentTrack.isTrial" class="capsule-badge trial">试听</span>
+            <span v-else-if="currentTrack.isFull" class="capsule-badge full">全曲</span>
           </div>
+          <span class="capsule-artist">{{ currentTrack.artist }}</span>
         </div>
 
-        <!-- 读数与曲目信息 -->
-        <div class="remote-display">
-          <div class="remote-status-row">
-            <span class="remote-led-dot" :class="{ active: isPlaying }"></span>
-            <span class="remote-mono-tag">OP-12 // {{ isPlaying ? 'PLAY' : 'STBY' }}</span>
-            <span v-if="currentTrack.isFull" class="remote-badge-full">LOSSLESS</span>
-            <span v-else-if="currentTrack.isTrial" class="remote-badge-trial">TRIAL</span>
-          </div>
-          <span class="remote-title" :title="currentTrack.title">{{ currentTrack.title }}</span>
+        <!-- 莫兰迪绿律动微波 -->
+        <div class="capsule-wave-bars">
+          <span class="w-bar wb-1" :class="{ active: isPlaying }"></span>
+          <span class="w-bar wb-2" :class="{ active: isPlaying }"></span>
+          <span class="w-bar wb-3" :class="{ active: isPlaying }"></span>
         </div>
 
-        <!-- 微型均衡器 -->
-        <div class="remote-meter">
-          <span class="m-bar mb-1" :class="{ run: isPlaying }"></span>
-          <span class="m-bar mb-2" :class="{ run: isPlaying }"></span>
-          <span class="m-bar mb-3" :class="{ run: isPlaying }"></span>
-        </div>
-
-        <!-- 硬件微动播放按键 -->
+        <!-- 播放/暂停轻触微键 -->
         <button
-          class="remote-tactile-btn"
+          class="capsule-toggle-btn"
           @click.stop="togglePlay"
           :aria-label="isPlaying ? '暂停' : '播放'"
         >
-          <span v-if="isLoading" class="te-spinner-mini"></span>
-          <svg v-else-if="!isPlaying" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+          <span v-if="isLoading" class="capsule-spinner"></span>
+          <svg v-else-if="!isPlaying" width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="5 3 19 12 5 21 5 3" />
           </svg>
-          <svg v-else width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+          <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
             <rect x="6" y="4" width="4" height="16" />
             <rect x="14" y="4" width="4" height="16" />
           </svg>
@@ -442,458 +399,428 @@ onUnmounted(() => {
     </Transition>
 
     <!-- ══════════════════════════════════════════════════════ -->
-    <!-- 2. 展开态工业控制台 (TE Studio Console Deck)           -->
+    <!-- 2. 展开态温润瓷白大卡片 (Expanded Porcelain Player)    -->
     <!-- ══════════════════════════════════════════════════════ -->
-    <Transition name="console-pop">
-      <div v-if="isExpanded" class="console-scrim" @click.self="toggleExpand">
-        <div class="console-chassis">
-          <!-- 四角微型内六角沉头螺钉 (Industrial Chassis Screws) -->
-          <span class="chassis-screw screw-tl"></span>
-          <span class="chassis-screw screw-tr"></span>
-          <span class="chassis-screw screw-bl"></span>
-          <span class="chassis-screw screw-br"></span>
-
-          <!-- ── 顶栏：仪表读数与硬件开关 ── -->
-          <div class="console-header-block">
-            <div class="status-meter-strip">
-              <div class="system-ident">
-                <span class="status-led-pill" :class="{ online: isPlaying }">
-                  <span class="led-pip"></span>
-                  <span class="led-txt">{{ isPlaying ? 'DSP: ACTIVE' : 'DSP: STANDBY' }}</span>
-                </span>
-                <span class="system-code">TE // VAR-LAB 44.1kHz</span>
+    <Transition name="player-modal-fade">
+      <div v-if="isExpanded" class="player-scrim" @click.self="toggleExpand">
+        <div class="player-porcelain-card">
+          <!-- ── 顶栏：电台身份与分段导航 ── -->
+          <div class="card-header-suite">
+            <div class="station-identity-row">
+              <div
+                class="station-badge"
+                @click="showNeteaseModal = true"
+                title="点击查看电台节点与服务状态"
+              >
+                <div class="avatar-ring">
+                  <img :src="stationUser.avatarUrl" alt="avatar" class="station-avatar-img" />
+                  <span class="station-pulse-dot" :class="{ connected: isApiConnected }"></span>
+                </div>
+                <div class="station-label-bay">
+                  <div class="station-title-line">
+                    <span class="station-nick">{{ stationUser.nickname }}</span>
+                    <span class="station-pill">精选电台</span>
+                  </div>
+                  <span class="station-caption">{{ userPlaylists.length }} 张精选歌单 · 沉浸聆听</span>
+                </div>
               </div>
 
-              <div class="header-tools">
-                <button
-                  class="station-link-trigger"
-                  @click="showNeteaseModal = true"
-                  title="查看云端节点通信诊断"
-                >
-                  <span class="cloud-dot" :class="{ linked: isApiConnected }"></span>
-                  <span class="cloud-txt">{{ isApiConnected ? `LINKED ${apiLatency}ms` : 'OFFLINE' }}</span>
-                </button>
-                <button
-                  class="chassis-close-btn"
-                  @click="toggleExpand"
-                  aria-label="关闭控制台"
-                  title="收起至便携遥控器 [ESC]"
-                >
-                  ✕
-                </button>
-              </div>
+              <button class="player-close-btn" @click="toggleExpand" aria-label="收起播放器">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
             </div>
 
-            <!-- 硬件拨码选择档位 (Tactile Segmented Switch) -->
-            <div class="chassis-nav-switches">
+            <!-- 扁平优雅的分段切换栏 (Segmented Nav Tabs) -->
+            <div class="segmented-nav-bar">
               <button
-                class="switch-key"
+                class="nav-tab-pill"
                 :class="{ active: activeTab === 'player' }"
                 @click="activeTab = 'player'"
               >
-                <span class="key-index">01</span>
-                <span class="key-label">PLTR 唱盘</span>
+                唱盘
               </button>
               <button
-                class="switch-key"
+                class="nav-tab-pill"
                 :class="{ active: activeTab === 'lyrics' }"
                 @click="activeTab = 'lyrics'"
               >
-                <span class="key-index">02</span>
-                <span class="key-label">LYRC 歌词</span>
-                <span v-if="hasLyrics" class="key-dot-badge"></span>
+                歌词
+                <span v-if="hasLyrics" class="lyrics-dot-indicator"></span>
               </button>
               <button
-                class="switch-key"
+                class="nav-tab-pill"
                 :class="{ active: activeTab === 'search' }"
                 @click="activeTab = 'search'"
               >
-                <span class="key-index">03</span>
-                <span class="key-label">SRCH 检索</span>
+                搜歌
               </button>
               <button
-                class="switch-key"
+                class="nav-tab-pill"
                 :class="{ active: activeTab === 'playlist' }"
                 @click="activeTab = 'playlist'"
               >
-                <span class="key-index">04</span>
-                <span class="key-label">QUEU 队列</span>
+                当前 ({{ playlist.length }})
               </button>
               <button
-                class="switch-key"
+                class="nav-tab-pill highlight"
                 :class="{ active: activeTab === 'user-playlists' }"
                 @click="activeTab = 'user-playlists'"
               >
-                <span class="key-index">05</span>
-                <span class="key-label">DISK 歌单</span>
+                精选 ({{ userPlaylists.length }})
               </button>
             </div>
           </div>
 
-          <!-- ── 中部主要工作区 (Main Stage Viewport) ── -->
-          <div class="console-stage-viewport">
-            <!-- 档位 01: 直驱精密唱盘 (Direct-Drive Motor Platter) -->
-            <div v-if="activeTab === 'player'" class="stage-view-player">
-              <!-- 直驱转盘总成 -->
+          <!-- ── 中部内容区 (Main Content Bay) ── -->
+          <div class="card-body-viewport">
+            <!-- TAB 1: 黑胶唱片主视角 (Turntable View) -->
+            <div v-if="activeTab === 'player'" class="tab-page-player">
+              <!-- 拟物黑胶唱片 (点击唱片直接翻转至歌词) -->
               <div
-                class="direct-drive-deck"
+                class="vinyl-stage"
                 @click="activeTab = 'lyrics'"
-                title="点击转盘直接切换至大屏歌词终端"
+                title="点击唱片切换至歌词视图"
               >
-                <!-- 频闪测速外圈 (Strobe Bezel) -->
-                <div class="strobe-bezel" :class="{ spinning: isPlaying }">
-                  <!-- 凹槽唱片盘面 -->
-                  <div class="vinyl-platter-body">
-                    <div class="groove-layer g-outer"></div>
-                    <div class="groove-layer g-mid"></div>
-                    <div class="groove-layer g-inner"></div>
-                    <div class="anisotropic-sheen"></div>
+                <div class="vinyl-record-platter" :class="{ spinning: isPlaying }">
+                  <div class="vinyl-groove g-1"></div>
+                  <div class="vinyl-groove g-2"></div>
+                  <div class="vinyl-groove g-3"></div>
+                  <div class="vinyl-soft-reflection"></div>
 
-                    <!-- 滚花中心压片与封面 (Knurled Clamp & Cover) -->
-                    <div class="center-clamp">
-                      <img :src="currentTrack.coverUrl" alt="cover" class="clamp-artwork" />
-                      <div class="spindle-knurl"></div>
-                      <div class="spindle-center-bore"></div>
-                    </div>
+                  <!-- 唱片中心封面与黄铜锁轴 -->
+                  <div class="vinyl-center-label">
+                    <img :src="currentTrack.coverUrl" alt="cover" class="label-artwork" />
+                    <div class="spindle-brass-pin"></div>
                   </div>
                 </div>
 
-                <!-- 边缘精密光学拾音指示器 (Optical Pickup Indicator) -->
-                <div class="optical-pickup-head" :class="{ active: isPlaying }">
-                  <div class="pickup-beam"></div>
-                  <div class="pickup-diode"></div>
-                </div>
-
-                <!-- 快捷翻转提示徽标 -->
-                <div class="deck-flip-hint">
-                  <span>LYRICS ⇄</span>
+                <div class="turntable-hover-tag">
+                  <span>查看歌词 ⇄</span>
                 </div>
               </div>
 
-              <!-- 嵌入式信息面板 (Recessed Meta Bay) -->
-              <div class="track-readout-bay">
-                <div class="track-headline-row">
-                  <h3 class="track-name" :title="currentTrack.title">{{ currentTrack.title }}</h3>
-                  <span v-if="playbackStatus === 'resolving'" class="tech-pill resolving">
-                    PARSING...
+              <!-- 曲目信息 -->
+              <div class="track-meta-section">
+                <div class="title-flex-row">
+                  <h3 class="track-main-title" :title="currentTrack.title">{{ currentTrack.title }}</h3>
+                  <span v-if="playbackStatus === 'resolving'" class="morandi-tag resolving">
+                    ● 解析直链中
                   </span>
-                  <span v-else-if="playbackStatus === 'error'" class="tech-pill error" :title="playbackError">
-                    ERR: SIGNAL LOST
+                  <span v-else-if="playbackStatus === 'error'" class="morandi-tag error" :title="playbackError">
+                    ⚠️ 播放受阻
                   </span>
-                  <span v-else class="tech-pill" :class="{ full: currentTrack.isFull, trial: currentTrack.isTrial }">
-                    {{ currentTrack.isTrial ? '30S TRIAL' : (currentTrack.isFull ? 'MASTER LOSSLESS' : 'SAMPLE') }}
+                  <span v-else class="morandi-tag" :class="{ full: currentTrack.isFull, trial: currentTrack.isTrial }">
+                    {{ currentTrack.isTrial ? '◐ 试听采样 (30秒)' : (currentTrack.isFull ? '● 完整全曲' : '○ 试听采样') }}
                   </span>
                 </div>
-                <div class="track-sub-row">
-                  <span class="sub-artist">{{ currentTrack.artist }}</span>
-                  <span class="sub-sep">//</span>
-                  <span class="sub-album">{{ currentTrack.album }}</span>
-                </div>
+                <p class="track-sub-artist">
+                  <span v-if="playbackStatus === 'error' && playbackError" class="err-hint">{{ playbackError }}</span>
+                  <span v-else>{{ currentTrack.artist }} · {{ currentTrack.album }}</span>
+                </p>
               </div>
 
-              <!-- 分段式 LED 电平频段仪 (Segmented LED Ladder VU Meter) -->
-              <div class="vu-meter-module">
-                <canvas ref="canvasRef" class="vu-canvas"></canvas>
-                <div class="vu-scale-ticks">
-                  <span>-24dB</span>
-                  <span>-12dB</span>
-                  <span>-6dB</span>
-                  <span>0dB</span>
-                  <span class="tick-peak">PEAK</span>
-                </div>
+              <!-- 实时声波频谱 (Morandi Organic Waveform) -->
+              <div class="visualizer-container">
+                <canvas ref="canvasRef" class="wave-canvas"></canvas>
               </div>
 
-              <!-- 标尺型进度寻轨器 (Precision Ruler Scrubber) -->
-              <div class="ruler-scrubber-module">
+              <!-- 交互式细线进度条 (Interactive Timeline) -->
+              <div class="timeline-section">
                 <div
-                  class="scrub-track-area"
+                  class="timeline-track-wrap"
                   @pointerdown="handleProgressPointerDown"
                   @mousemove="handleProgressMouseMove"
                   @mouseleave="handleProgressMouseLeave"
                 >
                   <div
                     v-if="showHoverTooltip"
-                    class="scrub-precision-tooltip"
+                    class="timeline-tooltip"
                     :style="{ left: `${hoverTooltipX}px` }"
                   >
-                    {{ formatPreciseTime(hoverPct * (duration || 180)) }}
+                    {{ formatTime(hoverPct * (duration || 180)) }}
                   </div>
 
-                  <!-- 标尺底衬与刻度点 -->
-                  <div class="ruler-scale-bg"></div>
-                  <div class="ruler-fill-bar" :style="{ width: `${progressPercent}%` }">
-                    <div class="ruler-slider-handle" :class="{ dragging: isScrubbing }">
-                      <div class="handle-pip"></div>
-                    </div>
+                  <div class="timeline-track-rail"></div>
+                  <div class="timeline-fill-rail" :style="{ width: `${progressPercent}%` }">
+                    <div class="timeline-thumb" :class="{ dragging: isScrubbing, pulse: isPlaying }"></div>
                   </div>
                 </div>
 
-                <div class="ruler-time-readout">
-                  <span class="mono-time">{{ formatPreciseTime(displayCurrentTime) }}</span>
-                  <span class="mono-divider">/</span>
-                  <span class="mono-time total">{{ formatPreciseTime(duration) }}</span>
+                <div class="timeline-time-labels">
+                  <span>{{ formatTime(displayCurrentTime) }}</span>
+                  <span>{{ formatTime(duration) }}</span>
                 </div>
               </div>
             </div>
 
-            <!-- 档位 02: 工业歌词终端视窗 (OLED Terminal Lyrics) -->
-            <div v-else-if="activeTab === 'lyrics'" class="stage-view-lyrics">
-              <div class="terminal-lyrics-head">
-                <div class="lyrics-sys-stat">
-                  <span class="terminal-prompt">&gt;</span>
-                  <span class="terminal-title">LIVE SYNC LRC</span>
-                  <span class="terminal-clock">{{ formatTime(currentTime) }}</span>
+            <!-- TAB 2: 诗集式实时同步歌词 (Poetic Live Lyrics) -->
+            <div v-else-if="activeTab === 'lyrics'" class="tab-page-lyrics">
+              <div class="lyrics-header-strip">
+                <div class="lyrics-status-indicator">
+                  <span class="status-pulse-dot" :class="{ active: isPlaying }"></span>
+                  <span class="status-text">{{ isPlaying ? '实时同步' : '已暂停' }}</span>
                 </div>
-                <span v-if="currentTrack.isTrial" class="terminal-trial-flag">
-                  SYNCING TRIAL RANGE (30s)
-                </span>
+                <span v-if="currentTrack.isTrial" class="lyrics-trial-tip">试听片段 · 歌词将随音轨同步</span>
               </div>
 
               <div
                 ref="lyricsScrollContainer"
-                class="terminal-lyrics-screen"
+                class="lyrics-scroll-viewport"
                 @wheel="handleUserLyricScroll"
                 @touchstart="handleUserLyricScroll"
               >
                 <!-- 加载状态 -->
-                <div v-if="isLoadingLyrics" class="lyrics-term-msg">
-                  <span class="te-spinner"></span>
-                  <span class="msg-txt">FETCHING LYRIC STREAM...</span>
+                <div v-if="isLoadingLyrics" class="lyrics-empty-state">
+                  <span class="morandi-spinner"></span>
+                  <p>正在寻找歌词灵感...</p>
                 </div>
 
                 <!-- 纯音乐或未收录 -->
                 <div
                   v-else-if="isInstrumental || currentLyrics.length === 0"
-                  class="lyrics-term-msg instrumental"
+                  class="lyrics-empty-state instrumental"
                 >
-                  <div class="oscilloscope-wave">
-                    <span></span><span></span><span></span><span></span><span></span>
-                  </div>
-                  <span class="msg-bold">INSTRUMENTAL TRACK</span>
-                  <span class="msg-sub">纯音乐 · 请在旋律中漫步探索</span>
+                  <div class="note-floating-icon">♪</div>
+                  <p class="inst-headline">纯音乐 · 请沉浸欣赏</p>
+                  <p class="inst-subtitle">无歌词收录，静心聆听音符流淌</p>
                 </div>
 
-                <!-- 歌词行矩阵 -->
-                <div v-else class="lyrics-matrix">
-                  <div class="terminal-spacer"></div>
+                <!-- 歌词行列表 -->
+                <div v-else class="lyrics-verse-list">
+                  <div class="verse-spacer"></div>
                   <div
                     v-for="(line, idx) in currentLyrics"
                     :key="line.id"
                     :ref="(el) => setLyricLineRef(el, idx)"
-                    class="terminal-lyric-row"
+                    class="lyric-verse-item"
                     :class="{
                       active: idx === currentLineIndex,
-                      past: idx < currentLineIndex,
+                      passed: idx < currentLineIndex,
                       future: idx > currentLineIndex
                     }"
                     @click="handleLyricClick(line.time)"
+                    :title="`点击跳转至 ${formatTime(line.time)}`"
                   >
-                    <!-- 左侧时间戳标尺 -->
-                    <span class="gutter-timestamp">{{ formatTime(line.time) }}</span>
-                    <!-- 机械游标指示符 -->
-                    <span class="row-indicator">{{ idx === currentLineIndex ? '▶' : ' ' }}</span>
-                    <!-- 歌词文本 -->
-                    <div class="lyric-content-bay">
-                      <p class="origin-text">{{ line.text }}</p>
-                      <p v-if="line.translation" class="trans-text">{{ line.translation }}</p>
-                    </div>
+                    <p class="verse-text">{{ line.text }}</p>
+                    <p v-if="line.translation" class="verse-trans">{{ line.translation }}</p>
                   </div>
-                  <div class="terminal-spacer"></div>
+                  <div class="verse-spacer"></div>
                 </div>
               </div>
             </div>
 
-            <!-- 档位 03: 曲库检索控制台 (Cloud Search Console) -->
-            <div v-else-if="activeTab === 'search'" class="stage-view-search">
-              <div class="chassis-search-box">
-                <span class="cli-arrow">&gt;</span>
+            <!-- TAB 3: 云端搜歌 (Search View) -->
+            <div v-else-if="activeTab === 'search'" class="tab-page-search">
+              <div class="search-bar-wrap">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-svg">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
                 <input
                   v-model="searchKeyword"
                   type="text"
-                  class="chassis-search-input"
-                  placeholder="检索歌曲、歌手或网易云单曲 ID"
+                  class="morandi-search-input"
+                  placeholder="搜索曲名、艺术家，或网易云单曲 ID"
                   @keyup.enter="handleSearch()"
                 />
-                <button class="search-action-btn" @click="handleSearch()">EXEC</button>
+                <button class="search-confirm-btn" @click="handleSearch()">搜索</button>
               </div>
 
-              <div class="search-tag-chips">
-                <span class="chip-caption">TAGS:</span>
+              <!-- 热门风格标签 -->
+              <div class="hot-chips-row">
+                <span class="chips-label">常听风格:</span>
                 <button
                   v-for="tag in hotTags"
                   :key="tag"
-                  class="micro-tag-btn"
+                  class="hot-chip-btn"
                   @click="handleSearch(tag)"
                 >
                   {{ tag }}
                 </button>
               </div>
 
-              <div class="search-output-deck">
-                <div v-if="isSearching" class="output-placeholder">
-                  <span class="te-spinner"></span>
-                  <span>QUERYING CLOUD REPOSITORY...</span>
+              <!-- 搜索结果列表 -->
+              <div class="search-list-scroll">
+                <div v-if="isSearching" class="search-state-msg">
+                  <span class="morandi-spinner"></span>
+                  <span>正在全网曲库检索中...</span>
                 </div>
 
-                <div v-else-if="searchError" class="output-placeholder error">
+                <div v-else-if="searchError" class="search-state-msg error">
                   {{ searchError }}
                 </div>
 
-                <div v-else-if="searchResults.length === 0" class="output-placeholder intro">
-                  <span class="ascii-glyph">✦</span>
-                  <span class="intro-headline">CLOUD AUDIO ARCHIVE</span>
-                  <p class="intro-caption">输入曲目名称或歌手关键词，检索即时音频信号</p>
+                <div v-else-if="searchResults.length === 0" class="search-intro-card">
+                  <span class="intro-leaf-icon">🍃</span>
+                  <span class="intro-card-title">在旋律中漫步</span>
+                  <p class="intro-card-desc">输入喜欢的曲目或歌手，为当下的思绪配一首背景音。</p>
                 </div>
 
-                <div v-else class="results-table">
+                <div v-else class="results-flow">
                   <div
-                    v-for="(item, idx) in searchResults"
+                    v-for="item in searchResults"
                     :key="item.id"
-                    class="track-result-row"
+                    class="song-card-row"
                     @click="handleSelectSearchResult(item)"
                   >
-                    <span class="row-idx">{{ String(idx + 1).padStart(2, '0') }}</span>
-                    <img :src="item.coverUrl" alt="cover" class="row-mini-thumb" />
-                    <div class="row-name-box">
-                      <span class="row-song-title">{{ item.title }}</span>
-                      <span class="row-song-artist">{{ item.artist }}</span>
+                    <img :src="item.coverUrl" alt="cover" class="row-cover-thumb" />
+                    <div class="row-meta-col">
+                      <span class="row-title">{{ item.title }}</span>
+                      <span class="row-artist">{{ item.artist }} · {{ item.album }}</span>
                     </div>
-                    <button class="row-play-trigger" title="加载并播放">PLAY ▶</button>
+                    <button class="row-play-btn" title="立即播放">播放</button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- 档位 04: 当前播放队列 (Active Queue) -->
-            <div v-else-if="activeTab === 'playlist'" class="stage-view-playlist">
-              <div class="view-header-strip">
-                <span class="strip-label">CURRENT QUEUE ({{ playlist.length }})</span>
-                <span class="strip-badge">HOT MEMORY</span>
+            <!-- TAB 4: 当前播放队列 (Queue View) -->
+            <div v-else-if="activeTab === 'playlist'" class="tab-page-queue">
+              <div class="queue-header-row">
+                <span>当前播放队列 ({{ playlist.length }})</span>
+                <span class="queue-mode-hint">{{ playModeTitle }}</span>
               </div>
 
-              <div class="queue-table-scroll">
+              <div class="queue-list-scroll">
                 <div
                   v-for="(item, idx) in playlist"
                   :key="item.id"
-                  class="queue-item-row"
-                  :class="{ active: idx === currentTrackIndex }"
+                  class="queue-track-item"
+                  :class="{ playing: idx === currentTrackIndex }"
                   @click="selectTrack(idx)"
                 >
-                  <span class="queue-num">{{ String(idx + 1).padStart(2, '0') }}</span>
-                  <img :src="item.coverUrl" alt="cover" class="queue-thumb" />
-                  <div class="queue-meta">
-                    <span class="queue-name">{{ item.title }}</span>
-                    <span class="queue-sub">{{ item.artist }}</span>
+                  <span class="queue-index-num">{{ String(idx + 1).padStart(2, '0') }}</span>
+                  <img :src="item.coverUrl" alt="cover" class="queue-thumb-img" />
+                  <div class="queue-info-col">
+                    <span class="queue-song-title">{{ item.title }}</span>
+                    <span class="queue-song-artist">{{ item.artist }}</span>
                   </div>
-                  <span v-if="idx === currentTrackIndex && isPlaying" class="queue-live-tag">RUNNING</span>
-                  <span v-else class="queue-duration">{{ formatTime(item.duration) }}</span>
+                  <span v-if="idx === currentTrackIndex && isPlaying" class="queue-status-pill">播放中</span>
+                  <span v-else class="queue-time">{{ formatTime(item.duration) }}</span>
                 </div>
               </div>
             </div>
 
-            <!-- 档位 05: 站长精选公开唱片盒 (Curated Playlists) -->
-            <div v-else-if="activeTab === 'user-playlists'" class="stage-view-user-playlists">
-              <div class="view-header-strip">
-                <span class="strip-label">{{ stationUser.nickname }} · CURATED TAPES ({{ userPlaylists.length }})</span>
-                <span class="strip-badge">PUBLIC</span>
+            <!-- TAB 5: 站长精选公开歌单 (Curated Playlists View) -->
+            <div v-else-if="activeTab === 'user-playlists'" class="tab-page-playlists">
+              <div class="playlists-header-row">
+                <span>{{ stationUser.nickname }} 的日常精选歌单 ({{ userPlaylists.length }})</span>
+                <span class="playlists-hint">点击载入整张歌单</span>
               </div>
 
-              <div class="playlists-tape-grid">
+              <div class="playlists-cards-scroll">
                 <div
                   v-for="pl in userPlaylists"
                   :key="pl.id"
-                  class="tape-cartridge"
+                  class="playlist-item-card"
                   :class="{ loading: currentLoadingPlaylistId === pl.id }"
                   @click="handleSelectNeteasePlaylist(pl.id)"
                 >
-                  <div class="tape-cover-cradle">
-                    <img :src="pl.coverImgUrl" alt="cover" class="tape-art" />
-                    <span v-if="currentLoadingPlaylistId === pl.id" class="tape-spin-overlay">
-                      <span class="te-spinner-mini"></span>
+                  <div class="pl-cover-box">
+                    <img :src="pl.coverImgUrl" alt="cover" class="pl-cover-img" />
+                    <span v-if="currentLoadingPlaylistId === pl.id" class="pl-loading-cover">
+                      <span class="morandi-spinner-sm"></span>
                     </span>
                   </div>
-                  <div class="tape-info-bay">
-                    <span class="tape-title" :title="pl.name">{{ pl.name }}</span>
-                    <span class="tape-specs">{{ pl.trackCount }} TRACKS // STATION FEED</span>
+                  <div class="pl-info-col">
+                    <span class="pl-card-title" :title="pl.name">{{ pl.name }}</span>
+                    <span class="pl-card-meta">{{ pl.trackCount }} 首歌曲 · 灵感歌单</span>
                   </div>
-                  <button class="tape-load-lever" :disabled="currentLoadingPlaylistId === pl.id">
-                    {{ currentLoadingPlaylistId === pl.id ? 'MOUNTING...' : 'MOUNT' }}
+                  <button class="pl-mount-btn" :disabled="currentLoadingPlaylistId === pl.id">
+                    {{ currentLoadingPlaylistId === pl.id ? '载入中...' : '载入歌单' }}
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- ── 底部控制台：机械按键组 (Hardware Control Deck) ── -->
-          <div class="hardware-control-deck">
-            <!-- 模式拨码 (Mode Toggle) -->
+          <!-- ── 底部控制栏：陶瓷触感按键组 (Controls Deck) ── -->
+          <div class="player-controls-deck">
+            <!-- 播放模式切换 -->
             <button
-              class="hw-key key-mode"
+              class="control-btn mode-btn"
               @click="togglePlayMode"
-              :title="`播放模式: ${playModeDescription}`"
+              :title="`播放模式: ${playModeTitle} (点击切换)`"
+              :aria-label="`播放模式: ${playModeTitle}`"
             >
-              <span class="key-sub-label">MODE</span>
-              <span class="key-mode-code">{{ playModeLabel }}</span>
-            </button>
-
-            <!-- 上一曲 -->
-            <button class="hw-key key-skip" @click="prevTrack" title="上一曲 [PREV]">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="19 20 9 12 19 4 19 20" />
-                <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5" />
+              <!-- 顺序播放 -->
+              <svg v-if="playMode === 'sequence'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+              <!-- 单曲循环 -->
+              <svg v-else-if="playMode === 'loop-one'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                <text x="12" y="15" font-size="8" font-family="monospace" font-weight="bold" fill="currentColor" text-anchor="middle">1</text>
+              </svg>
+              <!-- 随机播放 -->
+              <svg v-else width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 3 21 3 21 8" />
+                <line x1="4" y1="20" x2="21" y2="3" />
+                <polyline points="21 16 21 21 16 21" />
+                <line x1="15" y1="15" x2="21" y2="21" />
+                <line x1="4" y1="4" x2="9" y2="9" />
               </svg>
             </button>
 
-            <!-- 主播放/暂停 (Primary Tactile Engine Key) -->
-            <button
-              class="hw-key-primary"
-              :class="{ playing: isPlaying }"
-              @click="togglePlay"
-              :aria-label="isPlaying ? '暂停' : '播放'"
-            >
-              <span v-if="isLoading" class="te-spinner primary"></span>
-              <svg v-else-if="!isPlaying" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <!-- 上一首 -->
+            <button class="control-btn" @click="prevTrack" title="上一首">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="19 20 9 12 19 4 19 20" />
+                <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2" />
+              </svg>
+            </button>
+
+            <!-- 主播放/暂停 (莫兰迪绿核心按键) -->
+            <button class="primary-play-btn" @click="togglePlay" :aria-label="isPlaying ? '暂停' : '播放'">
+              <span v-if="isLoading" class="primary-spinner"></span>
+              <svg v-else-if="!isPlaying" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="6 3 20 12 6 21 6 3" />
               </svg>
-              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="4" width="4" height="16" />
                 <rect x="14" y="4" width="4" height="16" />
               </svg>
             </button>
 
-            <!-- 下一曲 -->
-            <button class="hw-key key-skip" @click="nextTrack" title="下一曲 [NEXT]">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <!-- 下一首 -->
+            <button class="control-btn" @click="nextTrack" title="下一首">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 4 15 12 5 20 5 4" />
-                <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5" />
+                <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" />
               </svg>
             </button>
 
-            <!-- 音量调节推子 (Fader Volume Pot) -->
-            <div class="hw-fader-block">
-              <button class="fader-mute-btn" @click="toggleMute" title="静音切换">
-                <svg v-if="isMuted || volume === 0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <!-- 音量调节推子 -->
+            <div class="volume-slider-bay">
+              <button class="control-btn vol-icon-btn" @click="toggleMute" title="静音切换">
+                <svg v-if="isMuted || volume === 0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   <line x1="23" y1="9" x2="17" y2="15" />
                   <line x1="17" y1="9" x2="23" y2="15" />
                 </svg>
-                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
                 </svg>
               </button>
-              <div class="fader-slider-wrap">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  :value="isMuted ? 0 : volume * 100"
-                  class="te-fader-input"
-                  @input="handleVolumeChange"
-                  title="音量调节"
-                />
-                <span class="fader-scale-tag">VOL</span>
-              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                :value="isMuted ? 0 : volume * 100"
+                class="morandi-vol-range"
+                @input="handleVolumeChange"
+                title="音量调节"
+              />
             </div>
           </div>
         </div>
@@ -901,47 +828,45 @@ onUnmounted(() => {
     </Transition>
 
     <!-- ══════════════════════════════════════════════════════ -->
-    <!-- 3. 云端接口与节点诊断弹窗 (Hardware Diagnostics)       -->
+    <!-- 3. 云端电台与节点状态弹窗 (Station Diagnostic Modal)    -->
     <!-- ══════════════════════════════════════════════════════ -->
-    <Transition name="diag-pop">
-      <div v-if="showNeteaseModal" class="diag-scrim" @click.self="showNeteaseModal = false">
-        <div class="diag-chassis">
-          <div class="diag-header">
-            <div class="diag-title-row">
-              <span class="diag-led"></span>
-              <span class="diag-headline">DIAGNOSTICS // CLOUD LINK</span>
+    <Transition name="modal-pop">
+      <div v-if="showNeteaseModal" class="station-modal-scrim" @click.self="showNeteaseModal = false">
+        <div class="station-modal-card">
+          <div class="station-modal-header">
+            <div class="modal-header-left">
+              <span class="tea-icon">☕</span>
+              <span class="modal-title">var 的专属音乐电台</span>
             </div>
-            <button class="diag-close" @click="showNeteaseModal = false">✕</button>
+            <button class="modal-close-btn" @click="showNeteaseModal = false">✕</button>
           </div>
 
-          <div class="diag-body">
-            <!-- 站长电台信息 -->
-            <div class="diag-card-unit">
-              <div class="unit-banner">
-                <img :src="stationUser.avatarUrl" alt="avatar" class="unit-avatar" />
-                <div class="unit-meta">
-                  <span class="unit-nick">{{ stationUser.nickname }}</span>
-                  <span class="unit-desc">STATION MASTER · {{ userPlaylists.length }} ALBUMS ONLINE</span>
-                </div>
+          <div class="station-modal-body">
+            <!-- 站长信息 -->
+            <div class="owner-profile-card">
+              <img :src="stationUser.avatarUrl" alt="avatar" class="owner-avatar" />
+              <div class="owner-meta">
+                <span class="owner-name">{{ stationUser.nickname }}</span>
+                <span class="owner-desc">站长个人电台 · 免登录畅听精选歌单</span>
               </div>
             </div>
 
-            <!-- API 节点状态 -->
-            <div class="diag-card-unit">
-              <span class="unit-label">SERVICE ENDPOINT</span>
-              <div class="endpoint-line">
+            <!-- API 节点连接信息 -->
+            <div class="node-status-card">
+              <span class="node-label">云端曲库接口节点</span>
+              <div class="node-url-row">
                 <code>{{ apiUrl }}</code>
-                <span class="ping-badge" :class="{ ok: isApiConnected }">
-                  {{ isApiConnected ? `ONLINE (${apiLatency}ms)` : 'UNREACHABLE' }}
+                <span class="node-badge" :class="{ ok: isApiConnected }">
+                  {{ isApiConnected ? `已连接 (${apiLatency}ms)` : '未连通' }}
                 </span>
               </div>
-              <p v-if="apiTestMessage" class="diag-hint">{{ apiTestMessage }}</p>
+              <p v-if="apiTestMessage" class="node-hint">{{ apiTestMessage }}</p>
               <button
-                class="diag-action-btn"
+                class="node-test-btn"
                 :disabled="apiTesting"
                 @click="testCurrentApi()"
               >
-                {{ apiTesting ? 'PINGING...' : 'TEST LATENCY' }}
+                {{ apiTesting ? '测试中...' : '测试节点延迟' }}
               </button>
             </div>
           </div>
@@ -953,11 +878,11 @@ onUnmounted(() => {
 
 <style scoped>
 /* ═══════════════════════════════════════════════════════════════
-   TEENAGE ENGINEERING / 现代工业设计系统 (TE DESIGN SYSTEM)
+   莫兰迪自然与侘寂美学音乐系统 (MORANDI WABI-SABI MUSIC SYSTEM)
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── 1. 悬浮遥控微胶囊 (Pocket Remote Dock) ── */
-.pocket-remote {
+/* ── 1. 悬浮瓷白微胶囊 (Porcelain Capsule Dock) ── */
+.porcelain-capsule {
   position: fixed;
   left: 24px;
   bottom: 28px;
@@ -965,1361 +890,1029 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 14px 8px 10px;
-  background: #141618;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
+  padding: 8px 14px 8px 8px;
+  background: #FAF7F2;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
   box-shadow:
-    0 16px 36px -6px rgba(0, 0, 0, 0.55),
-    0 2px 8px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 14px 36px -4px rgba(44, 38, 33, 0.16),
+    0 4px 12px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all 0.28s var(--ease);
   user-select: none;
-  font-family: 'JetBrains Mono', 'SF Mono', -apple-system, monospace;
 }
 
-.pocket-remote:hover {
-  background: #1A1D20;
-  border-color: rgba(255, 255, 255, 0.2);
+.porcelain-capsule:hover {
   transform: translateY(-2px);
   box-shadow:
-    0 20px 42px -6px rgba(0, 0, 0, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 18px 42px -4px rgba(44, 38, 33, 0.22),
+    0 6px 16px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  border-color: rgba(124, 140, 110, 0.4);
 }
 
-/* 机械微型齿轮/卷带轮 */
-.remote-spool-wrap {
-  width: 32px;
-  height: 32px;
+/* 微型黑胶旋转小圆盘 */
+.capsule-vinyl-disk {
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: #22252A;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
-}
-
-.remote-spool {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #121315;
+  background: radial-gradient(circle, #2C2825 0%, #151312 100%);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.15);
 }
 
-.remote-spool.spinning {
-  animation: spool-rotate 6s linear infinite;
+.capsule-vinyl-disk.spinning {
+  animation: vinyl-turn 10s linear infinite;
 }
 
-@keyframes spool-rotate {
+@keyframes vinyl-turn {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-.spool-spoke {
-  position: absolute;
-  width: 2px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 1px;
-}
-.spool-spoke.s1 { transform: rotate(0deg); }
-.spool-spoke.s2 { transform: rotate(60deg); }
-.spool-spoke.s3 { transform: rotate(120deg); }
-
-.spool-hub {
-  width: 8px;
-  height: 8px;
+.capsule-thumb {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: #FF5500;
-  box-shadow: 0 0 6px rgba(255, 85, 0, 0.6);
-  z-index: 2;
+  object-fit: cover;
 }
 
-/* 读数区域 */
-.remote-display {
+.vinyl-core-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-warm);
+  border: 1px solid #FAF7F2;
+}
+
+/* 胶囊信息 */
+.capsule-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
   max-width: 140px;
 }
 
-.remote-status-row {
+.capsule-title-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.remote-led-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #555860;
-  transition: all 0.3s;
-}
-
-.remote-led-dot.active {
-  background: #10B981;
-  box-shadow: 0 0 8px #10B981;
-  animation: led-pulse 2s ease-in-out infinite;
-}
-
-@keyframes led-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-.remote-mono-tag {
-  font-size: 0.65rem;
-  letter-spacing: 0.05em;
-  color: #8E929A;
-  text-transform: uppercase;
-}
-
-.remote-badge-full {
-  font-size: 0.58rem;
-  padding: 0 4px;
-  border-radius: 2px;
-  background: rgba(16, 185, 129, 0.15);
-  color: #10B981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.remote-badge-trial {
-  font-size: 0.58rem;
-  padding: 0 4px;
-  border-radius: 2px;
-  background: rgba(255, 85, 0, 0.15);
-  color: #FF5500;
-  border: 1px solid rgba(255, 85, 0, 0.3);
-}
-
-.remote-title {
-  font-size: 0.82rem;
-  color: #F0F2F5;
-  font-weight: 500;
+.capsule-title {
+  font-family: var(--font-serif);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: 0.02em;
 }
 
-/* 微型电平条 */
-.remote-meter {
+.capsule-badge {
+  font-size: 0.6rem;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.capsule-badge.full {
+  background: rgba(124, 140, 110, 0.15);
+  color: var(--color-accent-dark);
+}
+
+.capsule-badge.trial {
+  background: rgba(196, 168, 130, 0.2);
+  color: #A67B48;
+}
+
+.capsule-artist {
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 律动微波 */
+.capsule-wave-bars {
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  height: 12px;
-  margin-left: 2px;
+  height: 14px;
 }
 
-.m-bar {
-  width: 2px;
-  background: #3A3D44;
+.w-bar {
+  width: 2.5px;
+  background: var(--border-medium);
   border-radius: 1px;
 }
-.m-bar.mb-1 { height: 4px; }
-.m-bar.mb-2 { height: 8px; }
-.m-bar.mb-3 { height: 6px; }
+.w-bar.wb-1 { height: 5px; }
+.w-bar.wb-2 { height: 10px; }
+.w-bar.wb-3 { height: 7px; }
 
-.m-bar.run {
-  background: #10B981;
-  animation: bar-dance 1.2s ease-in-out infinite alternate;
+.w-bar.active {
+  background: var(--color-accent);
+  animation: bar-flow 1.2s ease-in-out infinite alternate;
 }
-.m-bar.mb-1.run { animation-delay: 0.1s; }
-.m-bar.mb-2.run { animation-delay: 0.3s; }
-.m-bar.mb-3.run { animation-delay: 0.2s; }
+.w-bar.wb-1.active { animation-delay: 0.1s; }
+.w-bar.wb-2.active { animation-delay: 0.3s; }
+.w-bar.wb-3.active { animation-delay: 0.2s; }
 
-@keyframes bar-dance {
-  0% { height: 3px; }
-  100% { height: 12px; }
+@keyframes bar-flow {
+  0% { height: 4px; }
+  100% { height: 14px; }
 }
 
-/* 硬件微动按键 */
-.remote-tactile-btn {
+/* 播放轻触按钮 */
+.capsule-toggle-btn {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  background: #24272D;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #F0F2F5;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px var(--color-accent-glow);
+  transition: all 0.2s var(--ease);
   flex-shrink: 0;
 }
 
-.remote-tactile-btn:hover {
-  background: #2E323A;
-  color: #FF5500;
-  border-color: rgba(255, 85, 0, 0.4);
+.capsule-toggle-btn:hover {
+  background: var(--color-accent-dark);
+  transform: scale(1.08);
 }
 
-.remote-tactile-btn:active {
-  transform: translateY(1px) scale(0.96);
-  background: #1A1C20;
+.capsule-spinner {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-/* ── 2. 展开态工作室工作台 (TE Studio Console) ── */
-.console-scrim {
+/* ── 2. 展开态温润瓷白大卡片 (Expanded Porcelain Player) ── */
+.player-scrim {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: rgba(10, 12, 15, 0.78);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(36, 32, 28, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
 }
 
-.console-chassis {
+.player-porcelain-card {
   width: 100%;
-  max-width: 480px;
-  background: #181A1D;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 20px;
-  position: relative;
+  max-width: 460px;
+  background: #FAF7F2;
+  border: 1px solid var(--border-medium);
+  border-radius: 24px;
   box-shadow:
-    0 32px 80px -12px rgba(0, 0, 0, 0.8),
-    0 12px 30px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    0 32px 80px -12px rgba(28, 22, 18, 0.45),
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: 'JetBrains Mono', 'SF Mono', -apple-system, BlinkMacSystemFont, monospace;
+  position: relative;
 }
 
-/* 机械四角沉头螺丝 */
-.chassis-screw {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #2A2D33;
-  border: 1px solid rgba(0, 0, 0, 0.5);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15);
-  z-index: 20;
-  pointer-events: none;
-}
-.screw-tl { top: 12px; left: 12px; }
-.screw-tr { top: 12px; right: 12px; }
-.screw-bl { bottom: 12px; left: 12px; }
-.screw-br { bottom: 12px; right: 12px; }
-
-/* ── 顶栏套件 (Header Suite) ── */
-.console-header-block {
-  padding: 16px 20px 12px;
-  background: #141518;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+/* 顶栏与标签 */
+.card-header-suite {
+  padding: 20px 24px 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
-.status-meter-strip {
+.station-identity-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 2px;
 }
 
-.system-ident {
+.station-badge {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.status-led-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
-  background: #1F2227;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-}
-
-.led-pip {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #555860;
-  transition: all 0.3s;
-}
-
-.status-led-pill.online .led-pip {
-  background: #10B981;
-  box-shadow: 0 0 8px #10B981;
-}
-
-.led-txt {
-  font-size: 0.68rem;
-  color: #9EADB8;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-}
-
-.system-code {
-  font-size: 0.65rem;
-  color: #555962;
-  letter-spacing: 0.08em;
-}
-
-.header-tools {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.station-link-trigger {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  background: #1F2227;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.65rem;
-  color: #8E929A;
-  transition: all 0.2s;
+  padding: 4px 12px 4px 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-alt);
+  border: 1px solid var(--border-light);
+  transition: all 0.25s var(--ease);
 }
 
-.station-link-trigger:hover {
-  background: #282C33;
-  color: #FFFFFF;
+.station-badge:hover {
+  border-color: var(--color-accent);
+  background: #FFFFFF;
+  transform: translateY(-1px);
 }
 
-.cloud-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #EF4444;
-}
-.cloud-dot.linked {
-  background: #10B981;
-  box-shadow: 0 0 6px #10B981;
-}
-
-.chassis-close-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  background: #24272D;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #8E929A;
-  font-size: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.chassis-close-btn:hover {
-  background: #FF5500;
-  color: white;
-  border-color: #FF5500;
-}
-
-/* 硬件拨码选择档位 (Tactile Segmented Switch) */
-.chassis-nav-switches {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
-  background: #0E0F12;
-  padding: 4px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.switch-key {
+.avatar-ring {
   position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.station-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.station-pulse-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9CA3AF;
+  border: 1.5px solid #FAF7F2;
+}
+
+.station-pulse-dot.connected {
+  background: var(--color-accent);
+  box-shadow: 0 0 6px var(--color-accent);
+}
+
+.station-label-bay {
   display: flex;
   flex-direction: column;
+}
+
+.station-title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.station-nick {
+  font-family: var(--font-serif);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.station-pill {
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.station-caption {
+  font-size: 0.7rem;
+  color: var(--color-text-lighter);
+}
+
+.player-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--border-light);
+  color: var(--color-text-lighter);
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 2px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.18s ease;
-  font-family: inherit;
+  transition: all 0.25s var(--ease);
 }
 
-.key-index {
-  font-size: 0.58rem;
-  color: #555962;
-  letter-spacing: 0.05em;
+.player-close-btn:hover {
+  background: #FFFFFF;
+  color: var(--color-text);
+  border-color: var(--border-medium);
+  transform: rotate(90deg);
 }
 
-.key-label {
-  font-size: 0.72rem;
-  color: #8E929A;
+/* 分段选项卡栏 */
+.segmented-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #EDE8E2;
+  padding: 3px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-light);
+}
+
+.nav-tab-pill {
+  flex: 1;
+  position: relative;
+  padding: 6px 0;
+  font-size: 0.78rem;
   font-weight: 500;
-  letter-spacing: 0.02em;
+  color: var(--color-text-light);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.22s var(--ease);
 }
 
-.switch-key:hover {
-  background: #1A1D22;
-  color: #FFFFFF;
+.nav-tab-pill:hover {
+  color: var(--color-text);
 }
 
-.switch-key.active {
-  background: #24272E;
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-}
-
-.switch-key.active .key-index {
-  color: #FF5500;
+.nav-tab-pill.active {
+  background: #FAF7F2;
+  color: var(--color-text);
   font-weight: 600;
+  box-shadow: 0 2px 8px rgba(45, 40, 35, 0.08);
 }
 
-.switch-key.active .key-label {
-  color: #FFFFFF;
-  font-weight: 600;
+.nav-tab-pill.highlight {
+  color: var(--color-accent);
 }
 
-.key-dot-badge {
+.lyrics-dot-indicator {
   position: absolute;
-  top: 4px;
-  right: 6px;
+  top: 6px;
+  right: 14px;
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #FF5500;
-  box-shadow: 0 0 6px #FF5500;
+  background: var(--color-accent);
 }
 
-/* ── 中部工作区 (Console Stage Viewport) ── */
-.console-stage-viewport {
-  padding: 16px 20px;
-  min-height: 380px;
-  max-height: 420px;
+/* ── 中部内容区 (Card Body Viewport) ── */
+.card-body-viewport {
+  padding: 6px 24px 14px;
+  min-height: 360px;
+  max-height: 390px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
 }
 
-/* ── 档位 01: 直驱精密唱机 (Direct-Drive Motor Platter) ── */
-.stage-view-player {
+/* ── TAB 1: 唱盘主视角 ── */
+.tab-page-player {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
 }
 
-/* 直驱转盘总成 */
-.direct-drive-deck {
-  width: 196px;
-  height: 196px;
-  margin: 0 auto;
+.vinyl-stage {
   position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
 }
 
-/* 频闪齿纹外圈 (Strobe Bezel) */
-.strobe-bezel {
+.vinyl-record-platter {
   width: 196px;
   height: 196px;
-  border-radius: 50%;
-  background: repeating-conic-gradient(
-    from 0deg,
-    #33373F 0deg 2.5deg,
-    #141619 2.5deg 5deg
-  );
-  box-shadow:
-    0 16px 36px rgba(0, 0, 0, 0.7),
-    0 0 0 1px #3A3E47,
-    inset 0 0 0 2px #0E1012;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  transition: transform 0.2s ease;
-}
-
-.direct-drive-deck:hover .strobe-bezel {
-  transform: scale(1.02);
-}
-
-.strobe-bezel.spinning {
-  animation: drive-spin 10s linear infinite;
-}
-
-@keyframes drive-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* 盘面凹槽 */
-.vinyl-platter-body {
-  width: 174px;
-  height: 174px;
   border-radius: 50%;
   background:
     repeating-radial-gradient(
       circle,
-      rgba(255, 255, 255, 0.02) 0px,
-      rgba(255, 255, 255, 0.02) 1px,
+      rgba(255, 255, 255, 0.025) 0px,
+      rgba(255, 255, 255, 0.025) 1px,
       transparent 1px,
       transparent 3px
     ),
-    radial-gradient(circle, #202328 0%, #0D0E10 100%);
+    radial-gradient(circle, #252220 0%, #151312 100%);
   position: relative;
+  box-shadow:
+    0 18px 40px rgba(40, 34, 28, 0.38),
+    0 2px 10px rgba(0, 0, 0, 0.15),
+    inset 0 0 0 2px #342F2B;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  transition: transform 0.3s var(--ease);
 }
 
-.groove-layer {
+.vinyl-stage:hover .vinyl-record-platter {
+  transform: scale(1.02);
+}
+
+.vinyl-record-platter.spinning {
+  animation: vinyl-spin 12s linear infinite;
+}
+
+@keyframes vinyl-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.vinyl-groove {
   position: absolute;
   border-radius: 50%;
-  pointer-events: none;
 }
-.g-outer { width: 154px; height: 154px; border: 1px solid rgba(255, 255, 255, 0.04); }
-.g-mid   { width: 128px; height: 128px; border: 1px dashed rgba(255, 255, 255, 0.05); }
-.g-inner { width: 104px; height: 104px; border: 1px solid rgba(255, 255, 255, 0.04); }
+.g-1 { width: 164px; height: 164px; border: 1px solid rgba(255, 255, 255, 0.04); }
+.g-2 { width: 134px; height: 134px; border: 1px dashed rgba(255, 255, 255, 0.05); }
+.g-3 { width: 104px; height: 104px; border: 1px solid rgba(255, 255, 255, 0.04); }
 
-.anisotropic-sheen {
+.vinyl-soft-reflection {
   position: absolute;
   inset: 0;
   border-radius: 50%;
   background: conic-gradient(
-    from 45deg,
+    from 35deg,
     transparent 0deg,
-    rgba(255, 255, 255, 0.08) 45deg,
+    rgba(255, 255, 255, 0.08) 35deg,
     transparent 90deg,
     transparent 180deg,
-    rgba(255, 255, 255, 0.08) 225deg,
+    rgba(255, 255, 255, 0.08) 215deg,
     transparent 270deg
   );
   pointer-events: none;
 }
 
-/* 滚花中心压片与封面 (Knurled Clamp) */
-.center-clamp {
-  width: 72px;
-  height: 72px;
+.vinyl-center-label {
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
-  background: #181A1D;
+  border: 2px solid #C4A882;
   position: relative;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.8),
-    0 0 0 2px #3A3E47,
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  z-index: 3;
+  z-index: 2;
 }
 
-.clamp-artwork {
+.label-artwork {
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
 }
 
-.spindle-knurl {
+.spindle-brass-pin {
   position: absolute;
-  width: 22px;
-  height: 22px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: radial-gradient(circle, #3D424C 0%, #1A1C20 100%);
-  border: 1px solid #5A606D;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  background: #C4A882;
+  border: 1.5px solid #252220;
 }
 
-.spindle-center-bore {
+.turntable-hover-tag {
   position: absolute;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #08090A;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-/* 边缘光学拾音指示器 (Optical Pickup) */
-.optical-pickup-head {
-  position: absolute;
-  top: -4px;
-  right: 28px;
-  width: 14px;
-  height: 24px;
-  background: #25282F;
-  border: 1px solid #434854;
-  border-radius: 3px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  padding-bottom: 3px;
-  z-index: 5;
-}
-
-.pickup-diode {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #666;
-  transition: all 0.3s;
-}
-
-.optical-pickup-head.active .pickup-diode {
-  background: #FF5500;
-  box-shadow: 0 0 8px #FF5500;
-}
-
-.deck-flip-hint {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(36, 39, 46, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 0.6rem;
-  color: #8E929A;
-  letter-spacing: 0.05em;
+  bottom: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(250, 247, 242, 0.9);
+  border: 1px solid var(--border-medium);
+  font-size: 0.68rem;
+  color: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.25s var(--ease);
 }
 
-.direct-drive-deck:hover .deck-flip-hint {
+.vinyl-stage:hover .turntable-hover-tag {
   opacity: 1;
 }
 
-/* 嵌入式信息面板 (Recessed Meta Bay) */
-.track-readout-bay {
-  background: #131417;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 8px;
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+/* 曲目信息 */
+.track-meta-section {
+  text-align: center;
+  margin-bottom: 6px;
+  width: 100%;
 }
 
-.track-headline-row {
+.title-flex-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
+  margin-bottom: 3px;
 }
 
-.track-name {
-  font-size: 1.05rem;
+.track-main-title {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: 0.01em;
-  margin: 0;
+  max-width: 250px;
 }
 
-.tech-pill {
-  font-size: 0.62rem;
-  padding: 2px 6px;
-  border-radius: 3px;
-  background: #1C1E23;
-  color: #8E929A;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  white-space: nowrap;
-  letter-spacing: 0.04em;
+.morandi-tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--color-text-lighter);
 }
 
-.tech-pill.full {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10B981;
-  border-color: rgba(16, 185, 129, 0.3);
+.morandi-tag.full {
+  background: rgba(124, 140, 110, 0.15);
+  color: var(--color-accent-dark);
+  font-weight: 500;
 }
 
-.tech-pill.trial {
-  background: rgba(255, 85, 0, 0.15);
-  color: #FF5500;
-  border-color: rgba(255, 85, 0, 0.3);
+.morandi-tag.trial {
+  background: rgba(196, 168, 130, 0.2);
+  color: #B48855;
+  font-weight: 500;
 }
 
-.tech-pill.resolving {
-  color: #3B82F6;
-  border-color: rgba(59, 130, 246, 0.3);
+.morandi-tag.resolving {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563EB;
 }
 
-.tech-pill.error {
-  color: #EF4444;
-  border-color: rgba(239, 68, 68, 0.3);
+.morandi-tag.error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #DC2626;
 }
 
-.track-sub-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  color: #7A808C;
+.track-sub-artist {
+  font-size: 0.8rem;
+  color: var(--color-text-lighter);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.sub-sep {
-  color: #444852;
+.err-hint { color: #DC2626; }
+
+/* 声波画布 */
+.visualizer-container {
+  width: 100%;
+  height: 26px;
+  margin-bottom: 8px;
 }
 
-/* 分段式 LED 电平频段仪 */
-.vu-meter-module {
+.wave-canvas {
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.vu-canvas {
-  width: 100%;
-  height: 24px;
-  background: #0E0F12;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  height: 100%;
   display: block;
 }
 
-.vu-scale-ticks {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.56rem;
-  color: #4A4E58;
-  padding: 0 4px;
-  letter-spacing: 0.05em;
-}
-
-.tick-peak {
-  color: #EF4444;
-  opacity: 0.8;
-}
-
-/* 标尺型进度寻轨器 (Precision Ruler Scrubber) */
-.ruler-scrubber-module {
+/* 进度条 */
+.timeline-section {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.scrub-track-area {
+.timeline-track-wrap {
   position: relative;
-  height: 20px;
+  height: 18px;
   display: flex;
   align-items: center;
   cursor: pointer;
   touch-action: none;
 }
 
-.scrub-precision-tooltip {
+.timeline-tooltip {
   position: absolute;
   top: -24px;
   transform: translateX(-50%);
   padding: 2px 6px;
-  background: #000000;
-  border: 1px solid #FF5500;
-  border-radius: 3px;
-  font-size: 0.65rem;
-  color: #FF5500;
+  background: var(--color-text);
+  color: #FAF7F2;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
   pointer-events: none;
   white-space: nowrap;
-  z-index: 10;
 }
 
-.ruler-scale-bg {
+.timeline-track-rail {
   width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background:
-    repeating-linear-gradient(
-      to right,
-      rgba(255, 255, 255, 0.12) 0px,
-      rgba(255, 255, 255, 0.12) 1px,
-      transparent 1px,
-      transparent 8px
-    ),
-    #131417;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  height: 4px;
+  background: var(--border-medium);
+  border-radius: 2px;
 }
 
-.ruler-fill-bar {
+.timeline-fill-rail {
   position: absolute;
   left: 0;
-  height: 6px;
-  border-radius: 3px;
-  background: #FF5500;
+  height: 4px;
+  background: var(--color-accent);
+  border-radius: 2px;
   pointer-events: none;
 }
 
-.ruler-slider-handle {
+.timeline-thumb {
   position: absolute;
   right: -5px;
   top: -4px;
-  width: 10px;
-  height: 14px;
-  background: #ECEEF2;
-  border: 1px solid #1A1C20;
-  border-radius: 2px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s var(--ease);
+}
+
+.timeline-thumb.dragging {
+  transform: scale(1.3);
+}
+
+.timeline-time-labels {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.1s;
-}
-
-.handle-pip {
-  width: 2px;
-  height: 8px;
-  background: #FF5500;
-}
-
-.ruler-slider-handle.dragging {
-  transform: scale(1.2);
-}
-
-.ruler-time-readout {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  font-size: 0.7rem;
-  color: #7A808C;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
 }
 
-.mono-time {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-}
-
-.mono-time.total {
-  color: #4A4E58;
-}
-
-/* ── 档位 02: 工业歌词终端 (OLED Terminal Lyrics) ── */
-.stage-view-lyrics {
+/* ── TAB 2: 诗集式歌词视窗 ── */
+.tab-page-lyrics {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #111215;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  background: #F4EFEB;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
-.terminal-lyrics-head {
+.lyrics-header-strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
-  background: #0E0F12;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px 16px 6px;
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
+}
+
+.lyrics-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #B0AAA0;
+}
+
+.status-pulse-dot.active {
+  background: var(--color-accent);
+  box-shadow: 0 0 6px var(--color-accent);
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.lyrics-trial-tip {
+  color: #B48855;
   font-size: 0.68rem;
 }
 
-.lyrics-sys-stat {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.terminal-prompt {
-  color: #FF5500;
-  font-weight: bold;
-}
-
-.terminal-title {
-  color: #8E929A;
-  letter-spacing: 0.06em;
-}
-
-.terminal-clock {
-  color: #10B981;
-}
-
-.terminal-trial-flag {
-  color: #FF5500;
-  font-size: 0.62rem;
-}
-
-.terminal-lyrics-screen {
+.lyrics-scroll-viewport {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  position: relative;
-  padding: 0 16px;
+  padding: 0 20px;
   scrollbar-width: none;
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0%,
-    rgba(0, 0, 0, 1) 18%,
-    rgba(0, 0, 0, 1) 82%,
+    black 16%,
+    black 84%,
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0%,
-    rgba(0, 0, 0, 1) 18%,
-    rgba(0, 0, 0, 1) 82%,
+    black 16%,
+    black 84%,
     transparent 100%
   );
 }
-.terminal-lyrics-screen::-webkit-scrollbar { display: none; }
+.lyrics-scroll-viewport::-webkit-scrollbar { display: none; }
 
-.terminal-spacer {
+.verse-spacer {
   height: 110px;
   flex-shrink: 0;
 }
 
-.lyrics-matrix {
+.lyrics-verse-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  text-align: center;
 }
 
-.terminal-lyric-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 6px 10px;
-  border-radius: 6px;
+.lyric-verse-item {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all 0.28s var(--ease);
   user-select: none;
 }
 
-.gutter-timestamp {
-  font-size: 0.7rem;
-  color: #4A4E58;
-  width: 42px;
-  flex-shrink: 0;
-  padding-top: 2px;
-}
-
-.row-indicator {
-  width: 12px;
-  font-size: 0.75rem;
-  color: #FF5500;
-  flex-shrink: 0;
-  padding-top: 2px;
-}
-
-.lyric-content-bay {
-  flex: 1;
-}
-
-.origin-text {
+.verse-text {
+  font-family: var(--font-serif);
   font-size: 0.98rem;
-  line-height: 1.45;
-  color: #727782;
-  transition: all 0.2s;
+  line-height: 1.5;
+  color: #8C8880;
+  transition: all 0.25s var(--ease);
   margin: 0;
 }
 
-.trans-text {
-  font-size: 0.82rem;
-  line-height: 1.35;
-  color: #4A4E58;
-  margin: 3px 0 0;
-  transition: all 0.2s;
+.verse-trans {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #A39F97;
+  margin: 4px 0 0;
+  transition: all 0.25s var(--ease);
 }
 
-/* 高亮激活行 */
-.terminal-lyric-row.active {
-  background: rgba(255, 85, 0, 0.08);
+.lyric-verse-item.active {
+  transform: scale(1.06);
 }
 
-.terminal-lyric-row.active .gutter-timestamp {
-  color: #FF5500;
-}
-
-.terminal-lyric-row.active .origin-text {
-  font-size: 1.15rem;
+.lyric-verse-item.active .verse-text {
+  font-size: 1.18rem;
   font-weight: 600;
-  color: #FFFFFF;
-  text-shadow: 0 0 16px rgba(255, 85, 0, 0.35);
+  color: var(--color-accent-dark);
+  text-shadow: 0 2px 10px rgba(124, 140, 110, 0.2);
 }
 
-.terminal-lyric-row.active .trans-text {
-  font-size: 0.88rem;
-  color: #D2D6DF;
+.lyric-verse-item.active .verse-trans {
+  font-size: 0.86rem;
+  color: var(--color-text);
+  font-weight: 500;
 }
 
-.terminal-lyric-row:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.04);
+.lyric-verse-item:hover:not(.active) {
+  background: rgba(124, 140, 110, 0.08);
 }
 
-.terminal-lyric-row:hover:not(.active) .origin-text {
-  color: #C0C5CF;
+.lyric-verse-item:hover:not(.active) .verse-text {
+  color: var(--color-text);
 }
 
-/* 状态提示 */
-.lyrics-term-msg {
+.lyrics-empty-state {
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: #8E929A;
-  font-size: 0.85rem;
-  padding: 40px 20px;
+  padding: 40px;
+  color: var(--color-text-lighter);
+  font-size: 0.88rem;
   text-align: center;
 }
 
-.oscilloscope-wave {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 28px;
-}
-.oscilloscope-wave span {
-  width: 3px;
-  height: 16px;
-  background: #FF5500;
-  border-radius: 2px;
-  animation: osc-pulse 1.4s ease-in-out infinite alternate;
-}
-.oscilloscope-wave span:nth-child(2) { height: 26px; animation-delay: 0.2s; }
-.oscilloscope-wave span:nth-child(3) { height: 10px; animation-delay: 0.4s; }
-.oscilloscope-wave span:nth-child(4) { height: 22px; animation-delay: 0.1s; }
-.oscilloscope-wave span:nth-child(5) { height: 14px; animation-delay: 0.3s; }
-
-@keyframes osc-pulse {
-  0% { transform: scaleY(0.4); opacity: 0.5; }
-  100% { transform: scaleY(1); opacity: 1; }
+.note-floating-icon {
+  font-size: 2.2rem;
+  color: var(--color-accent);
+  opacity: 0.8;
+  animation: float-note 3s ease-in-out infinite;
 }
 
-.msg-bold {
-  color: #FFFFFF;
+@keyframes float-note {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.inst-headline {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  color: var(--color-text);
+  margin: 0;
 }
 
-.msg-sub {
-  color: #555962;
-  font-size: 0.78rem;
+.inst-subtitle {
+  font-size: 0.8rem;
+  color: var(--color-text-lighter);
+  margin: 0;
 }
 
-/* ── 档位 03: 检索控制台 (Cloud Search) ── */
-.stage-view-search {
+/* ── TAB 3: 搜歌 ── */
+.tab-page-search {
   display: flex;
   flex-direction: column;
   gap: 10px;
   height: 100%;
 }
 
-.chassis-search-box {
+.search-bar-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #101215;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  background: #F4EFEB;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
 }
 
-.cli-arrow {
-  color: #FF5500;
-  font-weight: bold;
+.search-svg {
+  color: var(--color-text-lighter);
 }
 
-.chassis-search-input {
+.morandi-search-input {
   flex: 1;
   background: transparent;
   border: none;
   outline: none;
-  color: #FFFFFF;
-  font-family: inherit;
-  font-size: 0.85rem;
+  color: var(--color-text);
+  font-size: 0.88rem;
 }
 
-.search-action-btn {
-  padding: 4px 10px;
-  background: #252830;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
-  color: #D1D5DB;
-  font-size: 0.7rem;
+.search-confirm-btn {
+  padding: 4px 12px;
+  background: var(--color-accent);
+  color: #FFFFFF;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: inherit;
 }
 
-.search-action-btn:hover {
-  background: #FF5500;
-  color: #FFFFFF;
+.search-confirm-btn:hover {
+  background: var(--color-accent-dark);
 }
 
-.search-tag-chips {
+.hot-chips-row {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
 }
 
-.chip-caption {
-  font-size: 0.65rem;
-  color: #555962;
+.chips-label {
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
 }
 
-.micro-tag-btn {
-  padding: 2px 8px;
-  background: #1B1D22;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  color: #8E929A;
-  font-size: 0.7rem;
+.hot-chip-btn {
+  padding: 3px 10px;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  color: var(--color-text-light);
   cursor: pointer;
   transition: all 0.2s;
-  font-family: inherit;
 }
 
-.micro-tag-btn:hover {
-  border-color: #FF5500;
-  color: #FF5500;
+.hot-chip-btn:hover {
+  background: #FFFFFF;
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
-.search-output-deck {
+.search-list-scroll {
   flex: 1;
   overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  background: #111215;
-  padding: 8px;
 }
 
-.output-placeholder {
+.search-state-msg {
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #555962;
-  font-size: 0.8rem;
+  color: var(--color-text-lighter);
+  font-size: 0.85rem;
   padding: 30px;
+}
+
+.search-intro-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  gap: 6px;
   text-align: center;
 }
 
-.intro-headline {
-  color: #8E929A;
+.intro-leaf-icon { font-size: 1.8rem; }
+.intro-card-title {
+  font-family: var(--font-serif);
+  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  color: var(--color-text);
+}
+.intro-card-desc {
+  font-size: 0.78rem;
+  color: var(--color-text-lighter);
 }
 
-.results-table {
+.results-flow {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
-.track-result-row {
+.song-card-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: #15171C;
-  border: 1px solid transparent;
+  padding: 8px 12px;
+  background: #F4EFEB;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.track-result-row:hover {
-  background: #1F2229;
-  border-color: rgba(255, 255, 255, 0.1);
+.song-card-row:hover {
+  background: #EDE6DF;
 }
 
-.row-idx {
-  font-size: 0.7rem;
-  color: #4A4E58;
-  width: 18px;
-}
-
-.row-mini-thumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
+.row-cover-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-xs);
   object-fit: cover;
 }
 
-.row-name-box {
+.row-meta-col {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.row-song-title {
-  font-size: 0.82rem;
+.row-title {
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-artist {
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-play-btn {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
   color: #FFFFFF;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.row-song-artist {
-  font-size: 0.7rem;
-  color: #727782;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.row-play-trigger {
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: #252830;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #10B981;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   cursor: pointer;
-  font-family: inherit;
 }
 
-.row-play-trigger:hover {
-  background: #10B981;
-  color: #000;
-}
-
-/* ── 档位 04: 当前队列 (Queue Table) ── */
-.stage-view-playlist {
+/* ── TAB 4: 播放队列 ── */
+.tab-page-queue {
   display: flex;
   flex-direction: column;
   gap: 8px;
   height: 100%;
 }
 
-.view-header-strip {
+.queue-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2px 4px;
-  font-size: 0.68rem;
-  color: #8E929A;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding-bottom: 6px;
+  font-size: 0.74rem;
+  color: var(--color-text-lighter);
+  padding: 0 4px;
 }
 
-.strip-badge {
-  color: #FF5500;
-}
-
-.queue-table-scroll {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.queue-item-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: #131518;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.queue-item-row:hover {
-  background: #1C1F25;
-}
-
-.queue-item-row.active {
-  background: #20242C;
-  border-color: rgba(255, 85, 0, 0.3);
-}
-
-.queue-num {
-  font-size: 0.7rem;
-  color: #4A4E58;
-}
-
-.queue-item-row.active .queue-num {
-  color: #FF5500;
-  font-weight: bold;
-}
-
-.queue-thumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  object-fit: cover;
-}
-
-.queue-meta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.queue-name {
-  font-size: 0.82rem;
-  color: #FFFFFF;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.queue-sub {
-  font-size: 0.7rem;
-  color: #727782;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.queue-live-tag {
-  font-size: 0.62rem;
-  color: #10B981;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-}
-
-.queue-duration {
-  font-size: 0.7rem;
-  color: #4A4E58;
-}
-
-/* ── 档位 05: 精选唱片盒 (Curated Playlists) ── */
-.stage-view-user-playlists {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  height: 100%;
-}
-
-.playlists-tape-grid {
+.queue-list-scroll {
   flex: 1;
   overflow-y: auto;
   display: flex;
@@ -2327,48 +1920,150 @@ onUnmounted(() => {
   gap: 6px;
 }
 
-.tape-cartridge {
+.queue-track-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: #14161A;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #F4EFEB;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.tape-cartridge:hover {
-  background: #1D2026;
-  border-color: rgba(255, 255, 255, 0.15);
+.queue-track-item:hover {
+  background: #EDE6DF;
 }
 
-.tape-cover-cradle {
+.queue-track-item.playing {
+  background: rgba(124, 140, 110, 0.12);
+  border: 1px solid rgba(124, 140, 110, 0.3);
+}
+
+.queue-index-num {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
+  width: 20px;
+}
+
+.queue-track-item.playing .queue-index-num {
+  color: var(--color-accent);
+  font-weight: bold;
+}
+
+.queue-thumb-img {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  object-fit: cover;
+}
+
+.queue-info-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.queue-song-title {
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-song-artist {
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-status-pill {
+  font-size: 0.65rem;
+  color: var(--color-accent-dark);
+  background: rgba(124, 140, 110, 0.18);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.queue-time {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
+}
+
+/* ── TAB 5: 站长精选歌单 ── */
+.tab-page-playlists {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+}
+
+.playlists-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  color: var(--color-text-lighter);
+  padding: 0 4px;
+}
+
+.playlists-cards-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.playlist-item-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #F4EFEB;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.playlist-item-card:hover {
+  background: #EDE6DF;
+  border-color: var(--color-accent);
+}
+
+.pl-cover-box {
   width: 44px;
   height: 44px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
   position: relative;
   flex-shrink: 0;
 }
 
-.tape-art {
+.pl-cover-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.tape-spin-overlay {
+.pl-loading-cover {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.tape-info-bay {
+.pl-info-col {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -2376,198 +2071,157 @@ onUnmounted(() => {
   gap: 2px;
 }
 
-.tape-title {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #FFFFFF;
+.pl-card-title {
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.tape-specs {
-  font-size: 0.68rem;
-  color: #727782;
+.pl-card-meta {
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
 }
 
-.tape-load-lever {
-  padding: 6px 12px;
-  background: #252830;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+.pl-mount-btn {
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
   color: #FFFFFF;
-  font-size: 0.68rem;
-  font-family: inherit;
+  font-size: 0.74rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.tape-load-lever:hover:not(:disabled) {
-  background: #FF5500;
-  border-color: #FF5500;
+.pl-mount-btn:hover:not(:disabled) {
+  background: var(--color-accent-dark);
 }
 
-/* ── 底部控制台：机械按键组 (Hardware Control Deck) ── */
-.hardware-control-deck {
-  padding: 14px 20px 18px;
-  background: #111215;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+/* ── 底部控制栏 (Controls Deck) ── */
+.player-controls-deck {
+  padding: 14px 24px 20px;
+  background: #F4EFEB;
+  border-top: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
-/* 通用硬件按键 */
-.hw-key {
-  height: 42px;
-  border-radius: 8px;
-  background: #202328;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #D1D5DB;
+.control-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #FAF7F2;
+  border: 1px solid var(--border-medium);
+  color: var(--color-text);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow:
-    0 3px 6px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transition: all 0.12s ease;
-  font-family: inherit;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s var(--ease);
   flex-shrink: 0;
 }
 
-.hw-key:hover {
-  background: #282C33;
-  color: #FFFFFF;
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.hw-key:active {
-  transform: translateY(2px) scale(0.97);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
-  background: #181A1E;
-}
-
-/* 模式按键 */
-.key-mode {
-  width: 48px;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px 2px;
-}
-
-.key-sub-label {
-  font-size: 0.5rem;
-  color: #555962;
-  letter-spacing: 0.08em;
-}
-
-.key-mode-code {
-  font-size: 0.68rem;
-  color: #FF5500;
-  font-weight: bold;
-}
-
-/* 上下曲 */
-.key-skip {
-  width: 42px;
-}
-
-/* 标志性主按键 (Primary Tactile Engine Key) */
-.hw-key-primary {
-  width: 54px;
-  height: 50px;
-  border-radius: 12px;
-  background: #FF5500;
-  border: 1px solid #FF7733;
-  color: #FFFFFF;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow:
-    0 4px 14px rgba(255, 85, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  transition: all 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
-  flex-shrink: 0;
-}
-
-.hw-key-primary:hover {
-  background: #FF661A;
-  box-shadow: 0 6px 20px rgba(255, 85, 0, 0.6);
+.control-btn:hover {
+  background: #FFFFFF;
+  color: var(--color-accent);
+  border-color: var(--color-accent);
   transform: translateY(-1px);
 }
 
-.hw-key-primary:active {
-  transform: translateY(2px) scale(0.96);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+.control-btn:active {
+  transform: translateY(1px);
 }
 
-/* 音量推子模块 */
-.hw-fader-block {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  max-width: 130px;
-  padding-left: 6px;
-}
-
-.fader-mute-btn {
-  background: transparent;
-  border: none;
-  color: #7A808C;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: 4px;
-  transition: color 0.2s;
-}
-
-.fader-mute-btn:hover {
+.primary-play-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--color-accent);
   color: #FFFFFF;
-}
-
-.fader-slider-wrap {
-  flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 8px 24px var(--color-accent-glow),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: all 0.25s var(--ease-spring);
+  flex-shrink: 0;
 }
 
-.te-fader-input {
-  width: 100%;
+.primary-play-btn:hover {
+  background: var(--color-accent-dark);
+  transform: scale(1.06);
+  box-shadow: 0 12px 28px var(--color-accent-glow-strong);
+}
+
+.primary-play-btn:active {
+  transform: scale(0.96);
+}
+
+.primary-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* 音量推子 */
+.volume-slider-bay {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  max-width: 120px;
+}
+
+.vol-icon-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-text-lighter);
+}
+
+.vol-icon-btn:hover {
+  color: var(--color-text);
+  background: transparent;
+}
+
+.morandi-vol-range {
+  flex: 1;
   height: 4px;
   -webkit-appearance: none;
-  background: #252830;
+  background: var(--border-medium);
   border-radius: 2px;
   outline: none;
 }
 
-.te-fader-input::-webkit-slider-thumb {
+.morandi-vol-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 10px;
-  height: 16px;
-  background: #ECEEF2;
-  border: 1px solid #141619;
-  border-radius: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-accent);
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
-.fader-scale-tag {
-  font-size: 0.55rem;
-  color: #4A4E58;
-  letter-spacing: 0.08em;
-}
-
-/* ── 3. 诊断与配置弹窗 (Hardware Diagnostics) ── */
-.diag-scrim {
+/* ── 3. 电台状态弹窗 (Station Modal) ── */
+.station-modal-scrim {
   position: fixed;
   inset: 0;
   z-index: 10050;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(36, 32, 28, 0.65);
   backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
@@ -2575,172 +2229,164 @@ onUnmounted(() => {
   padding: 20px;
 }
 
-.diag-chassis {
+.station-modal-card {
   width: 100%;
   max-width: 420px;
-  background: #1A1C20;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
+  background: #FAF7F2;
+  border: 1px solid var(--border-medium);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
   overflow: hidden;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
-.diag-header {
-  padding: 12px 16px;
-  background: #141518;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.station-modal-header {
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.diag-title-row {
+.modal-header-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.diag-led {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #FF5500;
-  box-shadow: 0 0 8px #FF5500;
-}
+.tea-icon { font-size: 1.2rem; }
 
-.diag-headline {
-  font-size: 0.75rem;
-  color: #FFFFFF;
+.modal-title {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  color: var(--color-text);
 }
 
-.diag-close {
+.modal-close-btn {
   background: transparent;
   border: none;
-  color: #8E929A;
+  color: var(--color-text-lighter);
+  font-size: 0.9rem;
   cursor: pointer;
-  font-size: 0.85rem;
 }
-.diag-close:hover { color: #FFFFFF; }
+.modal-close-btn:hover { color: var(--color-text); }
 
-.diag-body {
-  padding: 16px;
+.station-modal-body {
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
-.diag-card-unit {
-  background: #131417;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.unit-banner {
+.owner-profile-card {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--color-bg-alt);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
 }
 
-.unit-avatar {
-  width: 36px;
-  height: 36px;
+.owner-avatar {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.unit-meta {
+.owner-meta {
   display: flex;
   flex-direction: column;
 }
 
-.unit-nick {
-  font-size: 0.85rem;
-  color: #FFFFFF;
+.owner-name {
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
   font-weight: 600;
+  color: var(--color-text);
 }
 
-.unit-desc {
-  font-size: 0.65rem;
-  color: #727782;
+.owner-desc {
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
 }
 
-.unit-label {
-  font-size: 0.62rem;
-  color: #555962;
-  letter-spacing: 0.08em;
+.node-status-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: var(--color-bg-alt);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
 }
 
-.endpoint-line {
+.node-label {
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
+}
+
+.node-url-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.endpoint-line code {
-  font-size: 0.72rem;
-  color: #10B981;
-  background: #0E0F12;
+.node-url-row code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text);
+  background: rgba(0, 0, 0, 0.04);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
-.ping-badge {
-  font-size: 0.65rem;
-  color: #EF4444;
-}
-.ping-badge.ok {
-  color: #10B981;
-}
-
-.diag-hint {
+.node-badge {
   font-size: 0.68rem;
-  color: #8E929A;
+  color: #DC2626;
+}
+.node-badge.ok {
+  color: var(--color-accent-dark);
+  font-weight: 500;
+}
+
+.node-hint {
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
   margin: 0;
 }
 
-.diag-action-btn {
-  padding: 6px 12px;
-  background: #252830;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+.node-test-btn {
+  padding: 6px 14px;
+  background: var(--color-accent);
   color: #FFFFFF;
-  font-size: 0.72rem;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
   cursor: pointer;
+  align-self: flex-start;
   transition: all 0.2s;
-  font-family: inherit;
 }
-.diag-action-btn:hover:not(:disabled) {
-  background: #FF5500;
-  border-color: #FF5500;
+.node-test-btn:hover:not(:disabled) {
+  background: var(--color-accent-dark);
 }
 
 /* ── 通用 Spinner ── */
-.te-spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #FF5500;
+.morandi-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border-medium);
+  border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
-.te-spinner.primary {
+.morandi-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
   border-top-color: #FFFFFF;
-}
-
-.te-spinner-mini {
-  width: 12px;
-  height: 12px;
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
-  border-top-color: #FF5500;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -2750,44 +2396,43 @@ onUnmounted(() => {
   to { transform: rotate(360deg); }
 }
 
-/* ── 过渡动效 ── */
-.remote-pop-enter-active,
-.remote-pop-leave-active {
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+/* ── 进出过渡动画 ── */
+.capsule-fade-enter-active,
+.capsule-fade-leave-active {
+  transition: all 0.3s var(--ease-spring);
 }
-.remote-pop-enter-from { opacity: 0; transform: translateY(16px) scale(0.92); }
-.remote-pop-leave-to   { opacity: 0; transform: translateY(12px) scale(0.95); }
+.capsule-fade-enter-from { opacity: 0; transform: translateY(16px) scale(0.9); }
+.capsule-fade-leave-to   { opacity: 0; transform: translateY(12px) scale(0.92); }
 
-.console-pop-enter-active,
-.console-pop-leave-active {
-  transition: all 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+.player-modal-fade-enter-active,
+.player-modal-fade-leave-active {
+  transition: all 0.28s var(--ease);
 }
-.console-pop-enter-from { opacity: 0; transform: scale(0.94) translateY(12px); }
-.console-pop-leave-to   { opacity: 0; transform: scale(0.96) translateY(-8px); }
+.player-modal-fade-enter-from { opacity: 0; transform: scale(0.95) translateY(12px); }
+.player-modal-fade-leave-to   { opacity: 0; transform: scale(0.96) translateY(-8px); }
 
-.diag-pop-enter-active,
-.diag-pop-leave-active {
-  transition: all 0.25s ease;
+.modal-pop-enter-active,
+.modal-pop-leave-active {
+  transition: all 0.24s var(--ease);
 }
-.diag-pop-enter-from,
-.diag-pop-leave-to { opacity: 0; transform: scale(0.94); }
+.modal-pop-enter-from,
+.modal-pop-leave-to { opacity: 0; transform: scale(0.94); }
 
 /* ── 移动端适配 ── */
 @media (max-width: 600px) {
-  .pocket-remote {
+  .porcelain-capsule {
     left: 16px;
     bottom: 20px;
-    padding: 6px 12px 6px 8px;
+    padding: 6px 12px 6px 6px;
   }
-  .remote-display { max-width: 100px; }
-  .console-scrim { padding: 12px; }
-  .console-chassis { max-width: 100%; border-radius: 16px; }
-  .console-stage-viewport { min-height: 350px; max-height: 380px; padding: 12px 14px; }
-  .direct-drive-deck { width: 160px; height: 160px; }
-  .strobe-bezel { width: 160px; height: 160px; }
-  .vinyl-platter-body { width: 142px; height: 142px; }
-  .center-clamp { width: 58px; height: 58px; }
-  .hardware-control-deck { padding: 10px 14px 14px; }
-  .hw-fader-block { display: none; } /* 移动端隐藏较宽的音量条，腾出按键空间 */
+  .capsule-meta { max-width: 95px; }
+  .player-scrim { padding: 12px; }
+  .player-porcelain-card { max-width: 100%; border-radius: 20px; }
+  .card-header-suite { padding: 16px 18px 10px; }
+  .card-body-viewport { min-height: 330px; max-height: 360px; padding: 4px 18px 10px; }
+  .vinyl-stage { width: 170px; height: 170px; }
+  .vinyl-record-platter { width: 168px; height: 168px; }
+  .player-controls-deck { padding: 12px 18px 16px; }
+  .volume-slider-bay { display: none; }
 }
 </style>
