@@ -90,12 +90,72 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-function handleProgressClick(e: MouseEvent) {
-  const target = e.currentTarget as HTMLElement
-  const rect = target.getBoundingClientRect()
+// ── 交互式进度条 (拖拽拖动 + 悬停时间预览) ──
+const isScrubbing = ref(false)
+const scrubTime = ref(0)
+const hoverPct = ref(0)
+const showHoverTooltip = ref(false)
+const hoverTooltipX = ref(0)
+
+const displayCurrentTime = computed(() => {
+  return isScrubbing.value ? scrubTime.value : currentTime.value
+})
+
+const progressPercent = computed(() => {
+  const dur = duration.value || 1
+  const t = displayCurrentTime.value
+  return Math.min(100, Math.max(0, (t / dur) * 100))
+})
+
+function updateScrubFromEvent(e: PointerEvent, container: HTMLElement) {
+  const rect = container.getBoundingClientRect()
   const clickX = e.clientX - rect.left
   const pct = Math.max(0, Math.min(1, clickX / rect.width))
-  seek(pct * (duration.value || 180))
+  scrubTime.value = pct * (duration.value || 180)
+  hoverTooltipX.value = Math.max(0, Math.min(rect.width, clickX))
+  hoverPct.value = pct
+}
+
+function handleProgressPointerDown(e: PointerEvent) {
+  const target = e.currentTarget as HTMLElement
+  target.setPointerCapture(e.pointerId)
+  isScrubbing.value = true
+  showHoverTooltip.value = true
+  updateScrubFromEvent(e, target)
+
+  const onPointerMove = (ev: PointerEvent) => {
+    if (!isScrubbing.value) return
+    updateScrubFromEvent(ev, target)
+  }
+
+  const onPointerUp = (ev: PointerEvent) => {
+    if (isScrubbing.value) {
+      seek(scrubTime.value)
+      isScrubbing.value = false
+    }
+    showHoverTooltip.value = false
+    target.removeEventListener('pointermove', onPointerMove)
+    target.removeEventListener('pointerup', onPointerUp)
+  }
+
+  target.addEventListener('pointermove', onPointerMove)
+  target.addEventListener('pointerup', onPointerUp)
+}
+
+function handleProgressMouseMove(e: MouseEvent) {
+  if (isScrubbing.value) return
+  const target = e.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  hoverTooltipX.value = Math.max(0, Math.min(rect.width, x))
+  hoverPct.value = Math.max(0, Math.min(1, x / rect.width))
+  showHoverTooltip.value = true
+}
+
+function handleProgressMouseLeave() {
+  if (!isScrubbing.value) {
+    showHoverTooltip.value = false
+  }
 }
 
 function handleVolumeChange(e: Event) {
@@ -109,7 +169,7 @@ const playModeTitle = computed(() => {
   return '随机播放 (点击切换为列表循环)'
 })
 
-// ── 真实声波频谱 Canvas 绘制 (修复 2x DPR 坐标系错位) ──
+// ── 真实声波频谱 Canvas 绘制 (修复 2x DPR 坐标系错位与流体律动) ──
 function initCanvasDpr() {
   const canvas = canvasRef.value
   if (!canvas) return
@@ -124,7 +184,7 @@ function initCanvasDpr() {
 function drawSpectrum() {
   if (animId !== null) cancelAnimationFrame(animId)
 
-  const barCount = 32
+  const barCount = 26
   const dataArray = new Float32Array(barCount)
 
   const render = () => {
@@ -144,40 +204,42 @@ function drawSpectrum() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.scale(dpr, dpr)
 
-    const t = Date.now() * 0.0035
+    const t = Date.now() * 0.003
     if (isPlaying.value) {
       for (let i = 0; i < barCount; i++) {
-        const wave1 = Math.sin(t * 2.2 + i * 0.36) * 0.38 + 0.46
-        const wave2 = Math.cos(t * 1.3 - i * 0.22) * 0.22
-        const wave3 = Math.sin(t * 3.8 + i * 0.65) * 0.14
-        const targetVal = Math.max(0.1, Math.min(0.96, wave1 + wave2 + wave3))
+        const centerDist = Math.abs(i - barCount / 2) / (barCount / 2)
+        const bellCurve = 1 - centerDist * 0.45
+        const wave1 = Math.sin(t * 2.5 + i * 0.42) * 0.4 + 0.45
+        const wave2 = Math.cos(t * 1.6 - i * 0.28) * 0.25
+        const wave3 = Math.sin(t * 4.2 + i * 0.75) * 0.15
+        const targetVal = Math.max(0.12, Math.min(0.96, (wave1 + wave2 + wave3) * bellCurve))
         dataArray[i] += (targetVal - dataArray[i]) * 0.22
       }
     } else {
       for (let i = 0; i < barCount; i++) {
-        const targetVal = Math.sin(i * 0.4 + t * 0.7) * 0.03 + 0.06
-        dataArray[i] += (targetVal - dataArray[i]) * 0.1
+        const targetVal = Math.sin(i * 0.35 + t * 0.8) * 0.03 + 0.07
+        dataArray[i] += (targetVal - dataArray[i]) * 0.08
       }
     }
 
-    const barWidth = Math.max(2.5, (w / barCount) * 0.58)
+    const barWidth = Math.max(2.5, (w / barCount) * 0.52)
     const totalBarsWidth = barWidth * barCount
     const gap = Math.max(1.8, (w - totalBarsWidth) / (barCount - 1))
 
     for (let i = 0; i < barCount; i++) {
       const val = dataArray[i] || 0.06
-      const barHeight = Math.max(3, val * (h * 0.9))
+      const barHeight = Math.max(3.5, val * (h * 0.88))
       const x = i * (barWidth + gap)
       const y = (h - barHeight) / 2
 
       const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight)
       gradient.addColorStop(0, '#7C8C6E')
-      gradient.addColorStop(0.5, '#99A889')
+      gradient.addColorStop(0.5, '#A3B495')
       gradient.addColorStop(1, '#C4A882')
 
       ctx.fillStyle = gradient
       ctx.beginPath()
-      ctx.roundRect(x, y, barWidth, barHeight, [2, 2, 2, 2])
+      ctx.roundRect(x, y, barWidth, barHeight, [barWidth / 2, barWidth / 2, barWidth / 2, barWidth / 2])
       ctx.fill()
     }
   }
@@ -395,18 +457,36 @@ watch(activeTab, (tab) => {
               <canvas ref="canvasRef" class="spectrum-canvas"></canvas>
             </div>
 
-            <!-- 进度条 -->
+            <!-- 交互式进度条 (支持拖拽 + 时间浮层预览) -->
             <div class="progress-section">
-              <div class="progress-bar-container" @click="handleProgressClick">
+              <div
+                class="progress-bar-container"
+                @pointerdown="handleProgressPointerDown"
+                @mousemove="handleProgressMouseMove"
+                @mouseleave="handleProgressMouseLeave"
+              >
+                <!-- 鼠标悬停时间预览浮层 (Tooltip) -->
+                <Transition name="tooltip-fade">
+                  <div
+                    v-if="showHoverTooltip"
+                    class="progress-tooltip"
+                    :style="{ left: `${hoverTooltipX}px` }"
+                  >
+                    {{ formatTime(hoverPct * (duration || 180)) }}
+                  </div>
+                </Transition>
+
+                <!-- 进度条轨道与填充 -->
+                <div class="progress-track-bg"></div>
                 <div
                   class="progress-fill-bar"
-                  :style="{ width: `${(currentTime / (duration || 1)) * 100}%` }"
+                  :style="{ width: `${progressPercent}%` }"
                 >
-                  <div class="progress-thumb"></div>
+                  <div class="progress-thumb" :class="{ dragging: isScrubbing, pulse: isPlaying }"></div>
                 </div>
               </div>
               <div class="time-labels">
-                <span>{{ formatTime(currentTime) }}</span>
+                <span>{{ formatTime(displayCurrentTime) }}</span>
                 <span>{{ formatTime(duration) }}</span>
               </div>
             </div>
@@ -425,7 +505,7 @@ watch(activeTab, (tab) => {
                 v-model="searchKeyword"
                 type="text"
                 class="search-input"
-                placeholder="搜歌名/歌手，或输入网易云单曲ID（如 1436709403）"
+                placeholder="搜索曲名、艺术家，或网易云单曲 ID"
                 @keyup.enter="handleSearch()"
               />
               <button class="search-submit-btn" @click="handleSearch()">搜索</button>
@@ -433,7 +513,7 @@ watch(activeTab, (tab) => {
 
             <!-- 灵感热门标签 -->
             <div class="hot-tags-row">
-              <span class="hot-tag-label">快捷检索:</span>
+              <span class="hot-tag-label">常听风格:</span>
               <button
                 v-for="tag in hotTags"
                 :key="tag"
@@ -457,12 +537,10 @@ watch(activeTab, (tab) => {
 
               <div v-else-if="searchResults.length === 0" class="search-intro">
                 <div class="search-intro-card">
-                  <span class="intro-title">🎵 网易云曲库全网检索</span>
+                  <div class="intro-card-icon">✦</div>
+                  <span class="intro-title">在旋律中漫步</span>
                   <p class="intro-desc">
-                    支持按<strong>歌曲名、歌手</strong>全网检索，或直接输入<strong>网易云歌曲 ID</strong>（如 <code>27946612</code>）精准点歌。
-                  </p>
-                  <p class="intro-action">
-                    👉 点击即可通过服务端安全直链网关自动解析并进入单向稳定播放。
+                    输入你喜欢的曲目、歌手，或者直接粘贴网易云单曲 ID，为当下的思绪配一首背景音。
                   </p>
                 </div>
               </div>
@@ -493,8 +571,8 @@ watch(activeTab, (tab) => {
           <Transition name="tab-fade" mode="out-in">
           <div v-if="activeTab === 'playlist'" key="playlist" class="tab-view-playlist">
             <div class="playlist-header">
-              <span>当前播放列表 ({{ playlist.length }} 首)</span>
-              <span class="playlist-hint">支持自动顺次连播</span>
+              <span>当前队列 ({{ playlist.length }} 首)</span>
+              <span class="playlist-hint">顺序播放中</span>
             </div>
             <div class="playlist-items-scroll">
               <div
@@ -504,7 +582,15 @@ watch(activeTab, (tab) => {
                 :class="{ active: idx === currentTrackIndex }"
                 @click="selectTrack(idx); activeTab = 'player'"
               >
-                <img :src="item.coverUrl" alt="art" class="row-cover" />
+                <span class="row-num">{{ String(idx + 1).padStart(2, '0') }}</span>
+                <div class="row-cover-wrap">
+                  <img :src="item.coverUrl" alt="art" class="row-cover" />
+                  <div v-if="idx === currentTrackIndex && isPlaying" class="row-eq-overlay">
+                    <span class="eq-dot ed-1"></span>
+                    <span class="eq-dot ed-2"></span>
+                    <span class="eq-dot ed-3"></span>
+                  </div>
+                </div>
                 <div class="row-info">
                   <div class="row-title-row">
                     <span class="row-title">{{ item.title }}</span>
@@ -513,7 +599,7 @@ watch(activeTab, (tab) => {
                   </div>
                   <span class="row-artist">{{ item.artist }}</span>
                 </div>
-                <span v-if="idx === currentTrackIndex && isPlaying" class="row-playing-icon">♫ 正在播</span>
+                <span v-if="idx === currentTrackIndex && isPlaying" class="row-playing-pill">播放中</span>
                 <span v-else class="row-duration">{{ formatTime(item.duration) }}</span>
               </div>
             </div>
@@ -524,8 +610,8 @@ watch(activeTab, (tab) => {
           <Transition name="tab-fade" mode="out-in">
           <div v-if="activeTab === 'user-playlists'" key="user-playlists" class="tab-view-user-playlists">
             <div class="playlist-header">
-              <span>{{ stationUser.nickname }} 的精选公开歌单 ({{ userPlaylists.length }})</span>
-              <span class="playlist-hint">点击载入整张歌单播放</span>
+              <span>{{ stationUser.nickname }} 的日常精选歌单 ({{ userPlaylists.length }})</span>
+              <span class="playlist-hint">点击载入整张歌单</span>
             </div>
             <div class="user-playlists-scroll-area">
               <div
@@ -536,6 +622,10 @@ watch(activeTab, (tab) => {
                 @click="handleSelectNeteasePlaylist(pl.id)"
               >
                 <div class="card-cover-wrap">
+                  <!-- 拟物黑胶窥视效果 (Vinyl Peek-Out) -->
+                  <div class="vinyl-peek-disk">
+                    <div class="peek-spindle"></div>
+                  </div>
                   <img :src="pl.coverImgUrl" alt="cover" class="pl-cover" />
                   <span v-if="currentLoadingPlaylistId === pl.id" class="pl-loading-overlay">
                     <span class="loading-spinner-mini"></span>
@@ -544,7 +634,7 @@ watch(activeTab, (tab) => {
                 </div>
                 <div class="pl-info">
                   <span class="pl-name" :title="pl.name">{{ pl.name }}</span>
-                  <span class="pl-count">{{ pl.trackCount }} 首歌曲 · 站长专属</span>
+                  <span class="pl-count">{{ pl.trackCount }} 首歌曲 · 灵感电台</span>
                 </div>
                 <button class="pl-load-btn" :disabled="currentLoadingPlaylistId === pl.id">
                   {{ currentLoadingPlaylistId === pl.id ? '载入中...' : '载入歌单' }}
@@ -651,8 +741,8 @@ watch(activeTab, (tab) => {
         <div class="login-card glass-card">
           <div class="login-header">
             <div class="header-left">
-              <span class="cloud-icon">📻</span>
-              <span class="login-title">站长专属音乐空间</span>
+              <span class="cloud-icon">☕</span>
+              <span class="login-title">var 的音乐电台</span>
             </div>
             <button class="icon-btn-close" @click="showNeteaseModal = false">×</button>
           </div>
@@ -664,18 +754,18 @@ watch(activeTab, (tab) => {
               <div class="profile-info">
                 <div class="name-row">
                   <span class="profile-name">{{ stationUser.nickname }}</span>
-                  <span class="station-tag">精选电台</span>
+                  <span class="station-tag">专属电台</span>
                 </div>
-                <span class="profile-uid">UID: {{ stationUser.userId }} · 站长音乐空间</span>
-                <span class="profile-playlists-count">已同步 {{ userPlaylists.length }} 个公开歌单 · 访客免登录畅听</span>
+                <span class="profile-uid">网易云专属空间 · UID {{ stationUser.userId }}</span>
+                <span class="profile-playlists-count">收录 {{ userPlaylists.length }} 个常听歌单 · 访客免登录畅听</span>
               </div>
             </div>
 
             <div class="station-desc-box visitor">
-              <span class="station-icon">🛡️</span>
+              <span class="station-icon">🍃</span>
               <div class="station-text">
-                <strong>纯只读安全网关 · 免登录畅听</strong>
-                <p>已启用服务端只读白名单防护，所有访客免登录畅听精选公开曲目与全曲音频，服务端凭证隔离保护。</p>
+                <strong>私人音乐客厅 · 自由漫游</strong>
+                <p>这里收藏了日常陪伴我写代码、发呆与阅读的旋律，所有曲目均可直接点击收听。</p>
               </div>
             </div>
 
@@ -723,39 +813,46 @@ watch(activeTab, (tab) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 6px 14px 6px 6px;
+  padding: 6px 16px 6px 6px;
   background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(1.3);
-  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-full);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 10px 32px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   cursor: pointer;
   transition: all 0.35s var(--ease-spring);
   user-select: none;
 }
 
 .player-capsule:hover {
-  transform: translateY(-3px);
-  border-color: rgba(124, 140, 110, 0.4);
-  box-shadow: 0 14px 40px var(--color-accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(124, 140, 110, 0.45);
+  box-shadow:
+    0 14px 42px var(--color-accent-glow),
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .capsule-vinyl {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
 }
 
 .capsule-cover-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .vinyl-center-dot {
@@ -768,10 +865,11 @@ watch(activeTab, (tab) => {
   border-radius: 50%;
   background: #181513;
   border: 2px solid white;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 .capsule-vinyl.spinning {
-  animation: vinyl-spin 6s linear infinite;
+  animation: vinyl-spin 8s linear infinite;
 }
 
 .capsule-info {
@@ -779,6 +877,7 @@ watch(activeTab, (tab) => {
   flex-direction: column;
   max-width: 130px;
   overflow: hidden;
+  gap: 1px;
 }
 
 .title-with-badge {
@@ -865,12 +964,18 @@ watch(activeTab, (tab) => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  border: none;
+  cursor: pointer;
   transition: transform 0.2s var(--ease-spring), background 0.2s;
 }
 
 .capsule-play-btn:hover {
   transform: scale(1.1);
   background: var(--color-accent-dark);
+}
+
+.capsule-play-btn:active {
+  transform: scale(0.95);
 }
 
 .btn-spinner {
@@ -895,9 +1000,9 @@ watch(activeTab, (tab) => {
 .player-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(44, 38, 33, 0.45);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(35, 30, 26, 0.48);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -909,18 +1014,21 @@ watch(activeTab, (tab) => {
   width: 100%;
   max-width: 460px;
   max-height: 90vh;
-  padding: 22px;
+  padding: 24px;
   position: relative;
   background: var(--color-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 24px 64px -12px rgba(44, 38, 33, 0.25);
+  border: 1px solid var(--border-medium);
+  border-radius: 20px;
+  box-shadow:
+    0 24px 64px -12px rgba(44, 38, 33, 0.28),
+    0 2px 10px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* ── 顶栏套件：双层结构 (Dual-tier Header Suite) ── */
+/* ── 顶栏套件：双层结构 ── */
 .card-header-suite {
   display: flex;
   flex-direction: column;
@@ -941,7 +1049,7 @@ watch(activeTab, (tab) => {
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  padding: 4px 10px 4px 4px;
+  padding: 4px 12px 4px 4px;
   border-radius: var(--radius-full);
   background: var(--color-bg-alt);
   border: 1px solid var(--border-light);
@@ -1041,7 +1149,7 @@ watch(activeTab, (tab) => {
   color: var(--color-text-lighter);
   background: var(--color-bg-alt);
   border: 1px solid var(--border-light);
-  transition: all 0.2s;
+  transition: all 0.25s var(--ease);
   flex-shrink: 0;
   cursor: pointer;
 }
@@ -1122,8 +1230,8 @@ watch(activeTab, (tab) => {
 /* ── 拟物黑胶唱机 (Authentic Turntable) ── */
 .turntable-deck {
   position: relative;
-  width: 220px;
-  height: 205px;
+  width: 224px;
+  height: 210px;
   margin: 0 auto 10px;
   display: flex;
   align-items: center;
@@ -1131,27 +1239,36 @@ watch(activeTab, (tab) => {
 }
 
 .turntable-platter {
-  width: 194px;
-  height: 194px;
+  width: 198px;
+  height: 198px;
   border-radius: 50%;
-  background: #1B1815;
+  background: radial-gradient(circle, #221D1A 0%, #151210 100%);
   position: relative;
   box-shadow:
-    0 16px 36px rgba(0, 0, 0, 0.38),
-    inset 0 0 0 3px #2A2621,
-    inset 0 0 0 5px rgba(255, 255, 255, 0.04);
+    0 18px 40px rgba(0, 0, 0, 0.42),
+    0 2px 10px rgba(0, 0, 0, 0.2),
+    inset 0 0 0 2.5px #2A2420,
+    inset 0 0 0 4.5px rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .vinyl-record {
-  width: 182px;
-  height: 182px;
+  width: 184px;
+  height: 184px;
   border-radius: 50%;
-  background: radial-gradient(circle, #24201D 0%, #12100E 100%);
+  background:
+    repeating-radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.025) 0px,
+      rgba(255, 255, 255, 0.025) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(circle, #24201D 0%, #12100E 100%);
   position: relative;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1173,44 +1290,54 @@ watch(activeTab, (tab) => {
 }
 
 .g-1 {
-  width: 154px;
-  height: 154px;
+  width: 156px;
+  height: 156px;
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .g-2 {
-  width: 124px;
-  height: 124px;
+  width: 126px;
+  height: 126px;
   border: 1px dashed rgba(255, 255, 255, 0.06);
 }
 
 .g-3 {
-  width: 96px;
-  height: 96px;
+  width: 98px;
+  height: 98px;
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+/* 拟物黑胶全向双锥反光 (Anisotropic Butterfly Reflection) */
 .vinyl-light-reflection {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.09) 0%,
-    transparent 40%,
-    rgba(255, 255, 255, 0.06) 65%,
-    transparent 100%
+  border-radius: 50%;
+  background: conic-gradient(
+    from 35deg,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.1) 35deg,
+    rgba(255, 255, 255, 0.02) 65deg,
+    transparent 90deg,
+    transparent 180deg,
+    rgba(255, 255, 255, 0.1) 215deg,
+    rgba(255, 255, 255, 0.02) 245deg,
+    transparent 270deg,
+    transparent 360deg
   );
   pointer-events: none;
   z-index: 3;
 }
 
 .vinyl-label {
-  width: 74px;
-  height: 74px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 0 4px #141210, 0 0 18px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 0 0 3.5px #151311,
+    0 0 0 5px rgba(196, 168, 130, 0.35),
+    0 0 16px rgba(0, 0, 0, 0.65);
   z-index: 2;
 }
 
@@ -1218,6 +1345,7 @@ watch(activeTab, (tab) => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .label-spindle {
@@ -1230,16 +1358,16 @@ watch(activeTab, (tab) => {
   border-radius: 50%;
   background: #1C1A17;
   border: 3px solid #D6CEBE;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
 }
 
 /* 唱臂停放支架 (Rest Post) */
 .arm-rest-post {
   position: absolute;
-  top: 14px;
+  top: 16px;
   right: 36px;
   width: 12px;
-  height: 18px;
+  height: 20px;
   pointer-events: none;
   z-index: 4;
 }
@@ -1263,8 +1391,8 @@ watch(activeTab, (tab) => {
   pointer-events: none;
   z-index: 8;
   transform-origin: 45px 14px;
-  transform: rotate(-26deg);
-  transition: transform 0.8s cubic-bezier(0.34, 1.4, 0.64, 1);
+  transform: rotate(-24deg);
+  transition: transform 0.85s cubic-bezier(0.34, 1.35, 0.64, 1);
 }
 
 .tonearm-assembly.playing {
@@ -1337,7 +1465,7 @@ watch(activeTab, (tab) => {
   height: 4px;
   background: #E11D48;
   border-radius: 1px;
-  box-shadow: 0 0 4px #E11D48;
+  box-shadow: 0 0 5px #E11D48;
 }
 
 /* 曲目信息 */
@@ -1427,37 +1555,37 @@ watch(activeTab, (tab) => {
   display: block;
 }
 
+/* ── 交互式进度条 ── */
 .progress-section {
   margin-bottom: 14px;
 }
 
 .progress-bar-container {
   width: 100%;
-  height: 20px;
+  height: 24px;
   display: flex;
   align-items: center;
   cursor: pointer;
   position: relative;
+  touch-action: none;
 }
 
-.progress-bar-container::before {
-  content: '';
+.progress-track-bg {
   position: absolute;
   left: 0;
   right: 0;
   height: 4px;
-  top: 50%;
-  transform: translateY(-50%);
   background: var(--color-bg-alt);
   border-radius: var(--radius-full);
+  transition: height 0.2s var(--ease);
 }
 
 .progress-fill-bar {
   height: 4px;
-  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-light));
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-light) 75%, var(--color-warm));
   border-radius: var(--radius-full);
   position: relative;
-  transition: width 0.1s linear;
+  transition: height 0.2s var(--ease);
   z-index: 1;
 }
 
@@ -1466,20 +1594,68 @@ watch(activeTab, (tab) => {
   right: -5px;
   top: 50%;
   transform: translateY(-50%) scale(0);
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: var(--color-accent);
-  box-shadow: 0 2px 6px var(--color-accent-glow);
+  background: #ffffff;
+  border: 2.5px solid var(--color-accent);
+  box-shadow: 0 2px 8px var(--color-accent-glow);
   transition: transform 0.2s var(--ease-spring);
 }
 
-.progress-bar-container:hover .progress-thumb {
-  transform: translateY(-50%) scale(1);
+.progress-bar-container:hover .progress-thumb,
+.progress-thumb.dragging {
+  transform: translateY(-50%) scale(1.15);
 }
 
+.progress-thumb.pulse {
+  box-shadow: 0 0 0 3px rgba(124, 140, 110, 0.25), 0 2px 8px var(--color-accent-glow);
+}
+
+.progress-bar-container:hover .progress-track-bg,
 .progress-bar-container:hover .progress-fill-bar {
   height: 5px;
+}
+
+/* 进度条时间预览浮层 Tooltip */
+.progress-tooltip {
+  position: absolute;
+  bottom: 24px;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  background: var(--color-text);
+  color: #F7F5F0;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  z-index: 10;
+}
+
+.progress-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: var(--color-text) transparent transparent transparent;
+}
+
+.tooltip-fade-enter-active,
+.tooltip-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.tooltip-fade-enter-from,
+.tooltip-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(4px);
 }
 
 .time-labels {
@@ -1581,32 +1757,43 @@ watch(activeTab, (tab) => {
 .search-intro-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   background: var(--color-bg-alt);
   border: 1px dashed var(--border-medium);
-  padding: 16px;
-  border-radius: var(--radius-sm);
-  text-align: left;
+  padding: 24px 20px;
+  border-radius: var(--radius);
+  text-align: center;
+  margin: auto 0;
+}
+
+.intro-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
 }
 
 .intro-title {
   font-family: var(--font-serif);
   font-weight: 600;
   color: var(--color-text);
-  font-size: 0.88rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
 }
 
 .intro-desc {
   font-size: 0.76rem;
   color: var(--color-text-lighter);
   line-height: 1.6;
-}
-
-.intro-action {
-  font-size: 0.76rem;
-  color: var(--color-accent);
-  line-height: 1.6;
-  font-weight: 500;
+  max-width: 280px;
+  margin: 0;
 }
 
 .search-loading,
@@ -1616,11 +1803,12 @@ watch(activeTab, (tab) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 180px;
+  flex: 1;
   font-size: 0.8rem;
   color: var(--color-text-lighter);
   gap: 10px;
   text-align: center;
+  padding: 20px 0;
 }
 
 .loading-spinner {
@@ -1636,7 +1824,7 @@ watch(activeTab, (tab) => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: var(--color-bg-alt);
   cursor: pointer;
@@ -1653,9 +1841,10 @@ watch(activeTab, (tab) => {
 .item-thumb {
   width: 38px;
   height: 38px;
-  border-radius: 4px;
+  border-radius: 6px;
   object-fit: cover;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .item-info {
@@ -1684,7 +1873,7 @@ watch(activeTab, (tab) => {
   font-family: var(--font-mono);
   font-size: 0.62rem;
   padding: 1px 5px;
-  border-radius: 2px;
+  border-radius: 3px;
   background: rgba(0, 0, 0, 0.05);
   color: var(--color-text-lighter);
   flex-shrink: 0;
@@ -1716,6 +1905,14 @@ watch(activeTab, (tab) => {
   background: white;
   border: 1px solid var(--border-medium);
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.item-play-action:hover {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
 }
 
 /* ── TAB 3: 当前歌单曲目 ── */
@@ -1739,6 +1936,7 @@ watch(activeTab, (tab) => {
 .playlist-hint {
   color: var(--color-accent);
   font-family: var(--font-mono);
+  font-size: 0.72rem;
 }
 
 .playlist-items-scroll {
@@ -1763,7 +1961,7 @@ watch(activeTab, (tab) => {
 
 .playlist-row:hover {
   background: var(--color-accent-soft);
-  border-left-color: rgba(124, 140, 110, 0.3);
+  border-left-color: rgba(124, 140, 110, 0.35);
   transform: translateX(2px);
 }
 
@@ -1772,12 +1970,58 @@ watch(activeTab, (tab) => {
   border-left-color: var(--color-accent);
 }
 
-.row-cover {
-  width: 34px;
-  height: 34px;
-  border-radius: 4px;
-  object-fit: cover;
+.row-num {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-text-lighter);
+  width: 18px;
+  text-align: center;
   flex-shrink: 0;
+}
+
+.row-cover-wrap {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.row-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.row-eq-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2.5px;
+  padding-bottom: 6px;
+}
+
+.eq-dot {
+  width: 2.5px;
+  height: 8px;
+  background: #ffffff;
+  border-radius: 1px;
+  animation: eq-bounce 1s ease-in-out infinite alternate;
+}
+
+.ed-1 { animation-delay: 0.1s; }
+.ed-2 { animation-delay: 0.3s; }
+.ed-3 { animation-delay: 0.2s; }
+
+@keyframes eq-bounce {
+  0% { height: 3px; }
+  100% { height: 14px; }
 }
 
 .row-info {
@@ -1827,20 +2071,25 @@ watch(activeTab, (tab) => {
   color: var(--color-text-lighter);
 }
 
-.row-playing-icon {
+.row-playing-pill {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--color-accent);
+  background: var(--color-accent-soft);
+  padding: 2px 8px;
+  border-radius: 10px;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .row-duration {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--color-text-lighter);
+  flex-shrink: 0;
 }
 
-/* ── TAB 4: 网易云用户歌单卡片列表 (单列防溢出) ── */
+/* ── TAB 4: 网易云用户歌单卡片列表 ── */
 .tab-view-user-playlists {
   display: flex;
   flex-direction: column;
@@ -1854,7 +2103,7 @@ watch(activeTab, (tab) => {
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding-right: 4px;
   scrollbar-width: thin;
   scrollbar-color: var(--border-medium) transparent;
@@ -1872,15 +2121,17 @@ watch(activeTab, (tab) => {
 .user-playlist-card-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 14px;
+  padding: 10px 14px;
   background: var(--color-bg-alt);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.22s var(--ease);
+  transition: all 0.25s var(--ease);
   border: 1px solid var(--border-light);
   width: 100%;
   box-sizing: border-box;
+  position: relative;
+  overflow: visible;
 }
 
 .user-playlist-card-row:hover {
@@ -1891,19 +2142,60 @@ watch(activeTab, (tab) => {
 
 .card-cover-wrap {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 6px;
-  overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  overflow: visible;
+}
+
+/* 拟物黑胶窥视效果 (Vinyl Peek-Out) */
+.vinyl-peek-disk {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.03) 0px,
+      rgba(255, 255, 255, 0.03) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(circle, #24201D 0%, #110E0D 100%);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
+  z-index: 1;
+}
+
+.peek-spindle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1C1A17;
+  border: 2px solid #D6CEBE;
+}
+
+.user-playlist-card-row:hover .vinyl-peek-disk {
+  transform: translateX(16px) rotate(45deg);
 }
 
 .pl-cover {
+  position: relative;
+  z-index: 2;
   width: 100%;
   height: 100%;
+  border-radius: 6px;
   object-fit: cover;
   display: block;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .pl-play-hover-icon {
@@ -1917,6 +2209,8 @@ watch(activeTab, (tab) => {
   font-size: 0.82rem;
   opacity: 0;
   transition: opacity 0.2s;
+  z-index: 3;
+  border-radius: 6px;
 }
 
 .user-playlist-card-row:hover .pl-play-hover-icon {
@@ -1930,6 +2224,8 @@ watch(activeTab, (tab) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 3;
+  border-radius: 6px;
 }
 
 .loading-spinner-mini {
@@ -1944,14 +2240,15 @@ watch(activeTab, (tab) => {
 .pl-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  z-index: 2;
 }
 
 .pl-name {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
@@ -1965,7 +2262,9 @@ watch(activeTab, (tab) => {
 }
 
 .pl-load-btn {
-  padding: 4px 10px;
+  position: relative;
+  z-index: 2;
+  padding: 5px 12px;
   font-size: 0.72rem;
   font-weight: 500;
   color: var(--color-accent);
@@ -1981,6 +2280,7 @@ watch(activeTab, (tab) => {
   background: var(--color-accent);
   color: white;
   border-color: var(--color-accent);
+  box-shadow: 0 2px 8px var(--color-accent-glow);
 }
 
 /* ── 底部控制栏 ── */
@@ -1988,15 +2288,15 @@ watch(activeTab, (tab) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 4px 2px;
+  padding: 16px 8px 2px;
   border-top: 1px solid var(--border-light);
   margin-top: 6px;
-  gap: 4px;
+  gap: 6px;
 }
 
 .control-icon-btn {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2016,7 +2316,7 @@ watch(activeTab, (tab) => {
 }
 
 .control-icon-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
 }
 
 .control-icon-btn.mode-btn {
@@ -2028,25 +2328,32 @@ watch(activeTab, (tab) => {
 }
 
 .main-play-btn {
-  width: 52px;
-  height: 52px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: linear-gradient(135deg, #879978, #6B7B5E);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 20px var(--color-accent-glow-strong);
+  box-shadow:
+    0 8px 24px var(--color-accent-glow-strong),
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
   border: none;
   cursor: pointer;
   transition: all 0.25s var(--ease-spring);
   flex-shrink: 0;
+  position: relative;
 }
 
 .main-play-btn:hover {
   transform: scale(1.08);
-  background: var(--color-accent-dark);
-  box-shadow: 0 8px 28px var(--color-accent-glow-strong);
+  background: linear-gradient(135deg, #95A786, #748466);
+  box-shadow:
+    0 10px 30px var(--color-accent-glow-strong),
+    0 4px 10px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .main-play-btn:active {
@@ -2056,35 +2363,41 @@ watch(activeTab, (tab) => {
 .volume-box {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .vol-btn {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
 }
 
 .volume-slider {
-  width: 60px;
+  width: 65px;
   height: 4px;
   -webkit-appearance: none;
+  appearance: none;
   background: var(--color-bg-alt);
   border-radius: 2px;
   outline: none;
+  border: 1px solid var(--border-light);
+  cursor: pointer;
 }
 
 .volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: #ffffff;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s var(--ease-spring);
 }
 
 .volume-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.25);
+  transform: scale(1.3);
 }
 
 /* ── 3. 网易云登录弹窗 ── */
