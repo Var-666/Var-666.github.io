@@ -139,39 +139,43 @@ async function resolveTrackAudioUrl(track: Track): Promise<string | null> {
 
   // 4. 向后端 API 请求最新的 VIP / 无损直链（10 秒宽裕超时）
   const apiUrl = getSavedApiUrl()
-  if (!apiUrl) {
-    // 未配置 API 时，仅允许非 126.net 的静态外链兜底；126.net CDN 地址失效后绝不复用
-    if (track.audioUrl.startsWith('http') && !track.audioUrl.includes('126.net')) {
-      return track.audioUrl
-    }
-    return null
-  }
-
-  try {
-    const resolved = await fetchSongAudioUrl(songId, apiUrl)
-    if (resolved && resolved.url) {
-      track.audioUrl = resolved.url
-      track.isFull = resolved.isFull
-      track.isTrial = resolved.isTrial
-      if (resolved.isTrial && resolved.trialDuration) {
-        track.duration = resolved.trialDuration
+  if (apiUrl) {
+    try {
+      const resolved = await fetchSongAudioUrl(songId, apiUrl)
+      if (resolved && resolved.url) {
+        track.audioUrl = resolved.url
+        track.isFull = resolved.isFull
+        track.isTrial = resolved.isTrial
+        if (resolved.isTrial && resolved.trialDuration) {
+          track.duration = resolved.trialDuration
+        }
+        resolvedUrlCache.set(songId, {
+          url: resolved.url,
+          isFull: resolved.isFull,
+          isTrial: resolved.isTrial,
+          trialDuration: resolved.trialDuration,
+          timestamp: now,
+        })
+        return resolved.url
       }
-      resolvedUrlCache.set(songId, {
-        url: resolved.url,
-        isFull: resolved.isFull,
-        isTrial: resolved.isTrial,
-        trialDuration: resolved.trialDuration,
-        timestamp: now,
-      })
-      return resolved.url
+    } catch (err) {
+      console.warn(`[AudioPlayer] 解析单曲 (ID: ${songId}) 直链异常:`, err)
     }
-  } catch (err) {
-    console.warn(`[AudioPlayer] 解析单曲 (ID: ${songId}) 直链异常:`, err)
   }
 
-  // 5. 修复过期漏洞：若是网易云曲目且 API 未能返回有效新直链，严禁回退旧的已过期 CDN URL！
-  // 仅在明确不是网易云 CDN 链接时才允许返回兜底
-  if (track.audioUrl && track.audioUrl.startsWith('http') && !track.audioUrl.includes('126.net') && !track.id.startsWith('netease-')) {
+  // 5. 优雅兜底降级：若 API 暂不可达或未返回有效新直链，使用网易云官方外链播放器或现有安全外链
+  // 严禁回退旧的已过期 126.net 签名 CDN 链接
+  if (track.audioUrl && track.audioUrl.includes('music.163.com/song/media/outer/url')) {
+    return track.audioUrl
+  }
+
+  if (songId && /^\d+$/.test(songId)) {
+    const fallbackOuterUrl = `https://music.163.com/song/media/outer/url?id=${songId}.mp3`
+    track.audioUrl = fallbackOuterUrl
+    return fallbackOuterUrl
+  }
+
+  if (track.audioUrl && track.audioUrl.startsWith('http') && !track.audioUrl.includes('126.net')) {
     return track.audioUrl
   }
 

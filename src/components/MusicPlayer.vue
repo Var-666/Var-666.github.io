@@ -195,16 +195,27 @@ function initCanvasDpr() {
   }
 }
 
-function drawSpectrum() {
-  if (animId !== null) cancelAnimationFrame(animId)
+function stopSpectrum() {
+  if (animId !== null) {
+    cancelAnimationFrame(animId)
+    animId = null
+  }
+}
 
-  const barCount = 26
+function drawSpectrum() {
+  stopSpectrum()
+
+  const barCount = 28
   const dataArray = new Float32Array(barCount)
 
   const render = () => {
-    animId = requestAnimationFrame(render)
     const canvas = canvasRef.value
-    if (!canvas) return
+    if (!canvas || !isExpanded.value || activeTab.value !== 'player') {
+      animId = null
+      return
+    }
+
+    animId = requestAnimationFrame(render)
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
@@ -221,7 +232,7 @@ function drawSpectrum() {
     if (isPlaying.value) {
       for (let i = 0; i < barCount; i++) {
         const centerDist = Math.abs(i - barCount / 2) / (barCount / 2)
-        const bellCurve = 1 - centerDist * 0.4
+        const bellCurve = 1 - centerDist * 0.35
         const wave1 = Math.sin(t * 2.6 + i * 0.45) * 0.38 + 0.45
         const wave2 = Math.cos(t * 1.8 - i * 0.3) * 0.22
         const wave3 = Math.sin(t * 4.4 + i * 0.7) * 0.15
@@ -316,19 +327,28 @@ watch(activeTab, (tab) => {
       initCanvasDpr()
       drawSpectrum()
     })
-  } else if (tab === 'lyrics') {
-    nextTick(() => {
-      scrollToActiveLyric(false)
-    })
+  } else {
+    stopSpectrum()
+    if (tab === 'lyrics') {
+      nextTick(() => {
+        scrollToActiveLyric(false)
+      })
+    }
   }
 })
 
 watch(isExpanded, (val) => {
-  if (val && activeTab.value === 'player') {
-    setTimeout(() => {
-      initCanvasDpr()
-      drawSpectrum()
-    }, 100)
+  if (val) {
+    if (activeTab.value === 'player') {
+      nextTick(() => {
+        setTimeout(() => {
+          initCanvasDpr()
+          drawSpectrum()
+        }, 120)
+      })
+    }
+  } else {
+    stopSpectrum()
   }
 })
 
@@ -342,12 +362,14 @@ watch(currentLyrics, () => {
 })
 
 onMounted(() => {
-  initCanvasDpr()
-  drawSpectrum()
+  if (isExpanded.value && activeTab.value === 'player') {
+    initCanvasDpr()
+    drawSpectrum()
+  }
 })
 
 onUnmounted(() => {
-  if (animId !== null) cancelAnimationFrame(animId)
+  stopSpectrum()
   if (userScrollTimer) clearTimeout(userScrollTimer)
 })
 </script>
@@ -482,63 +504,67 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- ── 中部主视口：Bento 瓷砖拼贴或专用视窗 ── -->
+          <!-- ── 中部主视口：陶瓷唱机主台或专用视窗 ── -->
           <div class="ceramic-body-viewport">
-            <!-- 视角 01: Bento 瓷砖拼贴 (Ceramic Bento Grid) -->
-            <div v-if="activeTab === 'player'" class="ceramic-bento-grid">
-              <!-- Bento Tile 1: 实体黑胶唱片瓷片 (Vinyl Master Tile) -->
-              <div
-                class="ceramic-tile tile-vinyl"
-                @click="activeTab = 'lyrics'"
-                title="点击翻转至诗板歌词视窗"
-              >
+            <!-- 视角 01: 釉面陶瓷黑胶唱机 (Porcelain Turntable Master Deck) -->
+            <div v-if="activeTab === 'player'" class="ceramic-player-deck">
+              <!-- 核心主瓷片: 实体黑胶唱片与全宽声波控制台 -->
+              <div class="ceramic-tile tile-master-turntable">
                 <div class="tile-header-bar">
-                  <span class="tile-code-tag">VINYL // 01</span>
-                  <span class="tile-hint-action">歌词 ⇄</span>
-                </div>
-
-                <!-- 核心封套与唱片联动舞台 -->
-                <div class="sleeve-disc-stage">
-                  <div
-                    class="artisan-vinyl-disc"
-                    :class="{ playing: isPlaying }"
-                  >
-                    <div class="disc-rotator" :class="{ spinning: isPlaying }">
-                      <div class="disc-groove dg-1"></div>
-                      <div class="disc-groove dg-2"></div>
-                      <div class="disc-groove dg-3"></div>
-                      <div class="disc-sheen"></div>
-                      <div class="disc-center-hub">
-                        <div class="hub-brass-spindle"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="artisan-album-sleeve">
-                    <img :src="currentTrack.coverUrl" alt="album cover" class="sleeve-artwork" />
-                    <div class="sleeve-paper-spine"></div>
-                    <div class="sleeve-edge-sheen"></div>
-                    <div class="sleeve-pocket-shadow"></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Bento Tile 2: 旋律与声波瓷片 (Melody & Wave Tile) -->
-              <div class="ceramic-tile tile-melody-wave">
-                <div class="tile-header-bar">
-                  <span class="tile-code-tag">WAVE // 02</span>
+                  <span class="tile-code-tag">PORCELAIN DECK // 01</span>
                   <span v-if="playbackStatus === 'resolving'" class="tile-status-tag resolving">● 解析中</span>
-                  <span v-else-if="playbackStatus === 'error'" class="tile-status-tag error">⚠️ 受阻</span>
+                  <span v-else-if="playbackStatus === 'error'" class="tile-status-tag error">⚠️ 音源受阻</span>
                   <span v-else-if="currentTrack.isTrial" class="tile-status-tag trial">30s 试听</span>
                   <span v-else class="tile-status-tag full">完整全曲</span>
                 </div>
 
-                <div class="track-title-block">
+                <!-- 核心黑胶与唱套舞台 (居中舒展，绝对无裁切，点击播放/暂停) -->
+                <div
+                  class="turntable-center-stage"
+                  @click="togglePlay"
+                  :title="isPlaying ? '轻触暂停' : '轻触旋转播放'"
+                >
+                  <div class="turntable-deck-mount">
+                    <div
+                      class="artisan-vinyl-disc"
+                      :class="{ playing: isPlaying }"
+                    >
+                      <div class="disc-rotator" :class="{ spinning: isPlaying }">
+                        <div class="disc-groove dg-1"></div>
+                        <div class="disc-groove dg-2"></div>
+                        <div class="disc-groove dg-3"></div>
+                        <div class="disc-sheen"></div>
+                        <div class="disc-center-hub">
+                          <div class="hub-brass-spindle"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="artisan-album-sleeve">
+                      <img :src="currentTrack.coverUrl" alt="album cover" class="sleeve-artwork" />
+                      <div class="sleeve-paper-spine"></div>
+                      <div class="sleeve-edge-sheen"></div>
+                      <div class="sleeve-pocket-shadow"></div>
+                      <div class="sleeve-touch-badge" :class="{ playing: isPlaying }">
+                        <svg v-if="!isPlaying" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                          <polygon points="6 3 20 12 6 21 6 3" />
+                        </svg>
+                        <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                          <rect x="6" y="4" width="4" height="16" />
+                          <rect x="14" y="4" width="4" height="16" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 歌曲元数据 -->
+                <div class="track-meta-section">
                   <h3 class="track-hero-name" :title="currentTrack.title">{{ currentTrack.title }}</h3>
                   <p class="track-author-line">{{ currentTrack.artist }} · 《{{ currentTrack.album }}》</p>
                 </div>
 
-                <!-- 莫兰迪自然流体声波 Canvas -->
+                <!-- 莫兰迪自然流体声波 Canvas (全宽舒展展示) -->
                 <div class="artisan-wave-box">
                   <canvas ref="canvasRef" class="artisan-wave-canvas"></canvas>
                 </div>
@@ -572,7 +598,7 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- Bento Tile 3: 随行歌词速览瓷片 (Quick Lyric Glance Tile) -->
+              <!-- 随行歌词速览瓷片 (Quick Lyric Glance Tile) -->
               <div
                 class="ceramic-tile tile-lyric-glance"
                 @click="activeTab = 'lyrics'"
@@ -580,7 +606,7 @@ onUnmounted(() => {
               >
                 <div class="glance-left-col">
                   <span class="glance-pulse-dot" :class="{ pulsing: isPlaying }"></span>
-                  <span class="glance-caption">实时随行</span>
+                  <span class="glance-caption">随行歌词</span>
                 </div>
                 <div class="glance-center-text">
                   <p class="glance-lyric-line">{{ currentActiveLyricText }}</p>
@@ -959,9 +985,11 @@ onUnmounted(() => {
 
 .capsule-sleeve {
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 38px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .capsule-sleeve-cover {
@@ -976,8 +1004,8 @@ onUnmounted(() => {
 
 .capsule-mini-disc {
   position: absolute;
-  top: 2px;
-  left: 10px;
+  top: 3px;
+  left: 8px;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -988,13 +1016,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   z-index: 1;
-  transition: left 0.4s var(--ease-spring);
+  transition: transform 0.4s var(--ease-spring);
   animation: mini-spin 8s linear infinite;
   animation-play-state: paused;
 }
 
 .ceramic-capsule-domino:hover .capsule-mini-disc {
-  left: 18px;
+  transform: translateX(8px);
 }
 
 .capsule-mini-disc.spinning {
@@ -1123,6 +1151,7 @@ onUnmounted(() => {
 }
 
 /* ── 2. 展开态：釉面陶瓷嵌瓷托盘 (Ceramic Mosaic Tray) ── */
+/* ── 2. 展开态：釉面陶瓷嵌瓷托盘 (Ceramic Mosaic Tray) ── */
 .studio-scrim {
   position: fixed;
   inset: 0;
@@ -1134,11 +1163,16 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ceramic-mosaic-tray {
   width: 100%;
   max-width: 486px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  margin: auto;
   background: #ECE5DC;
   border: 1px solid rgba(214, 203, 191, 0.85);
   border-radius: 26px;
@@ -1169,23 +1203,31 @@ onUnmounted(() => {
   transition: all 0.28s var(--ease);
 }
 
-/* 釉面高光漫反射层 */
+/* 釉面高光漫反射层 (微透倒角光泽，绝不遮挡视窗文字) */
 .ceramic-tile::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 46%;
+  height: 26px;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.5) 0%,
-    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.65) 0%,
+    rgba(255, 255, 255, 0.06) 65%,
     transparent 100%
   );
   pointer-events: none;
   border-radius: 18px 18px 0 0;
   z-index: 1;
+}
+
+/* 在各内容视窗与长文本视口中禁用侵入式高光白膜 */
+.view-lyrics-deck::before,
+.view-search-deck::before,
+.view-queue-deck::before,
+.view-playlists-deck::before {
+  display: none !important;
 }
 
 .ceramic-tile:hover {
@@ -1368,11 +1410,18 @@ onUnmounted(() => {
   flex-direction: column;
 }
 
-/* ── 视角 01: Bento 瓷砖拼贴网格 (Bento Grid) ── */
-.ceramic-bento-grid {
-  display: grid;
-  grid-template-columns: 195px 1fr;
-  grid-template-rows: auto auto;
+/* ── 视角 01: 釉面陶瓷黑胶唱机主台 (Porcelain Turntable Master Deck) ── */
+.ceramic-player-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 主瓷片: 实体黑胶唱片与全宽声波控制台 */
+.tile-master-turntable {
+  padding: 12px 18px 16px;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
@@ -1381,7 +1430,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px 4px;
+  padding: 2px 2px 4px;
   z-index: 2;
   position: relative;
 }
@@ -1394,55 +1443,69 @@ onUnmounted(() => {
   opacity: 0.8;
 }
 
-.tile-hint-action {
-  font-size: 0.68rem;
-  color: var(--color-accent);
-  background: rgba(124, 140, 110, 0.12);
-  padding: 1px 6px;
-  border-radius: var(--radius-full);
-  transition: all 0.2s;
+.tile-status-tag {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
 }
 
-.tile-vinyl:hover .tile-hint-action {
-  background: var(--color-accent);
-  color: #FFFFFF;
+.tile-status-tag.full {
+  background: rgba(124, 140, 110, 0.15);
+  color: var(--color-accent-dark);
+}
+.tile-status-tag.trial {
+  background: rgba(196, 168, 130, 0.2);
+  color: #9C723E;
+}
+.tile-status-tag.resolving {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563EB;
+}
+.tile-status-tag.error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #DC2626;
 }
 
-/* Bento Tile 1: 实体黑胶唱片瓷片 */
-.tile-vinyl {
-  grid-column: 1 / 2;
-  grid-row: 1 / 2;
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-}
-
-.tile-vinyl .sleeve-disc-stage {
+/* 核心黑胶唱片与唱套联动舞台 (居中舒展，绝对无裁切) */
+.turntable-center-stage {
   position: relative;
   width: 100%;
-  height: 154px;
+  height: 152px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  padding-left: 14px;
-  margin-top: -4px;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  margin: 2px 0 4px;
+}
+
+.turntable-deck-mount {
+  position: relative;
+  width: 220px;
+  height: 136px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
 }
 
 .artisan-album-sleeve {
-  position: relative;
-  width: 114px;
-  height: 114px;
-  border-radius: 8px;
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 130px;
+  height: 130px;
+  border-radius: 10px;
   overflow: hidden;
   box-shadow:
-    -5px 10px 24px rgba(45, 40, 35, 0.22),
+    -6px 12px 28px rgba(45, 40, 35, 0.22),
     0 2px 6px rgba(0, 0, 0, 0.1);
   z-index: 3;
   background: #252220;
   transition: transform 0.35s var(--ease-spring);
 }
 
-.tile-vinyl:hover .artisan-album-sleeve {
+.turntable-center-stage:hover .artisan-album-sleeve {
   transform: translateY(-2px) scale(1.02);
 }
 
@@ -1465,7 +1528,7 @@ onUnmounted(() => {
 .sleeve-edge-sheen {
   position: absolute;
   inset: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
   pointer-events: none;
@@ -1476,17 +1539,47 @@ onUnmounted(() => {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 8px;
+  width: 10px;
   background: linear-gradient(to left, rgba(0, 0, 0, 0.45), transparent);
   pointer-events: none;
 }
 
-/* 黑胶唱片本体 (从瓷片封套中滑出并恒速旋转) */
+.sleeve-touch-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(36, 32, 28, 0.7);
+  backdrop-filter: blur(4px);
+  color: #FAF7F2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: all 0.25s var(--ease-spring);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
+.turntable-center-stage:hover .sleeve-touch-badge {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.sleeve-touch-badge.playing {
+  opacity: 0.85;
+}
+
+/* 黑胶唱片本体 (从瓷片封套中滑出并恒速旋转，绝对无边界裁切) */
 .artisan-vinyl-disc {
   position: absolute;
-  left: 36px;
-  width: 112px;
-  height: 112px;
+  left: 42px;
+  top: 5px;
+  width: 126px;
+  height: 126px;
   border-radius: 50%;
   z-index: 2;
   transform: translateX(20px);
@@ -1495,11 +1588,11 @@ onUnmounted(() => {
 }
 
 .artisan-vinyl-disc.playing {
-  transform: translateX(46px);
+  transform: translateX(48px);
 }
 
-.tile-vinyl:hover .artisan-vinyl-disc {
-  transform: translateX(54px);
+.turntable-center-stage:hover .artisan-vinyl-disc {
+  transform: translateX(56px);
 }
 
 .disc-rotator {
@@ -1521,7 +1614,7 @@ onUnmounted(() => {
     ),
     radial-gradient(circle, #252220 0%, #12100E 100%);
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.35),
+    0 8px 24px rgba(0, 0, 0, 0.35),
     inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   animation: disc-spin 10s linear infinite;
   animation-play-state: paused;
@@ -1541,9 +1634,9 @@ onUnmounted(() => {
   border-radius: 50%;
   pointer-events: none;
 }
-.dg-1 { width: 94px; height: 94px; border: 1px solid rgba(255, 255, 255, 0.04); }
-.dg-2 { width: 74px; height: 74px; border: 1px dashed rgba(255, 255, 255, 0.05); }
-.dg-3 { width: 56px; height: 56px; border: 1px solid rgba(255, 255, 255, 0.04); }
+.dg-1 { width: 106px; height: 106px; border: 1px solid rgba(255, 255, 255, 0.04); }
+.dg-2 { width: 84px; height: 84px; border: 1px dashed rgba(255, 255, 255, 0.05); }
+.dg-3 { width: 62px; height: 62px; border: 1px solid rgba(255, 255, 255, 0.04); }
 
 .disc-sheen {
   position: absolute;
@@ -1562,8 +1655,8 @@ onUnmounted(() => {
 }
 
 .disc-center-hub {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: #C4A882;
   border: 2px solid #FAF7F2;
@@ -1575,65 +1668,33 @@ onUnmounted(() => {
 }
 
 .hub-brass-spindle {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: #252220;
   border: 1px solid #FAF7F2;
 }
 
-/* Bento Tile 2: 旋律与声波瓷片 */
-.tile-melody-wave {
-  grid-column: 2 / 3;
-  grid-row: 1 / 2;
-  padding: 0 14px 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.tile-status-tag {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  padding: 1px 6px;
-  border-radius: 3px;
-}
-
-.tile-status-tag.full {
-  background: rgba(124, 140, 110, 0.15);
-  color: var(--color-accent-dark);
-}
-.tile-status-tag.trial {
-  background: rgba(196, 168, 130, 0.2);
-  color: #9C723E;
-}
-.tile-status-tag.resolving {
-  background: rgba(59, 130, 246, 0.12);
-  color: #2563EB;
-}
-.tile-status-tag.error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #DC2626;
-}
-
-.track-title-block {
-  margin: 2px 0 6px;
+/* 歌曲标题与艺术家 */
+.track-meta-section {
+  text-align: center;
+  margin: 2px 0 2px;
   z-index: 2;
 }
 
 .track-hero-name {
   font-family: var(--font-serif);
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin: 0 0 2px;
+  margin: 0 0 3px;
 }
 
 .track-author-line {
-  font-size: 0.74rem;
+  font-size: 0.8rem;
   color: var(--color-text-lighter);
   white-space: nowrap;
   overflow: hidden;
@@ -1641,10 +1702,11 @@ onUnmounted(() => {
   margin: 0;
 }
 
+/* 莫兰迪自然流体声波 Canvas (全宽展开) */
 .artisan-wave-box {
   width: 100%;
-  height: 24px;
-  margin: 4px 0;
+  height: 26px;
+  margin: 4px 0 2px;
   z-index: 2;
 }
 
@@ -1654,6 +1716,7 @@ onUnmounted(() => {
   display: block;
 }
 
+/* 细线拖拽进度条 */
 .artisan-progress-module {
   width: 100%;
   display: flex;
@@ -1664,7 +1727,7 @@ onUnmounted(() => {
 
 .progress-touch-zone {
   position: relative;
-  height: 16px;
+  height: 18px;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -1726,16 +1789,21 @@ onUnmounted(() => {
   color: var(--color-text-lighter);
 }
 
-/* Bento Tile 3: 随行歌词速览瓷片 (Glance Lyric Tile) */
+/* 随行歌词速览瓷片 (Quick Lyric Glance Tile) */
 .tile-lyric-glance {
-  grid-column: 1 / -1;
-  grid-row: 2 / 3;
   padding: 10px 16px;
   display: flex;
   align-items: center;
   gap: 12px;
   cursor: pointer;
   background: linear-gradient(145deg, #FAF7F2 0%, #F5EFE6 100%);
+  transition: all 0.25s var(--ease);
+}
+
+.tile-lyric-glance:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 140, 110, 0.35);
+  box-shadow: 0 6px 16px rgba(124, 140, 110, 0.12);
 }
 
 .glance-left-col {
@@ -1805,7 +1873,7 @@ onUnmounted(() => {
 
 /* ── 视角 02: 陶瓷诗板歌词全屏视窗 (Porcelain Poetry Tablet) ── */
 .view-lyrics-deck {
-  height: 300px;
+  height: 380px;
   display: flex;
   flex-direction: column;
 }
@@ -1964,7 +2032,7 @@ onUnmounted(() => {
 
 /* ── 视角 03: 曲库搜歌 ── */
 .view-search-deck {
-  height: 300px;
+  height: 380px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -2125,7 +2193,7 @@ onUnmounted(() => {
 
 /* ── 视角 04: 当前队列 ── */
 .view-queue-deck {
-  height: 300px;
+  height: 380px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2227,7 +2295,7 @@ onUnmounted(() => {
 
 /* ── 视角 05: 站长精选公开歌单 ── */
 .view-playlists-deck {
-  height: 300px;
+  height: 380px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2617,12 +2685,29 @@ onUnmounted(() => {
 .capsule-pop-enter-from { opacity: 0; transform: translateY(16px) scale(0.9); }
 .capsule-pop-leave-to   { opacity: 0; transform: translateY(12px) scale(0.92); }
 
+/* 背景遮罩仅执行透明度平滑淡入，绝不在全屏边界产生缩放空隙 */
 .studio-fade-enter-active,
 .studio-fade-leave-active {
-  transition: all 0.28s var(--ease);
+  transition: opacity 0.28s ease;
 }
-.studio-fade-enter-from { opacity: 0; transform: scale(0.95) translateY(12px); }
-.studio-fade-leave-to   { opacity: 0; transform: scale(0.96) translateY(-8px); }
+.studio-fade-enter-from,
+.studio-fade-leave-to {
+  opacity: 0;
+}
+
+/* 仅在内部陶瓷嵌瓷托盘上执行弹簧缩放与位移 */
+.studio-fade-enter-active .ceramic-mosaic-tray,
+.studio-fade-leave-active .ceramic-mosaic-tray {
+  transition: transform 0.32s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.28s ease;
+}
+.studio-fade-enter-from .ceramic-mosaic-tray {
+  opacity: 0;
+  transform: translateY(18px) scale(0.94);
+}
+.studio-fade-leave-to .ceramic-mosaic-tray {
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+}
 
 .diag-fade-enter-active,
 .diag-fade-leave-active {
@@ -2639,48 +2724,71 @@ onUnmounted(() => {
     padding: 6px 12px 6px 8px;
   }
   .capsule-text-col { max-width: 95px; }
-  .studio-scrim { padding: 10px; }
+  .studio-scrim {
+    padding: 10px;
+    align-items: flex-start;
+  }
   .ceramic-mosaic-tray {
     max-width: 100%;
+    max-height: calc(100vh - 20px);
     border-radius: 20px;
-    padding: 8px;
+    padding: 10px;
     gap: 8px;
+    margin-top: auto;
+    margin-bottom: auto;
   }
   .tile-header { padding: 10px 12px; }
-  .ceramic-bento-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+  .tile-master-turntable {
+    padding: 10px 14px 14px;
     gap: 8px;
   }
-  .tile-vinyl {
-    grid-column: 1 / 2;
-    grid-row: 1 / 2;
+  .turntable-center-stage {
+    height: 132px;
+    margin: 0;
   }
-  .tile-vinyl .sleeve-disc-stage {
-    height: 136px;
-    justify-content: center;
-    padding-left: 0;
+  .turntable-deck-mount {
+    width: 200px;
+    height: 122px;
   }
-  .artisan-album-sleeve { width: 100px; height: 100px; }
-  .artisan-vinyl-disc { width: 98px; height: 98px; left: calc(50% - 50px); }
-  .artisan-vinyl-disc.playing { transform: translateX(34px); }
-  .tile-melody-wave {
-    grid-column: 1 / 2;
-    grid-row: 2 / 3;
-    padding: 0 12px 10px;
+  .artisan-album-sleeve {
+    width: 116px;
+    height: 116px;
+  }
+  .artisan-vinyl-disc {
+    width: 112px;
+    height: 112px;
+    left: 36px;
+    top: 4px;
+  }
+  .artisan-vinyl-disc.playing {
+    transform: translateX(40px);
+  }
+  .turntable-center-stage:hover .artisan-vinyl-disc {
+    transform: translateX(46px);
+  }
+  .disc-rotator {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  }
+  .track-hero-name {
+    font-size: 1.1rem;
   }
   .tile-lyric-glance {
-    grid-column: 1 / 2;
-    grid-row: 3 / 4;
     padding: 8px 12px;
+  }
+  .glance-lyric-line {
+    font-size: 0.85rem;
   }
   .view-lyrics-deck,
   .view-search-deck,
   .view-queue-deck,
   .view-playlists-deck {
-    height: 270px;
+    height: 330px;
   }
-  .tile-controls { padding: 8px 14px; }
-  .ceramic-volume-groove { display: none; }
+  .tile-controls {
+    padding: 8px 14px;
+  }
+  .ceramic-volume-groove {
+    display: none;
+  }
 }
 </style>
