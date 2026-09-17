@@ -21,7 +21,6 @@ const {
   searchResults,
   isSearching,
   searchError,
-  getAnalyser,
   togglePlay,
   selectTrack,
   nextTrack,
@@ -51,17 +50,21 @@ const {
   loadPlaylistTracks,
 } = useNeteaseAuth()
 
-const displayUser = computed(() => stationUser.value)
+const {
+  currentLyrics,
+  currentLineIndex,
+  isLoadingLyrics,
+  hasLyrics,
+  isInstrumental,
+} = useLyrics()
 
-const canvasRef = ref<HTMLCanvasElement | null>(null)
-let animId: number | null = null
+// ── 硬件工作模式切换 ──
+// 'player' 唱机 | 'lyrics' 歌词终端 | 'search' 曲库检索 | 'playlist' 当前队列 | 'user-playlists' 精选唱片盒
+export type ConsoleTab = 'player' | 'lyrics' | 'search' | 'playlist' | 'user-playlists'
+const activeTab = ref<ConsoleTab>('player')
 
-// 模式切换: 'player' 唱机 | 'search' 搜歌 | 'playlist' 歌单曲目 | 'user-playlists' 用户歌单列表
-const activeTab = ref<'player' | 'search' | 'playlist' | 'user-playlists'>('player')
 const searchKeyword = ref('')
 const hotTags = ['夏天的风', '起风了', '坂本龙一', '千与千寻', '周杰伦', 'Lofi']
-
-// 弹窗状态
 const showNeteaseModal = ref(false)
 
 async function handleSelectNeteasePlaylist(playlistId: number) {
@@ -91,7 +94,15 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-// ── 交互式进度条 (拖拽拖动 + 悬停时间预览) ──
+function formatPreciseTime(seconds: number): string {
+  if (isNaN(seconds) || seconds < 0) return '00:00.0'
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  const ms = Math.floor((seconds % 1) * 10)
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${ms}`
+}
+
+// ── 精密刻度寻轨器 (Precision Ruler Scrubber) ──
 const isScrubbing = ref(false)
 const scrubTime = ref(0)
 const hoverPct = ref(0)
@@ -164,13 +175,22 @@ function handleVolumeChange(e: Event) {
   setVolume(val / 100)
 }
 
-const playModeTitle = computed(() => {
-  if (playMode.value === 'sequence') return '列表循环 (点击切换为单曲循环)'
-  if (playMode.value === 'loop-one') return '单曲循环 (点击切换为随机播放)'
-  return '随机播放 (点击切换为列表循环)'
+const playModeLabel = computed(() => {
+  if (playMode.value === 'sequence') return 'SEQ'
+  if (playMode.value === 'loop-one') return 'RPT-1'
+  return 'SHFL'
 })
 
-// ── 真实声波频谱 Canvas 绘制 (修复 2x DPR 坐标系错位与流体律动) ──
+const playModeDescription = computed(() => {
+  if (playMode.value === 'sequence') return '顺序循环'
+  if (playMode.value === 'loop-one') return '单曲循环'
+  return '随机播放'
+})
+
+// ── 硬件 LED 点阵频段仪 (Segmented LED Ladder VU Meter) ──
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+let animId: number | null = null
+
 function initCanvasDpr() {
   const canvas = canvasRef.value
   if (!canvas) return
@@ -182,10 +202,11 @@ function initCanvasDpr() {
   }
 }
 
-function drawSpectrum() {
+function drawLedSpectrum() {
   if (animId !== null) cancelAnimationFrame(animId)
 
-  const barCount = 26
+  const barCount = 20
+  const segCount = 7 // 每个通道 7 级点阵 LED
   const dataArray = new Float32Array(barCount)
 
   const render = () => {
@@ -200,91 +221,77 @@ function drawSpectrum() {
     const h = canvas.offsetHeight
     if (w <= 0 || h <= 0) return
 
-    // 重置变换矩阵并清空
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.scale(dpr, dpr)
 
-    const t = Date.now() * 0.003
+    const t = Date.now() * 0.0035
     if (isPlaying.value) {
       for (let i = 0; i < barCount; i++) {
         const centerDist = Math.abs(i - barCount / 2) / (barCount / 2)
-        const bellCurve = 1 - centerDist * 0.45
-        const wave1 = Math.sin(t * 2.5 + i * 0.42) * 0.4 + 0.45
-        const wave2 = Math.cos(t * 1.6 - i * 0.28) * 0.25
-        const wave3 = Math.sin(t * 4.2 + i * 0.75) * 0.15
-        const targetVal = Math.max(0.12, Math.min(0.96, (wave1 + wave2 + wave3) * bellCurve))
-        dataArray[i] += (targetVal - dataArray[i]) * 0.22
+        const bellCurve = 1 - centerDist * 0.4
+        const wave1 = Math.sin(t * 3.0 + i * 0.45) * 0.4 + 0.48
+        const wave2 = Math.cos(t * 1.8 - i * 0.32) * 0.25
+        const wave3 = Math.sin(t * 5.0 + i * 0.8) * 0.15
+        const targetVal = Math.max(0.1, Math.min(0.98, (wave1 + wave2 + wave3) * bellCurve))
+        dataArray[i] += (targetVal - dataArray[i]) * 0.25
       }
     } else {
       for (let i = 0; i < barCount; i++) {
-        const targetVal = Math.sin(i * 0.35 + t * 0.8) * 0.03 + 0.07
-        dataArray[i] += (targetVal - dataArray[i]) * 0.08
+        const targetVal = 0.08
+        dataArray[i] += (targetVal - dataArray[i]) * 0.1
       }
     }
 
-    const barWidth = Math.max(2.5, (w / barCount) * 0.52)
+    const barWidth = Math.max(3, (w / barCount) * 0.55)
     const totalBarsWidth = barWidth * barCount
-    const gap = Math.max(1.8, (w - totalBarsWidth) / (barCount - 1))
+    const colGap = Math.max(2, (w - totalBarsWidth) / (barCount - 1))
+    const segHeight = Math.max(2, (h - (segCount - 1) * 2) / segCount)
+    const segGap = 2
 
     for (let i = 0; i < barCount; i++) {
-      const val = dataArray[i] || 0.06
-      const barHeight = Math.max(3.5, val * (h * 0.88))
-      const x = i * (barWidth + gap)
-      const y = (h - barHeight) / 2
+      const activeSegs = Math.round((dataArray[i] || 0.05) * segCount)
+      const x = i * (barWidth + colGap)
 
-      const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight)
-      gradient.addColorStop(0, '#7C8C6E')
-      gradient.addColorStop(0.5, '#A3B495')
-      gradient.addColorStop(1, '#C4A882')
+      for (let s = 0; s < segCount; s++) {
+        // 从底部往上算 (0 为最底层，segCount-1 为最顶层)
+        const y = h - (s + 1) * (segHeight + segGap)
+        const isLit = s < activeSegs
 
-      ctx.fillStyle = gradient
-      ctx.beginPath()
-      ctx.roundRect(x, y, barWidth, barHeight, [barWidth / 2, barWidth / 2, barWidth / 2, barWidth / 2])
-      ctx.fill()
+        if (isLit) {
+          if (s >= segCount - 1) {
+            // 峰值红色报警
+            ctx.fillStyle = '#EF4444'
+            ctx.shadowColor = 'rgba(239, 68, 68, 0.6)'
+            ctx.shadowBlur = 4
+          } else if (s >= segCount - 3) {
+            // 中高段工业橙 (Teenage Engineering Signal Orange)
+            ctx.fillStyle = '#FF5500'
+            ctx.shadowColor = 'rgba(255, 85, 0, 0.5)'
+            ctx.shadowBlur = 3
+          } else {
+            // 基础段工业荧光翠绿
+            ctx.fillStyle = '#10B981'
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.4)'
+            ctx.shadowBlur = 2
+          }
+        } else {
+          // 未点亮状态：微弱硬件暗透质感
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.06)'
+          ctx.shadowBlur = 0
+        }
+
+        ctx.beginPath()
+        ctx.roundRect(x, y, barWidth, segHeight, [1, 1, 1, 1])
+        ctx.fill()
+      }
     }
   }
 
   render()
 }
 
-onMounted(() => {
-  initCanvasDpr()
-  drawSpectrum()
-})
-
-onUnmounted(() => {
-  if (animId !== null) cancelAnimationFrame(animId)
-})
-
-watch(isExpanded, (val) => {
-  if (val) {
-    setTimeout(() => {
-      initCanvasDpr()
-      drawSpectrum()
-    }, 80)
-  }
-})
-
-watch(activeTab, (tab) => {
-  if (tab === 'player') {
-    setTimeout(() => {
-      initCanvasDpr()
-      drawSpectrum()
-    }, 40)
-  }
-})
-
-// ── 实时歌词系统 (Live Lyrics System) ──
-const {
-  currentLyrics,
-  currentLineIndex,
-  isLoadingLyrics,
-  hasLyrics,
-  isInstrumental,
-} = useLyrics()
-
-const showLyricsView = ref(false)
+// ── 歌词滚动与点击寻轨 ──
 const lyricsScrollContainer = ref<HTMLElement | null>(null)
 const lyricLineRefs = ref<HTMLElement[]>([])
 let isUserScrollingLyrics = false
@@ -329,70 +336,104 @@ function handleLyricClick(time: number) {
 }
 
 watch(currentLineIndex, () => {
-  if (showLyricsView.value) {
+  if (activeTab.value === 'lyrics') {
     scrollToActiveLyric(true)
   }
 })
 
-watch(showLyricsView, (val) => {
-  if (val) {
+watch(activeTab, (tab) => {
+  if (tab === 'player') {
+    nextTick(() => {
+      initCanvasDpr()
+      drawLedSpectrum()
+    })
+  } else if (tab === 'lyrics') {
     nextTick(() => {
       scrollToActiveLyric(false)
     })
+  }
+})
+
+watch(isExpanded, (val) => {
+  if (val && activeTab.value === 'player') {
+    setTimeout(() => {
+      initCanvasDpr()
+      drawLedSpectrum()
+    }, 100)
   }
 })
 
 watch(currentLyrics, () => {
   lyricLineRefs.value = []
-  if (showLyricsView.value) {
+  if (activeTab.value === 'lyrics') {
     nextTick(() => {
       scrollToActiveLyric(false)
     })
   }
 })
+
+onMounted(() => {
+  initCanvasDpr()
+  drawLedSpectrum()
+})
+
+onUnmounted(() => {
+  if (animId !== null) cancelAnimationFrame(animId)
+  if (userScrollTimer) clearTimeout(userScrollTimer)
+})
 </script>
 
 <template>
-  <div class="music-player-container">
-    <!-- 1. 悬浮微胶囊态 (Collapsed Capsule Dock) -->
-    <Transition name="capsule-fade">
+  <div class="te-audio-system">
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- 1. 悬浮遥控硬件胶囊 (Pocket Remote Dock)               -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <Transition name="remote-pop">
       <div
         v-if="!isExpanded"
-        class="player-capsule"
+        class="pocket-remote"
         @click="toggleExpand"
-        title="点击展开黑胶唱机与网易云歌单"
+        title="点击展开专业音频工作台"
       >
-        <div class="capsule-vinyl" :class="{ spinning: isPlaying }">
-          <img :src="currentTrack.coverUrl" alt="cover" class="capsule-cover-img" />
-          <div class="vinyl-center-dot"></div>
-        </div>
-
-        <div class="capsule-info">
-          <div class="title-with-badge">
-            <span class="capsule-title">{{ currentTrack.title }}</span>
-            <span v-if="currentTrack.isTrial" class="capsule-trial-pill">试听</span>
-            <span v-else-if="currentTrack.isFull" class="capsule-full-pill">全曲</span>
+        <!-- 机械滚轮/微盘 (Motorized Mini Spool) -->
+        <div class="remote-spool-wrap">
+          <div class="remote-spool" :class="{ spinning: isPlaying }">
+            <span class="spool-spoke s1"></span>
+            <span class="spool-spoke s2"></span>
+            <span class="spool-spoke s3"></span>
+            <div class="spool-hub"></div>
           </div>
-          <span class="capsule-artist">{{ currentTrack.artist }}</span>
         </div>
 
-        <div class="capsule-wave">
-          <span class="c-bar cb-1" :class="{ active: isPlaying }"></span>
-          <span class="c-bar cb-2" :class="{ active: isPlaying }"></span>
-          <span class="c-bar cb-3" :class="{ active: isPlaying }"></span>
-          <span class="c-bar cb-4" :class="{ active: isPlaying }"></span>
+        <!-- 读数与曲目信息 -->
+        <div class="remote-display">
+          <div class="remote-status-row">
+            <span class="remote-led-dot" :class="{ active: isPlaying }"></span>
+            <span class="remote-mono-tag">OP-12 // {{ isPlaying ? 'PLAY' : 'STBY' }}</span>
+            <span v-if="currentTrack.isFull" class="remote-badge-full">LOSSLESS</span>
+            <span v-else-if="currentTrack.isTrial" class="remote-badge-trial">TRIAL</span>
+          </div>
+          <span class="remote-title" :title="currentTrack.title">{{ currentTrack.title }}</span>
         </div>
 
+        <!-- 微型均衡器 -->
+        <div class="remote-meter">
+          <span class="m-bar mb-1" :class="{ run: isPlaying }"></span>
+          <span class="m-bar mb-2" :class="{ run: isPlaying }"></span>
+          <span class="m-bar mb-3" :class="{ run: isPlaying }"></span>
+        </div>
+
+        <!-- 硬件微动播放按键 -->
         <button
-          class="capsule-play-btn"
+          class="remote-tactile-btn"
           @click.stop="togglePlay"
           :aria-label="isPlaying ? '暂停' : '播放'"
         >
-          <span v-if="isLoading" class="btn-spinner"></span>
-          <svg v-else-if="!isPlaying" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <span v-if="isLoading" class="te-spinner-mini"></span>
+          <svg v-else-if="!isPlaying" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="5 3 19 12 5 21 5 3" />
           </svg>
-          <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <svg v-else width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
             <rect x="6" y="4" width="4" height="16" />
             <rect x="14" y="4" width="4" height="16" />
           </svg>
@@ -400,554 +441,507 @@ watch(currentLyrics, () => {
       </div>
     </Transition>
 
-    <!-- 2. 展开态拟物唱机大卡片 (Expanded Modal Card) -->
-    <Transition name="modal-pop">
-      <div v-if="isExpanded" class="player-overlay" @click.self="toggleExpand">
-        <div class="player-card">
-          <!-- 双层顶栏：第一层电台身份与收起，第二层全宽分段控制选项卡 -->
-          <div class="card-header-suite">
-            <div class="header-identity-row">
-              <div
-                class="station-identity"
-                @click="showNeteaseModal = true"
-                title="站长精选音乐电台 · 点击查看空间与节点状态"
-              >
-                <div class="station-avatar-wrap">
-                  <img :src="stationUser.avatarUrl" alt="avatar" class="station-avatar" />
-                  <span class="station-status-dot" :class="{ connected: isApiConnected }"></span>
-                </div>
-                <div class="station-meta">
-                  <div class="station-name-row">
-                    <span class="station-title">{{ stationUser.nickname }}</span>
-                    <span class="station-live-pill">专属电台</span>
-                  </div>
-                  <span class="station-sub">免登录畅听 · {{ userPlaylists.length }} 张精选歌单</span>
-                </div>
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- 2. 展开态工业控制台 (TE Studio Console Deck)           -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <Transition name="console-pop">
+      <div v-if="isExpanded" class="console-scrim" @click.self="toggleExpand">
+        <div class="console-chassis">
+          <!-- 四角微型内六角沉头螺钉 (Industrial Chassis Screws) -->
+          <span class="chassis-screw screw-tl"></span>
+          <span class="chassis-screw screw-tr"></span>
+          <span class="chassis-screw screw-bl"></span>
+          <span class="chassis-screw screw-br"></span>
+
+          <!-- ── 顶栏：仪表读数与硬件开关 ── -->
+          <div class="console-header-block">
+            <div class="status-meter-strip">
+              <div class="system-ident">
+                <span class="status-led-pill" :class="{ online: isPlaying }">
+                  <span class="led-pip"></span>
+                  <span class="led-txt">{{ isPlaying ? 'DSP: ACTIVE' : 'DSP: STANDBY' }}</span>
+                </span>
+                <span class="system-code">TE // VAR-LAB 44.1kHz</span>
               </div>
 
-              <button class="icon-btn-close" @click="toggleExpand" aria-label="收起播放器">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <!-- 全宽分段 Tab 栏 (Segmented Tabs) -->
-            <div class="segmented-tabs-bar">
-              <button
-                class="tab-btn"
-                :class="{ active: activeTab === 'player' }"
-                @click="activeTab = 'player'"
-              >
-                唱机
-              </button>
-              <button
-                class="tab-btn"
-                :class="{ active: activeTab === 'search' }"
-                @click="activeTab = 'search'"
-              >
-                搜歌 🔍
-              </button>
-              <button
-                class="tab-btn"
-                :class="{ active: activeTab === 'playlist' }"
-                @click="activeTab = 'playlist'"
-              >
-                当前 ({{ playlist.length }})
-              </button>
-              <button
-                class="tab-btn highlight"
-                :class="{ active: activeTab === 'user-playlists' }"
-                @click="activeTab = 'user-playlists'"
-              >
-                精选歌单 ({{ userPlaylists.length }})
-              </button>
-            </div>
-          </div>
-          <!-- Tab 内容区域容器 (统一高度 + 平滑过渡) -->
-          <div class="tab-views-container">
-            <!-- TAB 1: 唱机主视角 (Player View) -->
-            <Transition name="tab-fade" mode="out-in">
-            <div v-if="activeTab === 'player'" key="player" class="tab-view-player">
-            <!-- 唱机 / 歌词 双模交互舞台 -->
-            <div class="deck-stage">
-              <!-- 词/盘 快捷切换胶囊按钮 -->
-              <button
-                class="deck-mode-toggle-btn"
-                :class="{ 'is-lyrics': showLyricsView }"
-                @click="showLyricsView = !showLyricsView"
-                :title="showLyricsView ? '返回黑胶唱盘' : '查看实时同步歌词'"
-              >
-                <span class="mode-toggle-icon">{{ showLyricsView ? '💿' : '💬' }}</span>
-                <span class="mode-toggle-label">{{ showLyricsView ? '唱盘' : '歌词' }}</span>
-              </button>
-
-              <Transition name="deck-flip" mode="out-in">
-                <!-- 视角 A: 拟物黑胶唱机 (点击唱片亦可直接切换至歌词) -->
-                <div v-if="!showLyricsView" key="turntable" class="turntable-deck">
-                  <!-- 底盘与黑胶唱片 -->
-                  <div
-                    class="turntable-platter"
-                    @click="showLyricsView = true"
-                    title="点击切换至实时歌词"
-                  >
-                    <div class="vinyl-record" :class="{ spinning: isPlaying }">
-                      <div class="vinyl-groove g-1"></div>
-                      <div class="vinyl-groove g-2"></div>
-                      <div class="vinyl-groove g-3"></div>
-                      <div class="vinyl-light-reflection"></div>
-                      <!-- 唱片中心真实封面轮盘 -->
-                      <div class="vinyl-label">
-                        <img :src="currentTrack.coverUrl" alt="cover" class="label-img" />
-                        <div class="label-spindle"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 唱臂停放支架 (Rest Post) -->
-                  <div class="arm-rest-post" title="唱臂复位支架">
-                    <div class="rest-cradle"></div>
-                  </div>
-
-                  <!-- 拟物唱臂总成 (Tonearm Assembly) -->
-                  <div class="tonearm-assembly" :class="{ playing: isPlaying }">
-                    <!-- 唱臂枢轴底座 -->
-                    <div class="arm-pivot-chassis">
-                      <div class="pivot-bearing"></div>
-                    </div>
-                    <!-- 臂杆平衡配重 -->
-                    <div class="arm-counterweight"></div>
-                    <!-- 唱臂金属杆 -->
-                    <div class="arm-tube">
-                      <!-- 唱头/唱针总成 -->
-                      <div class="arm-headshell">
-                        <div class="arm-stylus"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 视角 B: 实时同步歌词视图 (Live Synchronized Lyrics) -->
-                <div v-else key="lyrics" class="lyrics-deck">
-                  <div class="lyrics-header-bar">
-                    <span class="lyrics-indicator">
-                      <span class="lyrics-indicator-dot" :class="{ pulsing: isPlaying }"></span>
-                      <span>{{ isPlaying ? '实时同步' : '已暂停' }}</span>
-                    </span>
-                    <span v-if="currentTrack.isTrial" class="lyrics-trial-hint">
-                      试听片段 · 歌词将随音轨同步
-                    </span>
-                  </div>
-
-                  <div
-                    ref="lyricsScrollContainer"
-                    class="lyrics-scroll-container"
-                    @wheel="handleUserLyricScroll"
-                    @touchstart="handleUserLyricScroll"
-                  >
-                    <!-- 加载中 -->
-                    <div v-if="isLoadingLyrics" class="lyrics-state-msg">
-                      <span class="lyrics-spinner"></span>
-                      <span>正在拉取歌词灵感...</span>
-                    </div>
-
-                    <!-- 纯音乐或无歌词 -->
-                    <div
-                      v-else-if="isInstrumental || currentLyrics.length === 0"
-                      class="lyrics-state-msg instrumental"
-                    >
-                      <div class="instrumental-icon">♪</div>
-                      <p class="instrumental-main">纯音乐 · 请沉浸欣赏</p>
-                      <p class="instrumental-sub">无歌词收录，静心聆听音符流淌</p>
-                    </div>
-
-                    <!-- 歌词行列表 (支持点击跳转) -->
-                    <div v-else class="lyrics-list">
-                      <div class="lyrics-spacer"></div>
-                      <div
-                        v-for="(line, idx) in currentLyrics"
-                        :key="line.id"
-                        :ref="(el) => setLyricLineRef(el, idx)"
-                        class="lyric-line"
-                        :class="{
-                          active: idx === currentLineIndex,
-                          passed: idx < currentLineIndex,
-                          future: idx > currentLineIndex
-                        }"
-                        @click="handleLyricClick(line.time)"
-                        :title="`点击跳转至 ${formatTime(line.time)}`"
-                      >
-                        <div class="line-origin">{{ line.text }}</div>
-                        <div v-if="line.translation" class="line-translation">
-                          {{ line.translation }}
-                        </div>
-                      </div>
-                      <div class="lyrics-spacer"></div>
-                    </div>
-                  </div>
-                </div>
-              </Transition>
-            </div>
-
-            <!-- 曲目信息 -->
-            <div class="track-meta">
-              <div class="title-row">
-                <h3 class="track-title" :title="currentTrack.title">{{ currentTrack.title }}</h3>
-                <span v-if="playbackStatus === 'resolving'" class="full-song-tag resolving">
-                  ● 解析直链中...
-                </span>
-                <span v-else-if="playbackStatus === 'error'" class="full-song-tag error" :title="playbackError">
-                  ⚠️ 播放受阻
-                </span>
-                <span v-else class="full-song-tag" :class="{ full: currentTrack.isFull, trial: currentTrack.isTrial }">
-                  {{ currentTrack.isTrial ? '◐ 试听采样 (30秒)' : (currentTrack.isFull ? '● 完整全曲' : '○ 试听采样') }}
-                </span>
-              </div>
-              <p class="track-subtitle">
-                <span v-if="playbackStatus === 'error' && playbackError" class="track-error-hint">{{ playbackError }}</span>
-                <span v-else>{{ currentTrack.artist }} · {{ currentTrack.album }}</span>
-              </p>
-            </div>
-
-            <!-- 实时声波频谱 Canvas (Web Audio) -->
-            <div class="visualizer-wrap">
-              <canvas ref="canvasRef" class="spectrum-canvas"></canvas>
-            </div>
-
-            <!-- 交互式进度条 (支持拖拽 + 时间浮层预览) -->
-            <div class="progress-section">
-              <div
-                class="progress-bar-container"
-                @pointerdown="handleProgressPointerDown"
-                @mousemove="handleProgressMouseMove"
-                @mouseleave="handleProgressMouseLeave"
-              >
-                <!-- 鼠标悬停时间预览浮层 (Tooltip) -->
-                <Transition name="tooltip-fade">
-                  <div
-                    v-if="showHoverTooltip"
-                    class="progress-tooltip"
-                    :style="{ left: `${hoverTooltipX}px` }"
-                  >
-                    {{ formatTime(hoverPct * (duration || 180)) }}
-                  </div>
-                </Transition>
-
-                <!-- 进度条轨道与填充 -->
-                <div class="progress-track-bg"></div>
-                <div
-                  class="progress-fill-bar"
-                  :style="{ width: `${progressPercent}%` }"
+              <div class="header-tools">
+                <button
+                  class="station-link-trigger"
+                  @click="showNeteaseModal = true"
+                  title="查看云端节点通信诊断"
                 >
-                  <div class="progress-thumb" :class="{ dragging: isScrubbing, pulse: isPlaying }"></div>
-                </div>
-              </div>
-              <div class="time-labels">
-                <span>{{ formatTime(displayCurrentTime) }}</span>
-                <span>{{ formatTime(duration) }}</span>
-              </div>
-            </div>
-          </div>
-          </Transition>
-
-          <!-- TAB 2: 在线搜歌视角 (Search View) -->
-          <Transition name="tab-fade" mode="out-in">
-          <div v-if="activeTab === 'search'" key="search" class="tab-view-search">
-            <div class="search-input-box">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <input
-                v-model="searchKeyword"
-                type="text"
-                class="search-input"
-                placeholder="搜索曲名、艺术家，或网易云单曲 ID"
-                @keyup.enter="handleSearch()"
-              />
-              <button class="search-submit-btn" @click="handleSearch()">搜索</button>
-            </div>
-
-            <!-- 灵感热门标签 -->
-            <div class="hot-tags-row">
-              <span class="hot-tag-label">常听风格:</span>
-              <button
-                v-for="tag in hotTags"
-                :key="tag"
-                class="hot-tag-chip"
-                @click="handleSearch(tag)"
-              >
-                {{ tag }}
-              </button>
-            </div>
-
-            <!-- 检索结果列表 -->
-            <div class="search-results-list">
-              <div v-if="isSearching" class="search-loading">
-                <span class="loading-spinner"></span>
-                <span>正在全网曲库检索中...</span>
-              </div>
-
-              <div v-else-if="searchError" class="search-empty">
-                {{ searchError }}
-              </div>
-
-              <div v-else-if="searchResults.length === 0" class="search-intro">
-                <div class="search-intro-card">
-                  <div class="intro-card-icon">✦</div>
-                  <span class="intro-title">在旋律中漫步</span>
-                  <p class="intro-desc">
-                    输入你喜欢的曲目、歌手，或者直接粘贴网易云单曲 ID，为当下的思绪配一首背景音。
-                  </p>
-                </div>
-              </div>
-
-              <div
-                v-for="item in searchResults"
-                :key="item.id"
-                class="search-item"
-                @click="handleSelectSearchResult(item)"
-              >
-                <img :src="item.coverUrl" alt="art" class="item-thumb" />
-                <div class="item-info">
-                  <div class="item-title-row">
-                    <span class="item-title">{{ item.title }}</span>
-                    <span v-if="item.isTrial" class="item-badge trial">30秒试听</span>
-                    <span v-else-if="item.isFull" class="item-badge full">完整全曲</span>
-                    <span v-else class="item-badge full">网易云单曲</span>
-                  </div>
-                  <span class="item-meta">{{ item.artist }} · {{ item.album }}</span>
-                </div>
-                <button class="item-play-action">▶ 播放</button>
-              </div>
-            </div>
-          </div>
-          </Transition>
-
-          <!-- TAB 3: 当前播放列表视角 (Playlist View) -->
-          <Transition name="tab-fade" mode="out-in">
-          <div v-if="activeTab === 'playlist'" key="playlist" class="tab-view-playlist">
-            <div class="playlist-header">
-              <span>当前队列 ({{ playlist.length }} 首)</span>
-              <span class="playlist-hint">顺序播放中</span>
-            </div>
-            <div class="playlist-items-scroll">
-              <div
-                v-for="(item, idx) in playlist"
-                :key="item.id"
-                class="playlist-row"
-                :class="{ active: idx === currentTrackIndex }"
-                @click="selectTrack(idx); activeTab = 'player'"
-              >
-                <span class="row-num">{{ String(idx + 1).padStart(2, '0') }}</span>
-                <div class="row-cover-wrap">
-                  <img :src="item.coverUrl" alt="art" class="row-cover" />
-                  <div v-if="idx === currentTrackIndex && isPlaying" class="row-eq-overlay">
-                    <span class="eq-dot ed-1"></span>
-                    <span class="eq-dot ed-2"></span>
-                    <span class="eq-dot ed-3"></span>
-                  </div>
-                </div>
-                <div class="row-info">
-                  <div class="row-title-row">
-                    <span class="row-title">{{ item.title }}</span>
-                    <span v-if="item.isTrial" class="badge-trial">试听</span>
-                    <span v-else-if="item.isFull" class="badge-full">全曲</span>
-                  </div>
-                  <span class="row-artist">{{ item.artist }}</span>
-                </div>
-                <span v-if="idx === currentTrackIndex && isPlaying" class="row-playing-pill">播放中</span>
-                <span v-else class="row-duration">{{ formatTime(item.duration) }}</span>
-              </div>
-            </div>
-          </div>
-          </Transition>
-
-          <!-- TAB 4: 站长精选公开歌单 (User Playlists View) -->
-          <Transition name="tab-fade" mode="out-in">
-          <div v-if="activeTab === 'user-playlists'" key="user-playlists" class="tab-view-user-playlists">
-            <div class="playlist-header">
-              <span>{{ stationUser.nickname }} 的日常精选歌单 ({{ userPlaylists.length }})</span>
-              <span class="playlist-hint">点击载入整张歌单</span>
-            </div>
-            <div class="user-playlists-scroll-area">
-              <div
-                v-for="pl in userPlaylists"
-                :key="pl.id"
-                class="user-playlist-card-row"
-                :class="{ loading: currentLoadingPlaylistId === pl.id }"
-                @click="handleSelectNeteasePlaylist(pl.id)"
-              >
-                <div class="card-cover-wrap">
-                  <!-- 拟物黑胶窥视效果 (Vinyl Peek-Out) -->
-                  <div class="vinyl-peek-disk">
-                    <div class="peek-spindle"></div>
-                  </div>
-                  <img :src="pl.coverImgUrl" alt="cover" class="pl-cover" />
-                  <span v-if="currentLoadingPlaylistId === pl.id" class="pl-loading-overlay">
-                    <span class="loading-spinner-mini"></span>
-                  </span>
-                  <span v-else class="pl-play-hover-icon">▶</span>
-                </div>
-                <div class="pl-info">
-                  <span class="pl-name" :title="pl.name">{{ pl.name }}</span>
-                  <span class="pl-count">{{ pl.trackCount }} 首歌曲 · 灵感电台</span>
-                </div>
-                <button class="pl-load-btn" :disabled="currentLoadingPlaylistId === pl.id">
-                  {{ currentLoadingPlaylistId === pl.id ? '载入中...' : '载入歌单' }}
+                  <span class="cloud-dot" :class="{ linked: isApiConnected }"></span>
+                  <span class="cloud-txt">{{ isApiConnected ? `LINKED ${apiLatency}ms` : 'OFFLINE' }}</span>
+                </button>
+                <button
+                  class="chassis-close-btn"
+                  @click="toggleExpand"
+                  aria-label="关闭控制台"
+                  title="收起至便携遥控器 [ESC]"
+                >
+                  ✕
                 </button>
               </div>
             </div>
-          </div>
-          </Transition>
+
+            <!-- 硬件拨码选择档位 (Tactile Segmented Switch) -->
+            <div class="chassis-nav-switches">
+              <button
+                class="switch-key"
+                :class="{ active: activeTab === 'player' }"
+                @click="activeTab = 'player'"
+              >
+                <span class="key-index">01</span>
+                <span class="key-label">PLTR 唱盘</span>
+              </button>
+              <button
+                class="switch-key"
+                :class="{ active: activeTab === 'lyrics' }"
+                @click="activeTab = 'lyrics'"
+              >
+                <span class="key-index">02</span>
+                <span class="key-label">LYRC 歌词</span>
+                <span v-if="hasLyrics" class="key-dot-badge"></span>
+              </button>
+              <button
+                class="switch-key"
+                :class="{ active: activeTab === 'search' }"
+                @click="activeTab = 'search'"
+              >
+                <span class="key-index">03</span>
+                <span class="key-label">SRCH 检索</span>
+              </button>
+              <button
+                class="switch-key"
+                :class="{ active: activeTab === 'playlist' }"
+                @click="activeTab = 'playlist'"
+              >
+                <span class="key-index">04</span>
+                <span class="key-label">QUEU 队列</span>
+              </button>
+              <button
+                class="switch-key"
+                :class="{ active: activeTab === 'user-playlists' }"
+                @click="activeTab = 'user-playlists'"
+              >
+                <span class="key-index">05</span>
+                <span class="key-label">DISK 歌单</span>
+              </button>
+            </div>
           </div>
 
-          <!-- 底部控制栏 (在所有 Tab 下常驻) -->
-          <div class="controls-deck">
-            <!-- 播放模式切换 (顺序 / 单曲循环 / 随机) -->
+          <!-- ── 中部主要工作区 (Main Stage Viewport) ── -->
+          <div class="console-stage-viewport">
+            <!-- 档位 01: 直驱精密唱盘 (Direct-Drive Motor Platter) -->
+            <div v-if="activeTab === 'player'" class="stage-view-player">
+              <!-- 直驱转盘总成 -->
+              <div
+                class="direct-drive-deck"
+                @click="activeTab = 'lyrics'"
+                title="点击转盘直接切换至大屏歌词终端"
+              >
+                <!-- 频闪测速外圈 (Strobe Bezel) -->
+                <div class="strobe-bezel" :class="{ spinning: isPlaying }">
+                  <!-- 凹槽唱片盘面 -->
+                  <div class="vinyl-platter-body">
+                    <div class="groove-layer g-outer"></div>
+                    <div class="groove-layer g-mid"></div>
+                    <div class="groove-layer g-inner"></div>
+                    <div class="anisotropic-sheen"></div>
+
+                    <!-- 滚花中心压片与封面 (Knurled Clamp & Cover) -->
+                    <div class="center-clamp">
+                      <img :src="currentTrack.coverUrl" alt="cover" class="clamp-artwork" />
+                      <div class="spindle-knurl"></div>
+                      <div class="spindle-center-bore"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 边缘精密光学拾音指示器 (Optical Pickup Indicator) -->
+                <div class="optical-pickup-head" :class="{ active: isPlaying }">
+                  <div class="pickup-beam"></div>
+                  <div class="pickup-diode"></div>
+                </div>
+
+                <!-- 快捷翻转提示徽标 -->
+                <div class="deck-flip-hint">
+                  <span>LYRICS ⇄</span>
+                </div>
+              </div>
+
+              <!-- 嵌入式信息面板 (Recessed Meta Bay) -->
+              <div class="track-readout-bay">
+                <div class="track-headline-row">
+                  <h3 class="track-name" :title="currentTrack.title">{{ currentTrack.title }}</h3>
+                  <span v-if="playbackStatus === 'resolving'" class="tech-pill resolving">
+                    PARSING...
+                  </span>
+                  <span v-else-if="playbackStatus === 'error'" class="tech-pill error" :title="playbackError">
+                    ERR: SIGNAL LOST
+                  </span>
+                  <span v-else class="tech-pill" :class="{ full: currentTrack.isFull, trial: currentTrack.isTrial }">
+                    {{ currentTrack.isTrial ? '30S TRIAL' : (currentTrack.isFull ? 'MASTER LOSSLESS' : 'SAMPLE') }}
+                  </span>
+                </div>
+                <div class="track-sub-row">
+                  <span class="sub-artist">{{ currentTrack.artist }}</span>
+                  <span class="sub-sep">//</span>
+                  <span class="sub-album">{{ currentTrack.album }}</span>
+                </div>
+              </div>
+
+              <!-- 分段式 LED 电平频段仪 (Segmented LED Ladder VU Meter) -->
+              <div class="vu-meter-module">
+                <canvas ref="canvasRef" class="vu-canvas"></canvas>
+                <div class="vu-scale-ticks">
+                  <span>-24dB</span>
+                  <span>-12dB</span>
+                  <span>-6dB</span>
+                  <span>0dB</span>
+                  <span class="tick-peak">PEAK</span>
+                </div>
+              </div>
+
+              <!-- 标尺型进度寻轨器 (Precision Ruler Scrubber) -->
+              <div class="ruler-scrubber-module">
+                <div
+                  class="scrub-track-area"
+                  @pointerdown="handleProgressPointerDown"
+                  @mousemove="handleProgressMouseMove"
+                  @mouseleave="handleProgressMouseLeave"
+                >
+                  <div
+                    v-if="showHoverTooltip"
+                    class="scrub-precision-tooltip"
+                    :style="{ left: `${hoverTooltipX}px` }"
+                  >
+                    {{ formatPreciseTime(hoverPct * (duration || 180)) }}
+                  </div>
+
+                  <!-- 标尺底衬与刻度点 -->
+                  <div class="ruler-scale-bg"></div>
+                  <div class="ruler-fill-bar" :style="{ width: `${progressPercent}%` }">
+                    <div class="ruler-slider-handle" :class="{ dragging: isScrubbing }">
+                      <div class="handle-pip"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ruler-time-readout">
+                  <span class="mono-time">{{ formatPreciseTime(displayCurrentTime) }}</span>
+                  <span class="mono-divider">/</span>
+                  <span class="mono-time total">{{ formatPreciseTime(duration) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 档位 02: 工业歌词终端视窗 (OLED Terminal Lyrics) -->
+            <div v-else-if="activeTab === 'lyrics'" class="stage-view-lyrics">
+              <div class="terminal-lyrics-head">
+                <div class="lyrics-sys-stat">
+                  <span class="terminal-prompt">&gt;</span>
+                  <span class="terminal-title">LIVE SYNC LRC</span>
+                  <span class="terminal-clock">{{ formatTime(currentTime) }}</span>
+                </div>
+                <span v-if="currentTrack.isTrial" class="terminal-trial-flag">
+                  SYNCING TRIAL RANGE (30s)
+                </span>
+              </div>
+
+              <div
+                ref="lyricsScrollContainer"
+                class="terminal-lyrics-screen"
+                @wheel="handleUserLyricScroll"
+                @touchstart="handleUserLyricScroll"
+              >
+                <!-- 加载状态 -->
+                <div v-if="isLoadingLyrics" class="lyrics-term-msg">
+                  <span class="te-spinner"></span>
+                  <span class="msg-txt">FETCHING LYRIC STREAM...</span>
+                </div>
+
+                <!-- 纯音乐或未收录 -->
+                <div
+                  v-else-if="isInstrumental || currentLyrics.length === 0"
+                  class="lyrics-term-msg instrumental"
+                >
+                  <div class="oscilloscope-wave">
+                    <span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                  <span class="msg-bold">INSTRUMENTAL TRACK</span>
+                  <span class="msg-sub">纯音乐 · 请在旋律中漫步探索</span>
+                </div>
+
+                <!-- 歌词行矩阵 -->
+                <div v-else class="lyrics-matrix">
+                  <div class="terminal-spacer"></div>
+                  <div
+                    v-for="(line, idx) in currentLyrics"
+                    :key="line.id"
+                    :ref="(el) => setLyricLineRef(el, idx)"
+                    class="terminal-lyric-row"
+                    :class="{
+                      active: idx === currentLineIndex,
+                      past: idx < currentLineIndex,
+                      future: idx > currentLineIndex
+                    }"
+                    @click="handleLyricClick(line.time)"
+                  >
+                    <!-- 左侧时间戳标尺 -->
+                    <span class="gutter-timestamp">{{ formatTime(line.time) }}</span>
+                    <!-- 机械游标指示符 -->
+                    <span class="row-indicator">{{ idx === currentLineIndex ? '▶' : ' ' }}</span>
+                    <!-- 歌词文本 -->
+                    <div class="lyric-content-bay">
+                      <p class="origin-text">{{ line.text }}</p>
+                      <p v-if="line.translation" class="trans-text">{{ line.translation }}</p>
+                    </div>
+                  </div>
+                  <div class="terminal-spacer"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 档位 03: 曲库检索控制台 (Cloud Search Console) -->
+            <div v-else-if="activeTab === 'search'" class="stage-view-search">
+              <div class="chassis-search-box">
+                <span class="cli-arrow">&gt;</span>
+                <input
+                  v-model="searchKeyword"
+                  type="text"
+                  class="chassis-search-input"
+                  placeholder="检索歌曲、歌手或网易云单曲 ID"
+                  @keyup.enter="handleSearch()"
+                />
+                <button class="search-action-btn" @click="handleSearch()">EXEC</button>
+              </div>
+
+              <div class="search-tag-chips">
+                <span class="chip-caption">TAGS:</span>
+                <button
+                  v-for="tag in hotTags"
+                  :key="tag"
+                  class="micro-tag-btn"
+                  @click="handleSearch(tag)"
+                >
+                  {{ tag }}
+                </button>
+              </div>
+
+              <div class="search-output-deck">
+                <div v-if="isSearching" class="output-placeholder">
+                  <span class="te-spinner"></span>
+                  <span>QUERYING CLOUD REPOSITORY...</span>
+                </div>
+
+                <div v-else-if="searchError" class="output-placeholder error">
+                  {{ searchError }}
+                </div>
+
+                <div v-else-if="searchResults.length === 0" class="output-placeholder intro">
+                  <span class="ascii-glyph">✦</span>
+                  <span class="intro-headline">CLOUD AUDIO ARCHIVE</span>
+                  <p class="intro-caption">输入曲目名称或歌手关键词，检索即时音频信号</p>
+                </div>
+
+                <div v-else class="results-table">
+                  <div
+                    v-for="(item, idx) in searchResults"
+                    :key="item.id"
+                    class="track-result-row"
+                    @click="handleSelectSearchResult(item)"
+                  >
+                    <span class="row-idx">{{ String(idx + 1).padStart(2, '0') }}</span>
+                    <img :src="item.coverUrl" alt="cover" class="row-mini-thumb" />
+                    <div class="row-name-box">
+                      <span class="row-song-title">{{ item.title }}</span>
+                      <span class="row-song-artist">{{ item.artist }}</span>
+                    </div>
+                    <button class="row-play-trigger" title="加载并播放">PLAY ▶</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 档位 04: 当前播放队列 (Active Queue) -->
+            <div v-else-if="activeTab === 'playlist'" class="stage-view-playlist">
+              <div class="view-header-strip">
+                <span class="strip-label">CURRENT QUEUE ({{ playlist.length }})</span>
+                <span class="strip-badge">HOT MEMORY</span>
+              </div>
+
+              <div class="queue-table-scroll">
+                <div
+                  v-for="(item, idx) in playlist"
+                  :key="item.id"
+                  class="queue-item-row"
+                  :class="{ active: idx === currentTrackIndex }"
+                  @click="selectTrack(idx)"
+                >
+                  <span class="queue-num">{{ String(idx + 1).padStart(2, '0') }}</span>
+                  <img :src="item.coverUrl" alt="cover" class="queue-thumb" />
+                  <div class="queue-meta">
+                    <span class="queue-name">{{ item.title }}</span>
+                    <span class="queue-sub">{{ item.artist }}</span>
+                  </div>
+                  <span v-if="idx === currentTrackIndex && isPlaying" class="queue-live-tag">RUNNING</span>
+                  <span v-else class="queue-duration">{{ formatTime(item.duration) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 档位 05: 站长精选公开唱片盒 (Curated Playlists) -->
+            <div v-else-if="activeTab === 'user-playlists'" class="stage-view-user-playlists">
+              <div class="view-header-strip">
+                <span class="strip-label">{{ stationUser.nickname }} · CURATED TAPES ({{ userPlaylists.length }})</span>
+                <span class="strip-badge">PUBLIC</span>
+              </div>
+
+              <div class="playlists-tape-grid">
+                <div
+                  v-for="pl in userPlaylists"
+                  :key="pl.id"
+                  class="tape-cartridge"
+                  :class="{ loading: currentLoadingPlaylistId === pl.id }"
+                  @click="handleSelectNeteasePlaylist(pl.id)"
+                >
+                  <div class="tape-cover-cradle">
+                    <img :src="pl.coverImgUrl" alt="cover" class="tape-art" />
+                    <span v-if="currentLoadingPlaylistId === pl.id" class="tape-spin-overlay">
+                      <span class="te-spinner-mini"></span>
+                    </span>
+                  </div>
+                  <div class="tape-info-bay">
+                    <span class="tape-title" :title="pl.name">{{ pl.name }}</span>
+                    <span class="tape-specs">{{ pl.trackCount }} TRACKS // STATION FEED</span>
+                  </div>
+                  <button class="tape-load-lever" :disabled="currentLoadingPlaylistId === pl.id">
+                    {{ currentLoadingPlaylistId === pl.id ? 'MOUNTING...' : 'MOUNT' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 底部控制台：机械按键组 (Hardware Control Deck) ── -->
+          <div class="hardware-control-deck">
+            <!-- 模式拨码 (Mode Toggle) -->
             <button
-              class="control-icon-btn mode-btn"
+              class="hw-key key-mode"
               @click="togglePlayMode"
-              :title="`播放模式: ${playModeTitle} (点击切换)`"
-              :aria-label="`播放模式: ${playModeTitle}`"
+              :title="`播放模式: ${playModeDescription}`"
             >
-              <!-- 顺序播放 -->
-              <svg v-if="playMode === 'sequence'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="17 1 21 5 17 9" />
-                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                <polyline points="7 23 3 19 7 15" />
-                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-              </svg>
-              <!-- 单曲循环 -->
-              <svg v-else-if="playMode === 'loop-one'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="17 1 21 5 17 9" />
-                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                <polyline points="7 23 3 19 7 15" />
-                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-                <text x="12" y="15" font-size="8" font-family="monospace" font-weight="bold" fill="currentColor" text-anchor="middle">1</text>
-              </svg>
-              <!-- 随机播放 -->
-              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="16 3 21 3 21 8" />
-                <line x1="4" y1="20" x2="21" y2="3" />
-                <polyline points="21 16 21 21 16 21" />
-                <line x1="15" y1="15" x2="21" y2="21" />
-                <line x1="4" y1="4" x2="9" y2="9" />
-              </svg>
+              <span class="key-sub-label">MODE</span>
+              <span class="key-mode-code">{{ playModeLabel }}</span>
             </button>
 
-            <!-- 上一首 -->
-            <button class="control-icon-btn" @click="prevTrack" title="上一首">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <!-- 上一曲 -->
+            <button class="hw-key key-skip" @click="prevTrack" title="上一曲 [PREV]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="19 20 9 12 19 4 19 20" />
-                <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2" />
+                <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5" />
               </svg>
             </button>
 
-            <!-- 主播放/暂停按钮 (Uiverse 水滴触感) -->
-            <button class="main-play-btn" @click="togglePlay" :aria-label="isPlaying ? '暂停' : '播放'">
-              <span v-if="isLoading" class="btn-spinner large"></span>
-              <svg v-else-if="!isPlaying" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <!-- 主播放/暂停 (Primary Tactile Engine Key) -->
+            <button
+              class="hw-key-primary"
+              :class="{ playing: isPlaying }"
+              @click="togglePlay"
+              :aria-label="isPlaying ? '暂停' : '播放'"
+            >
+              <span v-if="isLoading" class="te-spinner primary"></span>
+              <svg v-else-if="!isPlaying" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="6 3 20 12 6 21 6 3" />
               </svg>
-              <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="4" width="4" height="16" />
                 <rect x="14" y="4" width="4" height="16" />
               </svg>
             </button>
 
-            <!-- 下一首 -->
-            <button class="control-icon-btn" @click="nextTrack" title="下一首">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <!-- 下一曲 -->
+            <button class="hw-key key-skip" @click="nextTrack" title="下一曲 [NEXT]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 4 15 12 5 20 5 4" />
-                <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" />
+                <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5" />
               </svg>
             </button>
 
-            <!-- 音量控制 -->
-            <div class="volume-box">
-              <button class="control-icon-btn vol-btn" @click="toggleMute" title="静音切换">
-                <svg v-if="isMuted || volume === 0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <!-- 音量调节推子 (Fader Volume Pot) -->
+            <div class="hw-fader-block">
+              <button class="fader-mute-btn" @click="toggleMute" title="静音切换">
+                <svg v-if="isMuted || volume === 0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   <line x1="23" y1="9" x2="17" y2="15" />
                   <line x1="17" y1="9" x2="23" y2="15" />
                 </svg>
-                <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
                 </svg>
               </button>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                :value="isMuted ? 0 : volume * 100"
-                class="volume-slider"
-                @input="handleVolumeChange"
-                title="音量调节"
-              />
+              <div class="fader-slider-wrap">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  :value="isMuted ? 0 : volume * 100"
+                  class="te-fader-input"
+                  @input="handleVolumeChange"
+                  title="音量调节"
+                />
+                <span class="fader-scale-tag">VOL</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </Transition>
 
-    <!-- 3. 网易云电台与节点状态弹窗 (NetEase Station Modal) -->
-    <Transition name="modal-pop">
-      <div v-if="showNeteaseModal" class="login-modal-overlay" @click.self="showNeteaseModal = false">
-        <div class="login-card">
-          <div class="login-header">
-            <div class="header-left">
-              <span class="cloud-icon">☕</span>
-              <span class="login-title">var 的音乐电台</span>
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- 3. 云端接口与节点诊断弹窗 (Hardware Diagnostics)       -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <Transition name="diag-pop">
+      <div v-if="showNeteaseModal" class="diag-scrim" @click.self="showNeteaseModal = false">
+        <div class="diag-chassis">
+          <div class="diag-header">
+            <div class="diag-title-row">
+              <span class="diag-led"></span>
+              <span class="diag-headline">DIAGNOSTICS // CLOUD LINK</span>
             </div>
-            <button class="icon-btn-close" @click="showNeteaseModal = false">×</button>
+            <button class="diag-close" @click="showNeteaseModal = false">✕</button>
           </div>
 
-          <!-- 站长电台展示 -->
-          <div class="logged-in-profile">
-            <div class="profile-main">
-              <img :src="stationUser.avatarUrl" alt="avatar" class="profile-avatar" />
-              <div class="profile-info">
-                <div class="name-row">
-                  <span class="profile-name">{{ stationUser.nickname }}</span>
-                  <span class="station-tag">专属电台</span>
+          <div class="diag-body">
+            <!-- 站长电台信息 -->
+            <div class="diag-card-unit">
+              <div class="unit-banner">
+                <img :src="stationUser.avatarUrl" alt="avatar" class="unit-avatar" />
+                <div class="unit-meta">
+                  <span class="unit-nick">{{ stationUser.nickname }}</span>
+                  <span class="unit-desc">STATION MASTER · {{ userPlaylists.length }} ALBUMS ONLINE</span>
                 </div>
-                <span class="profile-uid">网易云专属空间 · UID {{ stationUser.userId }}</span>
-                <span class="profile-playlists-count">收录 {{ userPlaylists.length }} 个常听歌单 · 访客免登录畅听</span>
-              </div>
-            </div>
-
-            <div class="station-desc-box visitor">
-              <span class="station-icon">🍃</span>
-              <div class="station-text">
-                <strong>私人音乐客厅 · 自由漫游</strong>
-                <p>这里收藏了日常陪伴我写代码、发呆与阅读的旋律，所有曲目均可直接点击收听。</p>
               </div>
             </div>
 
             <!-- API 节点状态 -->
-            <div class="api-node-status-card">
-              <div class="node-status-row">
-                <span class="node-label">API 节点</span>
-                <span class="node-value">{{ apiUrl || 'https://api.hi-var.top' }}</span>
-              </div>
-              <div class="node-status-row">
-                <span class="node-label">连通状态</span>
-                <span class="node-badge" :class="{ connected: isApiConnected }">
-                  <span class="status-pulse-dot" v-if="isApiConnected"></span>
-                  {{ apiTestMessage || (isApiConnected ? `已连接 (${apiLatency}ms)` : '连接中断') }}
+            <div class="diag-card-unit">
+              <span class="unit-label">SERVICE ENDPOINT</span>
+              <div class="endpoint-line">
+                <code>{{ apiUrl }}</code>
+                <span class="ping-badge" :class="{ ok: isApiConnected }">
+                  {{ isApiConnected ? `ONLINE (${apiLatency}ms)` : 'UNREACHABLE' }}
                 </span>
               </div>
-            </div>
-
-            <div class="profile-actions">
-              <button class="action-btn-sync" @click="syncOwnerData" title="重新从网易云同步最新歌单">
-                🔄 刷新歌单
-              </button>
-              <button class="action-btn-auth primary" :disabled="apiTesting" @click="testCurrentApi(true)" title="测速当前 API 节点">
-                ⚡ {{ apiTesting ? '测速中...' : '节点测速' }}
+              <p v-if="apiTestMessage" class="diag-hint">{{ apiTestMessage }}</p>
+              <button
+                class="diag-action-btn"
+                :disabled="apiTesting"
+                @click="testCurrentApi()"
+              >
+                {{ apiTesting ? 'PINGING...' : 'TEST LATENCY' }}
               </button>
             </div>
           </div>
@@ -958,2665 +952,1842 @@ watch(currentLyrics, () => {
 </template>
 
 <style scoped>
-.music-player-container {
-  position: relative;
-  z-index: 950;
-}
+/* ═══════════════════════════════════════════════════════════════
+   TEENAGE ENGINEERING / 现代工业设计系统 (TE DESIGN SYSTEM)
+   ═══════════════════════════════════════════════════════════════ */
 
-/* ── 1. 悬浮微胶囊态 ── */
-.player-capsule {
+/* ── 1. 悬浮遥控微胶囊 (Pocket Remote Dock) ── */
+.pocket-remote {
   position: fixed;
-  bottom: 32px;
-  left: 32px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 16px 6px 6px;
-  background: #FAF7F2;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-full);
-  box-shadow:
-    0 12px 32px -4px rgba(44, 38, 33, 0.16),
-    0 4px 12px rgba(0, 0, 0, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  cursor: pointer;
-  transition: all 0.35s var(--ease-spring);
-  user-select: none;
-  z-index: 950;
-}
-
-.player-capsule:hover {
-  transform: translateY(-3px) scale(1.02);
-  border-color: var(--color-accent);
-  box-shadow:
-    0 16px 42px -4px rgba(124, 140, 110, 0.32),
-    0 6px 16px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 #FFFFFF;
-}
-
-.capsule-vinyl {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-}
-
-.capsule-cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.vinyl-center-dot {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #181513;
-  border: 2px solid white;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
-}
-
-.capsule-vinyl.spinning {
-  animation: vinyl-spin 8s linear infinite;
-}
-
-.capsule-info {
-  display: flex;
-  flex-direction: column;
-  max-width: 130px;
-  overflow: hidden;
-  gap: 1px;
-}
-
-.title-with-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.capsule-title {
-  font-family: var(--font-serif);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
-.capsule-full-pill {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  padding: 0 4px;
-  background: rgba(16, 185, 129, 0.15);
-  color: #059669;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.capsule-trial-pill {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  padding: 0 4px;
-  background: rgba(245, 158, 11, 0.15);
-  color: #d97706;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.capsule-artist {
-  font-size: 0.7rem;
-  color: var(--color-text-lighter);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
-.capsule-wave {
-  display: flex;
-  align-items: flex-end;
-  gap: 2.5px;
-  height: 14px;
-  padding: 0 4px;
-}
-
-.c-bar {
-  width: 2px;
-  height: 4px;
-  background: var(--color-accent);
-  border-radius: 1px;
-  transition: height 0.2s;
-}
-
-.c-bar.active {
-  animation: wave-bounce 1.1s ease-in-out infinite alternate;
-}
-
-.cb-1 { animation-delay: 0.1s; }
-.cb-2 { animation-delay: 0.35s; }
-.cb-3 { animation-delay: 0.2s; }
-.cb-4 { animation-delay: 0.45s; }
-
-@keyframes wave-bounce {
-  0% { height: 3px; }
-  100% { height: 13px; }
-}
-
-.capsule-play-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.2s var(--ease-spring), background 0.2s;
-}
-
-.capsule-play-btn:hover {
-  transform: scale(1.1);
-  background: var(--color-accent-dark);
-}
-
-.capsule-play-btn:active {
-  transform: scale(0.95);
-}
-
-.btn-spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-.btn-spinner.large {
-  width: 18px;
-  height: 18px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── 2. 展开态大卡片 ── */
-.player-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(28, 24, 20, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  left: 24px;
+  bottom: 28px;
   z-index: 1000;
-}
-
-.player-card {
-  width: 100%;
-  max-width: 460px;
-  max-height: 90vh;
-  padding: 24px;
-  position: relative;
-  background: #FAF7F2;
-  border: 1px solid var(--border-medium);
-  border-radius: 20px;
-  box-shadow:
-    0 32px 80px -12px rgba(20, 16, 12, 0.45),
-    0 8px 24px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* ── 顶栏套件：双层结构 ── */
-.card-header-suite {
-  display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
-  padding-bottom: 2px;
-}
-
-.header-identity-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.station-identity {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  padding: 4px 12px 4px 4px;
-  border-radius: var(--radius-full);
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-light);
-  transition: all 0.25s var(--ease);
-  min-width: 0;
-  max-width: calc(100% - 44px);
-}
-
-.station-identity:hover {
-  background: var(--color-accent-soft);
-  border-color: var(--color-accent);
-  transform: translateY(-1px);
-}
-
-.station-avatar-wrap {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-}
-
-.station-avatar {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-}
-
-.station-status-dot {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #9CA3AF;
-  border: 2px solid var(--color-bg);
-  transition: background 0.3s;
-}
-
-.station-status-dot.connected {
-  background: #10B981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
-}
-
-.station-meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.station-name-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.station-title {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 130px;
-}
-
-.station-live-pill {
-  font-size: 0.62rem;
-  font-family: var(--font-mono);
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
-  border: 1px solid rgba(124, 140, 110, 0.3);
-  padding: 0 6px;
-  border-radius: 10px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.station-sub {
-  font-size: 0.68rem;
-  color: var(--color-text-lighter);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.icon-btn-close {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-lighter);
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-light);
-  transition: all 0.25s var(--ease);
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.icon-btn-close:hover {
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  transform: rotate(90deg);
-}
-
-/* 全宽分段 Tab 栏 (Segmented Tabs) */
-.segmented-tabs-bar {
-  display: flex;
-  background: var(--color-bg-alt);
-  padding: 3px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-light);
-  width: 100%;
-  gap: 3px;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 6px 4px;
-  font-size: 0.74rem;
-  border-radius: var(--radius-full);
-  color: var(--color-text-lighter);
-  transition: all 0.25s var(--ease);
-  font-weight: 500;
-  text-align: center;
-  white-space: nowrap;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-.tab-btn:hover {
-  color: var(--color-text);
-  background: rgba(0, 0, 0, 0.03);
-}
-
-.tab-btn.active {
-  background: white;
-  color: var(--color-accent);
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.tab-btn.highlight {
-  color: var(--color-accent);
-}
-
-/* ── Tab 内容区域容器 ── */
-.tab-views-container {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Tab 切换淡入淡出过渡 */
-.tab-fade-enter-active {
-  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
-}
-.tab-fade-leave-active {
-  transition: opacity 0.15s var(--ease), transform 0.15s var(--ease);
-}
-.tab-fade-enter-from {
-  opacity: 0;
-  transform: translateY(6px);
-}
-.tab-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-
-/* ── 唱机 / 歌词 双模舞台 (Deck Stage) ── */
-.deck-stage {
-  position: relative;
-  width: 100%;
-  height: 216px;
-  margin: 0 auto 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 词/盘 快捷切换胶囊按钮 */
-.deck-mode-toggle-btn {
-  position: absolute;
-  top: 0;
-  right: 6px;
-  z-index: 15;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid var(--border-medium);
-  color: var(--color-text-light);
-  font-size: 0.74rem;
-  font-family: var(--font-sans);
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.25s var(--ease);
-  backdrop-filter: blur(8px);
-}
-
-.deck-mode-toggle-btn:hover {
-  background: #FFFFFF;
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(124, 140, 110, 0.18);
-}
-
-.deck-mode-toggle-btn.is-lyrics {
-  background: rgba(124, 140, 110, 0.12);
-  color: var(--color-accent);
-  border-color: rgba(124, 140, 110, 0.35);
-}
-
-/* 唱片与歌词翻转过渡 (Smooth Deck Flip) */
-.deck-flip-enter-active,
-.deck-flip-leave-active {
-  transition: opacity 0.24s var(--ease), transform 0.24s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.deck-flip-enter-from {
-  opacity: 0;
-  transform: scale(0.96) translateY(6px);
-}
-
-.deck-flip-leave-to {
-  opacity: 0;
-  transform: scale(0.96) translateY(-6px);
-}
-
-/* ── 拟物黑胶唱机 (Authentic Turntable) ── */
-.turntable-deck {
-  position: relative;
-  width: 224px;
-  height: 210px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.turntable-platter {
-  width: 198px;
-  height: 198px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #221D1A 0%, #151210 100%);
-  position: relative;
+  padding: 8px 14px 8px 10px;
+  background: #141618;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
   box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.42),
-    0 2px 10px rgba(0, 0, 0, 0.2),
-    inset 0 0 0 2.5px #2A2420,
-    inset 0 0 0 4.5px rgba(255, 255, 255, 0.05);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    0 16px 36px -6px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   cursor: pointer;
-  transition: transform 0.3s var(--ease);
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  user-select: none;
+  font-family: 'JetBrains Mono', 'SF Mono', -apple-system, monospace;
 }
 
-.turntable-platter:hover {
-  transform: scale(1.02);
+.pocket-remote:hover {
+  background: #1A1D20;
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 42px -6px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.vinyl-record {
-  width: 184px;
-  height: 184px;
+/* 机械微型齿轮/卷带轮 */
+.remote-spool-wrap {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background:
-    repeating-radial-gradient(
-      circle,
-      rgba(255, 255, 255, 0.025) 0px,
-      rgba(255, 255, 255, 0.025) 1px,
-      transparent 1px,
-      transparent 3px
-    ),
-    radial-gradient(circle, #24201D 0%, #12100E 100%);
-  position: relative;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  background: #22252A;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-.vinyl-record.spinning {
-  animation: vinyl-spin 12s linear infinite;
+.remote-spool {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #121315;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-@keyframes vinyl-spin {
+.remote-spool.spinning {
+  animation: spool-rotate 6s linear infinite;
+}
+
+@keyframes spool-rotate {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-.vinyl-groove {
+.spool-spoke {
+  position: absolute;
+  width: 2px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 1px;
+}
+.spool-spoke.s1 { transform: rotate(0deg); }
+.spool-spoke.s2 { transform: rotate(60deg); }
+.spool-spoke.s3 { transform: rotate(120deg); }
+
+.spool-hub {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FF5500;
+  box-shadow: 0 0 6px rgba(255, 85, 0, 0.6);
+  z-index: 2;
+}
+
+/* 读数区域 */
+.remote-display {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 140px;
+}
+
+.remote-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.remote-led-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #555860;
+  transition: all 0.3s;
+}
+
+.remote-led-dot.active {
+  background: #10B981;
+  box-shadow: 0 0 8px #10B981;
+  animation: led-pulse 2s ease-in-out infinite;
+}
+
+@keyframes led-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.remote-mono-tag {
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  color: #8E929A;
+  text-transform: uppercase;
+}
+
+.remote-badge-full {
+  font-size: 0.58rem;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.remote-badge-trial {
+  font-size: 0.58rem;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: rgba(255, 85, 0, 0.15);
+  color: #FF5500;
+  border: 1px solid rgba(255, 85, 0, 0.3);
+}
+
+.remote-title {
+  font-size: 0.82rem;
+  color: #F0F2F5;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.02em;
+}
+
+/* 微型电平条 */
+.remote-meter {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+  margin-left: 2px;
+}
+
+.m-bar {
+  width: 2px;
+  background: #3A3D44;
+  border-radius: 1px;
+}
+.m-bar.mb-1 { height: 4px; }
+.m-bar.mb-2 { height: 8px; }
+.m-bar.mb-3 { height: 6px; }
+
+.m-bar.run {
+  background: #10B981;
+  animation: bar-dance 1.2s ease-in-out infinite alternate;
+}
+.m-bar.mb-1.run { animation-delay: 0.1s; }
+.m-bar.mb-2.run { animation-delay: 0.3s; }
+.m-bar.mb-3.run { animation-delay: 0.2s; }
+
+@keyframes bar-dance {
+  0% { height: 3px; }
+  100% { height: 12px; }
+}
+
+/* 硬件微动按键 */
+.remote-tactile-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #24272D;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #F0F2F5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.remote-tactile-btn:hover {
+  background: #2E323A;
+  color: #FF5500;
+  border-color: rgba(255, 85, 0, 0.4);
+}
+
+.remote-tactile-btn:active {
+  transform: translateY(1px) scale(0.96);
+  background: #1A1C20;
+}
+
+/* ── 2. 展开态工作室工作台 (TE Studio Console) ── */
+.console-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(10, 12, 15, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.console-chassis {
+  width: 100%;
+  max-width: 480px;
+  background: #181A1D;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  position: relative;
+  box-shadow:
+    0 32px 80px -12px rgba(0, 0, 0, 0.8),
+    0 12px 30px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'JetBrains Mono', 'SF Mono', -apple-system, BlinkMacSystemFont, monospace;
+}
+
+/* 机械四角沉头螺丝 */
+.chassis-screw {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2A2D33;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  z-index: 20;
+  pointer-events: none;
+}
+.screw-tl { top: 12px; left: 12px; }
+.screw-tr { top: 12px; right: 12px; }
+.screw-bl { bottom: 12px; left: 12px; }
+.screw-br { bottom: 12px; right: 12px; }
+
+/* ── 顶栏套件 (Header Suite) ── */
+.console-header-block {
+  padding: 16px 20px 12px;
+  background: #141518;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-meter-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.system-ident {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-led-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  background: #1F2227;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+.led-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #555860;
+  transition: all 0.3s;
+}
+
+.status-led-pill.online .led-pip {
+  background: #10B981;
+  box-shadow: 0 0 8px #10B981;
+}
+
+.led-txt {
+  font-size: 0.68rem;
+  color: #9EADB8;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.system-code {
+  font-size: 0.65rem;
+  color: #555962;
+  letter-spacing: 0.08em;
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.station-link-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: #1F2227;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.65rem;
+  color: #8E929A;
+  transition: all 0.2s;
+}
+
+.station-link-trigger:hover {
+  background: #282C33;
+  color: #FFFFFF;
+}
+
+.cloud-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #EF4444;
+}
+.cloud-dot.linked {
+  background: #10B981;
+  box-shadow: 0 0 6px #10B981;
+}
+
+.chassis-close-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #24272D;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #8E929A;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chassis-close-btn:hover {
+  background: #FF5500;
+  color: white;
+  border-color: #FF5500;
+}
+
+/* 硬件拨码选择档位 (Tactile Segmented Switch) */
+.chassis-nav-switches {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  background: #0E0F12;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.switch-key {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.key-index {
+  font-size: 0.58rem;
+  color: #555962;
+  letter-spacing: 0.05em;
+}
+
+.key-label {
+  font-size: 0.72rem;
+  color: #8E929A;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.switch-key:hover {
+  background: #1A1D22;
+  color: #FFFFFF;
+}
+
+.switch-key.active {
+  background: #24272E;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.switch-key.active .key-index {
+  color: #FF5500;
+  font-weight: 600;
+}
+
+.switch-key.active .key-label {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.key-dot-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #FF5500;
+  box-shadow: 0 0 6px #FF5500;
+}
+
+/* ── 中部工作区 (Console Stage Viewport) ── */
+.console-stage-viewport {
+  padding: 16px 20px;
+  min-height: 380px;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── 档位 01: 直驱精密唱机 (Direct-Drive Motor Platter) ── */
+.stage-view-player {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 直驱转盘总成 */
+.direct-drive-deck {
+  width: 196px;
+  height: 196px;
+  margin: 0 auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* 频闪齿纹外圈 (Strobe Bezel) */
+.strobe-bezel {
+  width: 196px;
+  height: 196px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    #33373F 0deg 2.5deg,
+    #141619 2.5deg 5deg
+  );
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.7),
+    0 0 0 1px #3A3E47,
+    inset 0 0 0 2px #0E1012;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.direct-drive-deck:hover .strobe-bezel {
+  transform: scale(1.02);
+}
+
+.strobe-bezel.spinning {
+  animation: drive-spin 10s linear infinite;
+}
+
+@keyframes drive-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 盘面凹槽 */
+.vinyl-platter-body {
+  width: 174px;
+  height: 174px;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(circle, #202328 0%, #0D0E10 100%);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.groove-layer {
   position: absolute;
   border-radius: 50%;
+  pointer-events: none;
 }
+.g-outer { width: 154px; height: 154px; border: 1px solid rgba(255, 255, 255, 0.04); }
+.g-mid   { width: 128px; height: 128px; border: 1px dashed rgba(255, 255, 255, 0.05); }
+.g-inner { width: 104px; height: 104px; border: 1px solid rgba(255, 255, 255, 0.04); }
 
-.g-1 {
-  width: 156px;
-  height: 156px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.g-2 {
-  width: 126px;
-  height: 126px;
-  border: 1px dashed rgba(255, 255, 255, 0.06);
-}
-
-.g-3 {
-  width: 98px;
-  height: 98px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-/* 拟物黑胶全向双锥反光 (Anisotropic Butterfly Reflection) */
-.vinyl-light-reflection {
+.anisotropic-sheen {
   position: absolute;
   inset: 0;
   border-radius: 50%;
   background: conic-gradient(
-    from 35deg,
+    from 45deg,
     transparent 0deg,
-    rgba(255, 255, 255, 0.1) 35deg,
-    rgba(255, 255, 255, 0.02) 65deg,
+    rgba(255, 255, 255, 0.08) 45deg,
     transparent 90deg,
     transparent 180deg,
-    rgba(255, 255, 255, 0.1) 215deg,
-    rgba(255, 255, 255, 0.02) 245deg,
-    transparent 270deg,
-    transparent 360deg
+    rgba(255, 255, 255, 0.08) 225deg,
+    transparent 270deg
   );
   pointer-events: none;
-  z-index: 3;
 }
 
-.vinyl-label {
-  width: 76px;
-  height: 76px;
+/* 滚花中心压片与封面 (Knurled Clamp) */
+.center-clamp {
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
+  background: #181A1D;
   position: relative;
-  overflow: hidden;
   box-shadow:
-    0 0 0 3.5px #151311,
-    0 0 0 5px rgba(196, 168, 130, 0.35),
-    0 0 16px rgba(0, 0, 0, 0.65);
-  z-index: 2;
-}
-
-.label-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.label-spindle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #1C1A17;
-  border: 3px solid #D6CEBE;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
-}
-
-/* 唱臂停放支架 (Rest Post) */
-.arm-rest-post {
-  position: absolute;
-  top: 16px;
-  right: 36px;
-  width: 12px;
-  height: 20px;
-  pointer-events: none;
-  z-index: 4;
-}
-
-.rest-cradle {
-  width: 10px;
-  height: 16px;
-  background: #686158;
-  border-radius: 2px;
-  border-top: 3px solid #D6CEBE;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-/* 拟物唱臂总成 (Tonearm Kinematics) */
-.tonearm-assembly {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  width: 60px;
-  height: 115px;
-  pointer-events: none;
-  z-index: 8;
-  transform-origin: 45px 14px;
-  transform: rotate(-24deg);
-  transition: transform 0.85s cubic-bezier(0.34, 1.35, 0.64, 1);
-}
-
-.tonearm-assembly.playing {
-  transform: rotate(8deg);
-}
-
-.arm-pivot-chassis {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #D8D1C3 0%, #857B71 60%, #423C36 100%);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+    0 4px 12px rgba(0, 0, 0, 0.8),
+    0 0 0 2px #3A3E47,
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  z-index: 3;
 }
 
-.pivot-bearing {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #1F1C18;
-  border: 2px solid #AEA497;
-}
-
-.arm-counterweight {
-  position: absolute;
-  top: -6px;
-  right: 9px;
-  width: 14px;
-  height: 12px;
-  border-radius: 2px;
-  background: linear-gradient(to bottom, #595147, #38332D);
-  border: 1px solid #73695D;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.arm-tube {
-  position: absolute;
-  top: 18px;
-  right: 14px;
-  width: 3.5px;
-  height: 82px;
-  background: linear-gradient(to bottom, #E8E2D6, #A69E93 75%, #59524A);
-  border-radius: 2px;
-  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.25);
-}
-
-.arm-headshell {
-  position: absolute;
-  bottom: -8px;
-  left: -4px;
-  width: 12px;
-  height: 18px;
-  background: #C4A882;
-  border-radius: 3px;
-  transform: rotate(18deg);
-  box-shadow: 1px 3px 6px rgba(0, 0, 0, 0.35);
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.arm-stylus {
-  position: absolute;
-  bottom: 0;
-  left: 4px;
-  width: 2.5px;
-  height: 4px;
-  background: #E11D48;
-  border-radius: 1px;
-  box-shadow: 0 0 5px #E11D48;
-}
-
-/* ── 实时同步歌词面板 (Live Synchronized Lyrics Deck) ── */
-.lyrics-deck {
+.clamp-artwork {
   width: 100%;
-  max-width: 410px;
-  height: 216px;
-  margin: 0 auto;
-  position: relative;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.spindle-knurl {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #3D424C 0%, #1A1C20 100%);
+  border: 1px solid #5A606D;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
+}
+
+.spindle-center-bore {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #08090A;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 边缘光学拾音指示器 (Optical Pickup) */
+.optical-pickup-head {
+  position: absolute;
+  top: -4px;
+  right: 28px;
+  width: 14px;
+  height: 24px;
+  background: #25282F;
+  border: 1px solid #434854;
+  border-radius: 3px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.45);
-  border: 1px solid var(--border-light);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.02);
-}
-
-.lyrics-header-bar {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px 4px;
-  font-size: 0.7rem;
-  color: var(--color-text-lighter);
-  font-family: var(--font-mono);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
-  flex-shrink: 0;
+  justify-content: flex-end;
+  padding-bottom: 3px;
+  z-index: 5;
 }
 
-.lyrics-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  letter-spacing: 0.04em;
-}
-
-.lyrics-indicator-dot {
-  width: 6px;
-  height: 6px;
+.pickup-diode {
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: #A3B495;
+  background: #666;
   transition: all 0.3s;
 }
 
-.lyrics-indicator-dot.pulsing {
-  background: var(--color-accent);
-  box-shadow: 0 0 6px var(--color-accent);
-  animation: lyric-dot-pulse 1.8s ease-in-out infinite;
+.optical-pickup-head.active .pickup-diode {
+  background: #FF5500;
+  box-shadow: 0 0 8px #FF5500;
 }
 
-@keyframes lyric-dot-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.35); opacity: 0.65; }
+.deck-flip-hint {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(36, 39, 46, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.6rem;
+  color: #8E929A;
+  letter-spacing: 0.05em;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
-.lyrics-trial-hint {
+.direct-drive-deck:hover .deck-flip-hint {
+  opacity: 1;
+}
+
+/* 嵌入式信息面板 (Recessed Meta Bay) */
+.track-readout-bay {
+  background: #131417;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.track-headline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.track-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+.tech-pill {
+  font-size: 0.62rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #1C1E23;
+  color: #8E929A;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+.tech-pill.full {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10B981;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.tech-pill.trial {
+  background: rgba(255, 85, 0, 0.15);
+  color: #FF5500;
+  border-color: rgba(255, 85, 0, 0.3);
+}
+
+.tech-pill.resolving {
+  color: #3B82F6;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.tech-pill.error {
+  color: #EF4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.track-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #7A808C;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sub-sep {
+  color: #444852;
+}
+
+/* 分段式 LED 电平频段仪 */
+.vu-meter-module {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vu-canvas {
+  width: 100%;
+  height: 24px;
+  background: #0E0F12;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: block;
+}
+
+.vu-scale-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.56rem;
+  color: #4A4E58;
+  padding: 0 4px;
+  letter-spacing: 0.05em;
+}
+
+.tick-peak {
+  color: #EF4444;
+  opacity: 0.8;
+}
+
+/* 标尺型进度寻轨器 (Precision Ruler Scrubber) */
+.ruler-scrubber-module {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scrub-track-area {
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.scrub-precision-tooltip {
+  position: absolute;
+  top: -24px;
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  background: #000000;
+  border: 1px solid #FF5500;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  color: #FF5500;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.ruler-scale-bg {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.12) 0px,
+      rgba(255, 255, 255, 0.12) 1px,
+      transparent 1px,
+      transparent 8px
+    ),
+    #131417;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ruler-fill-bar {
+  position: absolute;
+  left: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: #FF5500;
+  pointer-events: none;
+}
+
+.ruler-slider-handle {
+  position: absolute;
+  right: -5px;
+  top: -4px;
+  width: 10px;
+  height: 14px;
+  background: #ECEEF2;
+  border: 1px solid #1A1C20;
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s;
+}
+
+.handle-pip {
+  width: 2px;
+  height: 8px;
+  background: #FF5500;
+}
+
+.ruler-slider-handle.dragging {
+  transform: scale(1.2);
+}
+
+.ruler-time-readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #7A808C;
+}
+
+.mono-time {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.mono-time.total {
+  color: #4A4E58;
+}
+
+/* ── 档位 02: 工业歌词终端 (OLED Terminal Lyrics) ── */
+.stage-view-lyrics {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #111215;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.terminal-lyrics-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: #0E0F12;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   font-size: 0.68rem;
-  color: #D97706;
 }
 
-/* 歌词主滚动区域 */
-.lyrics-scroll-container {
+.lyrics-sys-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terminal-prompt {
+  color: #FF5500;
+  font-weight: bold;
+}
+
+.terminal-title {
+  color: #8E929A;
+  letter-spacing: 0.06em;
+}
+
+.terminal-clock {
+  color: #10B981;
+}
+
+.terminal-trial-flag {
+  color: #FF5500;
+  font-size: 0.62rem;
+}
+
+.terminal-lyrics-screen {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
   padding: 0 16px;
   scrollbar-width: none;
-  -ms-overflow-style: none;
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0%,
-    rgba(0, 0, 0, 1) 22%,
-    rgba(0, 0, 0, 1) 78%,
+    rgba(0, 0, 0, 1) 18%,
+    rgba(0, 0, 0, 1) 82%,
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0%,
-    rgba(0, 0, 0, 1) 22%,
-    rgba(0, 0, 0, 1) 78%,
+    rgba(0, 0, 0, 1) 18%,
+    rgba(0, 0, 0, 1) 82%,
     transparent 100%
   );
 }
+.terminal-lyrics-screen::-webkit-scrollbar { display: none; }
 
-.lyrics-scroll-container::-webkit-scrollbar {
-  display: none;
-}
-
-.lyrics-spacer {
-  height: 82px;
+.terminal-spacer {
+  height: 110px;
   flex-shrink: 0;
 }
 
-.lyrics-list {
+.lyrics-matrix {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  text-align: center;
+  gap: 16px;
 }
 
-/* 单行歌词 */
-.lyric-line {
-  padding: 6px 14px;
-  border-radius: 8px;
+.terminal-lyric-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.28s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
   user-select: none;
 }
 
-.line-origin {
-  font-size: 0.92rem;
-  line-height: 1.48;
-  color: #7A7A7A;
-  font-family: var(--font-sans);
-  font-weight: 400;
-  transition: all 0.25s var(--ease);
-}
-
-.line-translation {
-  font-size: 0.76rem;
-  line-height: 1.35;
-  color: #9C9890;
-  margin-top: 3px;
-  font-weight: 300;
-  transition: all 0.25s var(--ease);
-}
-
-/* 激活聚焦行 */
-.lyric-line.active {
-  transform: scale(1.05);
-}
-
-.lyric-line.active .line-origin {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--color-accent);
-  text-shadow: 0 2px 12px rgba(124, 140, 110, 0.3);
-}
-
-.lyric-line.active .line-translation {
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: #4A5840;
-}
-
-.lyric-line:hover:not(.active) {
-  background: rgba(124, 140, 110, 0.08);
-}
-
-.lyric-line:hover:not(.active) .line-origin {
-  color: var(--color-text);
-}
-
-/* 状态信息：加载中 / 纯音乐 */
-.lyrics-state-msg {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--color-text-lighter);
-  font-size: 0.85rem;
-  text-align: center;
-}
-
-.lyrics-state-msg.instrumental {
-  padding: 16px;
-}
-
-.instrumental-icon {
-  font-size: 1.8rem;
-  color: var(--color-accent);
-  opacity: 0.85;
-  margin-bottom: 2px;
-  animation: float-note 3s ease-in-out infinite;
-}
-
-@keyframes float-note {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-.instrumental-main {
-  font-family: var(--font-serif);
-  font-size: 0.98rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 2px;
-}
-
-.instrumental-sub {
-  font-size: 0.76rem;
-  color: var(--color-text-lighter);
-  letter-spacing: 0.04em;
-}
-
-.lyrics-spinner {
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-/* 曲目信息 */
-.track-meta {
-  text-align: center;
-  margin-bottom: 6px;
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.track-title {
-  font-family: var(--font-serif);
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 250px;
-}
-
-.full-song-tag {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--color-text-lighter);
-}
-
-.full-song-tag.full {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  font-weight: 500;
-}
-
-.full-song-tag.trial {
-  background: rgba(245, 158, 11, 0.12);
-  color: #d97706;
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  font-weight: 500;
-}
-
-.full-song-tag.resolving {
-  background: rgba(59, 130, 246, 0.12);
-  color: #2563EB;
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  font-weight: 500;
-}
-
-.full-song-tag.error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #DC2626;
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  font-weight: 500;
-}
-
-.track-subtitle {
-  font-size: 0.78rem;
-  color: var(--color-text-lighter);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.track-error-hint {
-  color: #DC2626;
-  font-size: 0.74rem;
-}
-
-.visualizer-wrap {
-  width: 100%;
-  height: 28px;
-  margin-bottom: 8px;
-}
-
-.spectrum-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* ── 交互式进度条 ── */
-.progress-section {
-  margin-bottom: 14px;
-}
-
-.progress-bar-container {
-  width: 100%;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  position: relative;
-  touch-action: none;
-}
-
-.progress-track-bg {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: var(--color-bg-alt);
-  border-radius: var(--radius-full);
-  transition: height 0.2s var(--ease);
-}
-
-.progress-fill-bar {
-  height: 4px;
-  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-light) 75%, var(--color-warm));
-  border-radius: var(--radius-full);
-  position: relative;
-  transition: height 0.2s var(--ease);
-  z-index: 1;
-}
-
-.progress-thumb {
-  position: absolute;
-  right: -5px;
-  top: 50%;
-  transform: translateY(-50%) scale(0);
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 2.5px solid var(--color-accent);
-  box-shadow: 0 2px 8px var(--color-accent-glow);
-  transition: transform 0.2s var(--ease-spring);
-}
-
-.progress-bar-container:hover .progress-thumb,
-.progress-thumb.dragging {
-  transform: translateY(-50%) scale(1.15);
-}
-
-.progress-thumb.pulse {
-  box-shadow: 0 0 0 3px rgba(124, 140, 110, 0.25), 0 2px 8px var(--color-accent-glow);
-}
-
-.progress-bar-container:hover .progress-track-bg,
-.progress-bar-container:hover .progress-fill-bar {
-  height: 5px;
-}
-
-/* 进度条时间预览浮层 Tooltip */
-.progress-tooltip {
-  position: absolute;
-  bottom: 24px;
-  transform: translateX(-50%);
-  padding: 3px 8px;
-  background: var(--color-text);
-  color: #F7F5F0;
-  border-radius: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  pointer-events: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-  z-index: 10;
-}
-
-.progress-tooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border-width: 4px;
-  border-style: solid;
-  border-color: var(--color-text) transparent transparent transparent;
-}
-
-.tooltip-fade-enter-active,
-.tooltip-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.tooltip-fade-enter-from,
-.tooltip-fade-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(4px);
-}
-
-.time-labels {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--font-mono);
+.gutter-timestamp {
   font-size: 0.7rem;
-  color: var(--color-text-lighter);
-  margin-top: 4px;
-  letter-spacing: 0.02em;
+  color: #4A4E58;
+  width: 42px;
+  flex-shrink: 0;
+  padding-top: 2px;
 }
 
-/* ── TAB 2: 在线搜歌界面 ── */
-.tab-view-search {
+.row-indicator {
+  width: 12px;
+  font-size: 0.75rem;
+  color: #FF5500;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.lyric-content-bay {
+  flex: 1;
+}
+
+.origin-text {
+  font-size: 0.98rem;
+  line-height: 1.45;
+  color: #727782;
+  transition: all 0.2s;
+  margin: 0;
+}
+
+.trans-text {
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: #4A4E58;
+  margin: 3px 0 0;
+  transition: all 0.2s;
+}
+
+/* 高亮激活行 */
+.terminal-lyric-row.active {
+  background: rgba(255, 85, 0, 0.08);
+}
+
+.terminal-lyric-row.active .gutter-timestamp {
+  color: #FF5500;
+}
+
+.terminal-lyric-row.active .origin-text {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  text-shadow: 0 0 16px rgba(255, 85, 0, 0.35);
+}
+
+.terminal-lyric-row.active .trans-text {
+  font-size: 0.88rem;
+  color: #D2D6DF;
+}
+
+.terminal-lyric-row:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.terminal-lyric-row:hover:not(.active) .origin-text {
+  color: #C0C5CF;
+}
+
+/* 状态提示 */
+.lyrics-term-msg {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 320px;
-  max-height: 380px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #8E929A;
+  font-size: 0.85rem;
+  padding: 40px 20px;
+  text-align: center;
 }
 
-.search-input-box {
+.oscilloscope-wave {
   display: flex;
   align-items: center;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-full);
-  padding: 4px 6px 4px 14px;
-  margin-bottom: 8px;
+  gap: 4px;
+  height: 28px;
+}
+.oscilloscope-wave span {
+  width: 3px;
+  height: 16px;
+  background: #FF5500;
+  border-radius: 2px;
+  animation: osc-pulse 1.4s ease-in-out infinite alternate;
+}
+.oscilloscope-wave span:nth-child(2) { height: 26px; animation-delay: 0.2s; }
+.oscilloscope-wave span:nth-child(3) { height: 10px; animation-delay: 0.4s; }
+.oscilloscope-wave span:nth-child(4) { height: 22px; animation-delay: 0.1s; }
+.oscilloscope-wave span:nth-child(5) { height: 14px; animation-delay: 0.3s; }
+
+@keyframes osc-pulse {
+  0% { transform: scaleY(0.4); opacity: 0.5; }
+  100% { transform: scaleY(1); opacity: 1; }
 }
 
-.search-icon {
-  color: var(--color-text-lighter);
-  margin-right: 8px;
-  flex-shrink: 0;
+.msg-bold {
+  color: #FFFFFF;
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
-.search-input {
-  border: none;
+.msg-sub {
+  color: #555962;
+  font-size: 0.78rem;
+}
+
+/* ── 档位 03: 检索控制台 (Cloud Search) ── */
+.stage-view-search {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+
+.chassis-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #101215;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.cli-arrow {
+  color: #FF5500;
+  font-weight: bold;
+}
+
+.chassis-search-input {
+  flex: 1;
   background: transparent;
+  border: none;
   outline: none;
-  font-size: 0.82rem;
-  color: var(--color-text);
-  width: 100%;
+  color: #FFFFFF;
+  font-family: inherit;
+  font-size: 0.85rem;
 }
 
-.search-submit-btn {
-  padding: 5px 12px;
-  background: var(--color-accent);
-  color: white;
-  border-radius: var(--radius-full);
-  font-size: 0.72rem;
-  font-weight: 500;
-  flex-shrink: 0;
-  transition: background 0.2s;
+.search-action-btn {
+  padding: 4px 10px;
+  background: #252830;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: #D1D5DB;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
 }
 
-.search-submit-btn:hover {
-  background: var(--color-accent-dark);
+.search-action-btn:hover {
+  background: #FF5500;
+  color: #FFFFFF;
 }
 
-.hot-tags-row {
+.search-tag-chips {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
 }
 
-.hot-tag-label {
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
+.chip-caption {
+  font-size: 0.65rem;
+  color: #555962;
 }
 
-.hot-tag-chip {
+.micro-tag-btn {
   padding: 2px 8px;
-  font-size: 0.72rem;
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-alt);
-  color: var(--color-text-light);
-  border: 1px solid var(--border-light);
+  background: #1B1D22;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: #8E929A;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.micro-tag-btn:hover {
+  border-color: #FF5500;
+  color: #FF5500;
+}
+
+.search-output-deck {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  background: #111215;
+  padding: 8px;
+}
+
+.output-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #555962;
+  font-size: 0.8rem;
+  padding: 30px;
+  text-align: center;
+}
+
+.intro-headline {
+  color: #8E929A;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.results-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.track-result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #15171C;
+  border: 1px solid transparent;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
-.hot-tag-chip:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
+.track-result-row:hover {
+  background: #1F2229;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
-.search-results-list {
+.row-idx {
+  font-size: 0.7rem;
+  color: #4A4E58;
+  width: 18px;
+}
+
+.row-mini-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.row-name-box {
   flex: 1;
-  overflow-y: auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.row-song-title {
+  font-size: 0.82rem;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-song-artist {
+  font-size: 0.7rem;
+  color: #727782;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-play-trigger {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #252830;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #10B981;
+  font-size: 0.65rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.row-play-trigger:hover {
+  background: #10B981;
+  color: #000;
+}
+
+/* ── 档位 04: 当前队列 (Queue Table) ── */
+.stage-view-playlist {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-right: 4px;
+  height: 100%;
 }
 
-.search-intro-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: var(--color-bg-alt);
-  border: 1px dashed var(--border-medium);
-  padding: 24px 20px;
-  border-radius: var(--radius);
-  text-align: center;
-  margin: auto 0;
-}
-
-.intro-card-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
+.view-header-strip {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1rem;
+  justify-content: space-between;
+  padding: 2px 4px;
+  font-size: 0.68rem;
+  color: #8E929A;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 6px;
 }
 
-.intro-title {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  color: var(--color-text);
-  font-size: 0.95rem;
-  letter-spacing: 0.04em;
+.strip-badge {
+  color: #FF5500;
 }
 
-.intro-desc {
-  font-size: 0.76rem;
-  color: var(--color-text-lighter);
-  line-height: 1.6;
-  max-width: 280px;
-  margin: 0;
-}
-
-.search-loading,
-.search-empty,
-.search-intro {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.queue-table-scroll {
   flex: 1;
-  font-size: 0.8rem;
-  color: var(--color-text-lighter);
-  gap: 10px;
-  text-align: center;
-  padding: 20px 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid var(--color-accent-soft);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-.search-item {
+.queue-item-row {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-alt);
-  cursor: pointer;
-  transition: all 0.22s var(--ease);
-  border-left: 3px solid transparent;
-}
-
-.search-item:hover {
-  background: var(--color-accent-soft);
-  border-left-color: var(--color-accent);
-  transform: translateX(2px);
-}
-
-.item-thumb {
-  width: 38px;
-  height: 38px;
   border-radius: 6px;
-  object-fit: cover;
-  flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.item-info {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-.item-title-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.item-title {
-  font-size: 0.84rem;
-  font-weight: 500;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.item-badge {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--color-text-lighter);
-  flex-shrink: 0;
-}
-
-.item-badge.full {
-  background: rgba(16, 185, 129, 0.15);
-  color: #059669;
-}
-
-.item-badge.trial {
-  background: rgba(245, 158, 11, 0.15);
-  color: #d97706;
-}
-
-.item-meta {
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.item-play-action {
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
-  font-size: 0.72rem;
-  color: var(--color-accent);
-  background: white;
-  border: 1px solid var(--border-medium);
-  flex-shrink: 0;
+  background: #131518;
+  border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.item-play-action:hover {
-  background: var(--color-accent);
-  color: white;
-  border-color: var(--color-accent);
+.queue-item-row:hover {
+  background: #1C1F25;
 }
 
-/* ── TAB 3: 当前歌单曲目 ── */
-.tab-view-playlist {
-  display: flex;
-  flex-direction: column;
-  min-height: 320px;
-  max-height: 380px;
+.queue-item-row.active {
+  background: #20242C;
+  border-color: rgba(255, 85, 0, 0.3);
 }
 
-.playlist-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.76rem;
-  color: var(--color-text-lighter);
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border-light);
+.queue-num {
+  font-size: 0.7rem;
+  color: #4A4E58;
 }
 
-.playlist-hint {
-  color: var(--color-accent);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+.queue-item-row.active .queue-num {
+  color: #FF5500;
+  font-weight: bold;
 }
 
-.playlist-items-scroll {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.playlist-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-alt);
-  cursor: pointer;
-  transition: all 0.22s var(--ease);
-  border-left: 3px solid transparent;
-}
-
-.playlist-row:hover {
-  background: var(--color-accent-soft);
-  border-left-color: rgba(124, 140, 110, 0.35);
-  transform: translateX(2px);
-}
-
-.playlist-row.active {
-  background: var(--color-accent-soft);
-  border-left-color: var(--color-accent);
-}
-
-.row-num {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
-  width: 18px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.row-cover-wrap {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.row-cover {
-  width: 100%;
-  height: 100%;
+.queue-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
   object-fit: cover;
-  display: block;
 }
 
-.row-eq-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 2.5px;
-  padding-bottom: 6px;
-}
-
-.eq-dot {
-  width: 2.5px;
-  height: 8px;
-  background: #ffffff;
-  border-radius: 1px;
-  animation: eq-bounce 1s ease-in-out infinite alternate;
-}
-
-.ed-1 { animation-delay: 0.1s; }
-.ed-2 { animation-delay: 0.3s; }
-.ed-3 { animation-delay: 0.2s; }
-
-@keyframes eq-bounce {
-  0% { height: 3px; }
-  100% { height: 14px; }
-}
-
-.row-info {
+.queue-meta {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  overflow: hidden;
 }
 
-.row-title-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.row-title {
-  font-size: 0.84rem;
-  font-weight: 500;
-  color: var(--color-text);
+.queue-name {
+  font-size: 0.82rem;
+  color: #FFFFFF;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.badge-full {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  padding: 0 4px;
-  background: rgba(16, 185, 129, 0.15);
-  color: #059669;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-.badge-trial {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  padding: 0 4px;
-  background: rgba(245, 158, 11, 0.15);
-  color: #d97706;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-.row-artist {
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
-}
-
-.row-playing-pill {
-  font-family: var(--font-mono);
+.queue-sub {
   font-size: 0.7rem;
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
-  padding: 2px 8px;
-  border-radius: 10px;
+  color: #727782;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-live-tag {
+  font-size: 0.62rem;
+  color: #10B981;
+  letter-spacing: 0.05em;
   font-weight: 600;
-  flex-shrink: 0;
 }
 
-.row-duration {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
-  flex-shrink: 0;
+.queue-duration {
+  font-size: 0.7rem;
+  color: #4A4E58;
 }
 
-/* ── TAB 4: 网易云用户歌单卡片列表 ── */
-.tab-view-user-playlists {
+/* ── 档位 05: 精选唱片盒 (Curated Playlists) ── */
+.stage-view-user-playlists {
   display: flex;
   flex-direction: column;
-  min-height: 320px;
-  max-height: 380px;
+  gap: 8px;
+  height: 100%;
 }
 
-.user-playlists-scroll-area {
+.playlists-tape-grid {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-right: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-medium) transparent;
+  gap: 6px;
 }
 
-.user-playlists-scroll-area::-webkit-scrollbar {
-  width: 5px;
-}
-
-.user-playlists-scroll-area::-webkit-scrollbar-thumb {
-  background: var(--border-medium);
-  border-radius: 10px;
-}
-
-.user-playlist-card-row {
+.tape-cartridge {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 14px;
-  background: var(--color-bg-alt);
-  border-radius: var(--radius-sm);
+  gap: 12px;
+  padding: 10px 12px;
+  background: #14161A;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.25s var(--ease);
-  border: 1px solid var(--border-light);
-  width: 100%;
-  box-sizing: border-box;
-  position: relative;
-  overflow: visible;
+  transition: all 0.2s;
 }
 
-.user-playlist-card-row:hover {
-  background: var(--color-accent-soft);
-  border-color: rgba(124, 140, 110, 0.4);
-  transform: translateY(-1px);
+.tape-cartridge:hover {
+  background: #1D2026;
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
-.card-cover-wrap {
-  position: relative;
-  width: 48px;
-  height: 48px;
+.tape-cover-cradle {
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
-  flex-shrink: 0;
-  overflow: visible;
-}
-
-/* 拟物黑胶窥视效果 (Vinyl Peek-Out) */
-.vinyl-peek-disk {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background:
-    repeating-radial-gradient(
-      circle,
-      rgba(255, 255, 255, 0.03) 0px,
-      rgba(255, 255, 255, 0.03) 1px,
-      transparent 1px,
-      transparent 3px
-    ),
-    radial-gradient(circle, #24201D 0%, #110E0D 100%);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
-  transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
-  z-index: 1;
-}
-
-.peek-spindle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #1C1A17;
-  border: 2px solid #D6CEBE;
-}
-
-.user-playlist-card-row:hover .vinyl-peek-disk {
-  transform: translateX(16px) rotate(45deg);
-}
-
-.pl-cover {
+  overflow: hidden;
   position: relative;
-  z-index: 2;
+  flex-shrink: 0;
+}
+
+.tape-art {
   width: 100%;
   height: 100%;
-  border-radius: 6px;
   object-fit: cover;
-  display: block;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-.pl-play-hover-icon {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.82rem;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 3;
-  border-radius: 6px;
-}
-
-.user-playlist-card-row:hover .pl-play-hover-icon {
-  opacity: 1;
-}
-
-.pl-loading-overlay {
+.tape-spin-overlay {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 3;
-  border-radius: 6px;
 }
 
-.loading-spinner-mini {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-.pl-info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.tape-info-bay {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  z-index: 2;
-}
-
-.pl-name {
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.pl-count {
-  font-size: 0.7rem;
-  color: var(--color-text-lighter);
-}
-
-.pl-load-btn {
-  position: relative;
-  z-index: 2;
-  padding: 5px 12px;
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--color-accent);
-  background: white;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-  transition: all 0.2s;
-  cursor: pointer;
-}
-
-.pl-load-btn:hover {
-  background: var(--color-accent);
-  color: white;
-  border-color: var(--color-accent);
-  box-shadow: 0 2px 8px var(--color-accent-glow);
-}
-
-/* ── 底部控制栏 ── */
-.controls-deck {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 8px 2px;
-  border-top: 1px solid var(--border-light);
-  margin-top: 6px;
-  gap: 6px;
-}
-
-.control-icon-btn {
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  color: var(--color-text-light);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: all 0.25s var(--ease-spring);
-  flex-shrink: 0;
-}
-
-.control-icon-btn:hover {
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
-  transform: scale(1.12);
-}
-
-.control-icon-btn:active {
-  transform: scale(0.92);
-}
-
-.control-icon-btn.mode-btn {
-  color: var(--color-text-lighter);
-}
-
-.control-icon-btn.mode-btn:hover {
-  color: var(--color-accent);
-}
-
-.main-play-btn {
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #879978, #6B7B5E);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 8px 24px var(--color-accent-glow-strong),
-    0 2px 6px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  border: none;
-  cursor: pointer;
-  transition: all 0.25s var(--ease-spring);
-  flex-shrink: 0;
-  position: relative;
-}
-
-.main-play-btn:hover {
-  transform: scale(1.08);
-  background: linear-gradient(135deg, #95A786, #748466);
-  box-shadow:
-    0 10px 30px var(--color-accent-glow-strong),
-    0 4px 10px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-
-.main-play-btn:active {
-  transform: scale(0.92);
-}
-
-.volume-box {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.vol-btn {
-  width: 32px;
-  height: 32px;
-}
-
-.volume-slider {
-  width: 65px;
-  height: 4px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: var(--color-bg-alt);
-  border-radius: 2px;
-  outline: none;
-  border: 1px solid var(--border-light);
-  cursor: pointer;
-}
-
-.volume-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 2px solid var(--color-accent);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-  transition: transform 0.2s var(--ease-spring);
-}
-
-.volume-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.3);
-}
-
-/* ── 3. 网易云登录弹窗 ── */
-.login-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(28, 24, 20, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 1100;
-}
-
-.login-card {
-  width: 100%;
-  max-width: 400px;
-  background: #FAF7F2;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  box-shadow:
-    0 32px 80px -12px rgba(20, 16, 12, 0.45),
-    0 8px 24px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  display: flex;
-  flex-direction: column;
-}
-
-.login-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.cloud-icon {
-  font-size: 1.2rem;
-}
-
-.login-title {
-  font-family: var(--font-serif);
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.login-mode-tabs {
-  display: flex;
-  gap: 6px;
-  background: var(--color-bg-alt);
-  padding: 3px;
-  border-radius: var(--radius-sm);
-  margin-bottom: 14px;
-}
-
-.qr-app-tip {
-  font-size: 0.74rem;
-  color: var(--color-text-lighter);
-  text-align: center;
-  line-height: 1.5;
-  margin: 4px 0 6px 0;
-}
-
-/* ── 扫码视图与状态 ── */
-.tab-pane-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 10px 0;
-}
-
-.qr-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-}
-
-.qr-no-api-notice {
-  background: var(--color-bg-alt);
-  border: 1px dashed var(--border-medium);
-  border-radius: var(--radius-sm);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 10px;
-}
-
-.notice-icon {
-  font-size: 1.8rem;
-}
-
-.notice-text strong {
-  display: block;
-  font-size: 0.9rem;
-  color: var(--color-text);
-  margin-bottom: 4px;
-}
-
-.notice-text p {
-  font-size: 0.76rem;
-  color: var(--color-text-light);
-  line-height: 1.5;
-}
-
-.btn-goto-config {
-  width: 100%;
-  padding: 9px;
-  background: #DC2626;
-  color: white;
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.btn-goto-config:hover {
-  background: #B91C1C;
-}
-
-.or-separator {
-  font-size: 0.7rem;
-  color: var(--color-text-lighter);
-}
-
-.btn-use-uid-instead {
-  font-size: 0.75rem;
-  color: var(--color-accent);
-  text-decoration: underline;
-  background: transparent;
-  cursor: pointer;
-}
-
-.qr-frame-wrap {
-  position: relative;
-  width: 156px;
-  height: 156px;
-  padding: 8px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.qr-frame-wrap.expired .qr-image {
-  filter: blur(2px) grayscale(80%);
-  opacity: 0.5;
-}
-
-.qr-image {
-  width: 140px;
-  height: 140px;
-  display: block;
-}
-
-.qr-loading-layer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-lighter);
-}
-
-.loading-sub {
-  font-size: 0.72rem;
-}
-
-.qr-expired-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.88);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.qr-expired-overlay span {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #DC2626;
-}
-
-.btn-refresh-qr {
-  padding: 4px 10px;
-  background: var(--color-text);
-  color: white;
-  border-radius: 4px;
-  font-size: 0.7rem;
-}
-
-.qr-status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-light);
-  border-radius: 20px;
-  font-size: 0.75rem;
-  color: var(--color-text);
-  font-weight: 500;
-  max-width: 90%;
-  text-align: center;
-}
-
-.status-pulse-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #10B981;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
-  animation: liveDotPulse 1.6s infinite ease-in-out;
-  flex-shrink: 0;
-}
-
-.qr-bottom-actions {
-  display: flex;
-  gap: 10px;
-  width: 100%;
-  justify-content: center;
-}
-
-.btn-qr-action {
-  padding: 5px 10px;
-  background: var(--color-bg-alt);
-  color: var(--color-text-light);
-  border-radius: var(--radius-sm);
-  font-size: 0.7rem;
-  transition: all 0.2s;
-}
-
-.btn-qr-action:hover {
-  background: rgba(124, 140, 110, 0.15);
-  color: var(--color-accent);
-}
-
-/* ── 专属 API 配置模式 ── */
-.tab-pane-config {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.config-desc-box {
-  background: rgba(124, 140, 110, 0.08);
-  border-left: 3px solid var(--color-accent);
-  padding: 10px 12px;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.config-desc-title {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-accent);
-  margin-bottom: 2px;
-}
-
-.config-desc-p {
-  font-size: 0.74rem;
-  color: var(--color-text-light);
-  line-height: 1.5;
-  margin: 0;
-}
-
-.api-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.input-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.api-input-wrap {
-  display: flex;
-  gap: 8px;
-}
-
-.api-input {
-  flex: 1;
-  padding: 8px 12px;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  font-family: var(--font-mono);
-  color: var(--color-text);
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.api-input:focus {
-  border-color: var(--color-accent);
-}
-
-.btn-save-api {
-  padding: 8px 14px;
-  background: var(--color-accent);
-  color: white;
-  border-radius: var(--radius-sm);
-  font-size: 0.78rem;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: background 0.2s;
-}
-
-.btn-save-api:hover:not(:disabled) {
-  background: var(--color-accent-dark);
-}
-
-.api-test-feedback {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.72rem;
-  font-family: var(--font-mono);
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-
-.api-test-feedback.success {
-  background: rgba(16, 185, 129, 0.1);
-  color: #059669;
-}
-
-.api-test-feedback.error {
-  background: rgba(220, 38, 38, 0.1);
-  color: #DC2626;
-}
-
-/* 一键部署 Vercel 引导卡片 */
-.vercel-deploy-card {
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.deploy-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.deploy-card-title {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.deploy-card-tag {
-  font-size: 0.65rem;
-  padding: 2px 6px;
-  border-radius: 10px;
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
-  font-weight: 600;
-}
-
-.deploy-card-tip {
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
-  line-height: 1.4;
-  margin: 0;
-}
-
-.btn-one-click-vercel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px;
-  background: #000;
-  color: white;
-  border-radius: var(--radius-sm);
-  font-size: 0.78rem;
-  font-weight: 500;
-  text-decoration: none;
-  transition: opacity 0.2s, transform 0.2s;
-}
-
-.btn-one-click-vercel:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.deploy-steps-mini {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 4px;
-  padding-top: 6px;
-  border-top: 1px dashed var(--border-light);
-}
-
-.step-mini-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.68rem;
-  color: var(--color-text-light);
-}
-
-.step-num {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--border-medium);
-  color: var(--color-text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.6rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-/* API 状态微标 */
-.api-status-badge-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: var(--color-bg-alt);
-  border-radius: var(--radius-sm);
-  font-size: 0.72rem;
-}
-
-.badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #9CA3AF;
-}
-
-.badge-dot.active {
-  background: #10B981;
-}
-
-.badge-text {
-  flex: 1;
-  color: var(--color-text-light);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-}
-
-.btn-text-edit {
-  background: transparent;
-  color: var(--color-accent);
-  font-size: 0.7rem;
-  cursor: pointer;
-}
-
-.tab-dot-online {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10B981;
-  margin-left: 3px;
-  vertical-align: middle;
-}
-
-/* 已登录个人卡片 */
-.logged-in-profile {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.profile-main {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px;
-  background: var(--color-bg-alt);
-  border-radius: var(--radius-sm);
-}
-
-.profile-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid white;
-}
-
-.profile-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.name-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.profile-name {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.vip-tag {
-  font-size: 0.6rem;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: #DC2626;
-  color: white;
-  font-weight: 700;
-}
-
-.station-tag {
-  font-size: 0.6rem;
-  padding: 1px 6px;
-  border-radius: 3px;
-  background: var(--color-accent);
-  color: white;
-  font-weight: 600;
-}
-
-.normal-user-tag {
-  font-size: 0.6rem;
-  padding: 1px 6px;
-  border-radius: 3px;
-  background: var(--color-text-light);
-  color: white;
+.tape-title {
+  font-size: 0.85rem;
   font-weight: 500;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.radio-mini-tag {
-  font-size: 0.6rem;
-  padding: 0 4px;
-  border-radius: 2px;
-  background: rgba(124, 140, 110, 0.15);
-  color: var(--color-accent);
-  font-weight: 600;
+.tape-specs {
+  font-size: 0.68rem;
+  color: #727782;
 }
 
-.profile-uid {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--color-text-lighter);
+.tape-load-lever {
+  padding: 6px 12px;
+  background: #252830;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: #FFFFFF;
+  font-size: 0.68rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.profile-playlists-count {
-  font-size: 0.72rem;
-  color: var(--color-accent);
+.tape-load-lever:hover:not(:disabled) {
+  background: #FF5500;
+  border-color: #FF5500;
 }
 
-.station-desc-box {
+/* ── 底部控制台：机械按键组 (Hardware Control Deck) ── */
+.hardware-control-deck {
+  padding: 14px 20px 18px;
+  background: #111215;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
-  gap: 10px;
-  background: var(--color-bg-alt);
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  border-left: 3px solid var(--color-accent);
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.station-desc-box.visitor {
-  border-left-color: var(--color-warm, #C49774);
-  background: rgba(196, 151, 116, 0.08);
-}
-
-.station-icon {
-  font-size: 1.4rem;
-  line-height: 1;
+/* 通用硬件按键 */
+.hw-key {
+  height: 42px;
+  border-radius: 8px;
+  background: #202328;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #D1D5DB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.12s ease;
+  font-family: inherit;
   flex-shrink: 0;
 }
 
-.station-text strong {
-  display: block;
-  font-size: 0.78rem;
-  color: var(--color-text);
-  margin-bottom: 2px;
+.hw-key:hover {
+  background: #282C33;
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
-.station-text p {
-  font-size: 0.7rem;
-  color: var(--color-text-light);
-  line-height: 1.4;
-  margin: 0;
+.hw-key:active {
+  transform: translateY(2px) scale(0.97);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  background: #181A1E;
 }
 
-/* API 节点状态卡片 */
-.api-node-status-card {
-  background: var(--color-bg-alt);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
+/* 模式按键 */
+.key-mode {
+  width: 48px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 2px;
+}
+
+.key-sub-label {
+  font-size: 0.5rem;
+  color: #555962;
+  letter-spacing: 0.08em;
+}
+
+.key-mode-code {
+  font-size: 0.68rem;
+  color: #FF5500;
+  font-weight: bold;
+}
+
+/* 上下曲 */
+.key-skip {
+  width: 42px;
+}
+
+/* 标志性主按键 (Primary Tactile Engine Key) */
+.hw-key-primary {
+  width: 54px;
+  height: 50px;
+  border-radius: 12px;
+  background: #FF5500;
+  border: 1px solid #FF7733;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 4px 14px rgba(255, 85, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: all 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.hw-key-primary:hover {
+  background: #FF661A;
+  box-shadow: 0 6px 20px rgba(255, 85, 0, 0.6);
+  transform: translateY(-1px);
+}
+
+.hw-key-primary:active {
+  transform: translateY(2px) scale(0.96);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* 音量推子模块 */
+.hw-fader-block {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 130px;
+  padding-left: 6px;
+}
+
+.fader-mute-btn {
+  background: transparent;
+  border: none;
+  color: #7A808C;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.fader-mute-btn:hover {
+  color: #FFFFFF;
+}
+
+.fader-slider-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.te-fader-input {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  background: #252830;
+  border-radius: 2px;
+  outline: none;
+}
+
+.te-fader-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 16px;
+  background: #ECEEF2;
+  border: 1px solid #141619;
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.fader-scale-tag {
+  font-size: 0.55rem;
+  color: #4A4E58;
+  letter-spacing: 0.08em;
+}
+
+/* ── 3. 诊断与配置弹窗 (Hardware Diagnostics) ── */
+.diag-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.diag-chassis {
+  width: 100%;
+  max-width: 420px;
+  background: #1A1C20;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+.diag-header {
+  padding: 12px 16px;
+  background: #141518;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.diag-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diag-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #FF5500;
+  box-shadow: 0 0 8px #FF5500;
+}
+
+.diag-headline {
+  font-size: 0.75rem;
+  color: #FFFFFF;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.diag-close {
+  background: transparent;
+  border: none;
+  color: #8E929A;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.diag-close:hover { color: #FFFFFF; }
+
+.diag-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diag-card-unit {
+  background: #131417;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.node-status-row {
+.unit-banner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 0.76rem;
-}
-
-.node-label {
-  color: var(--color-text-light);
-  font-weight: 500;
-}
-
-.node-value {
-  font-family: var(--font-mono);
-  color: var(--color-text);
-  font-size: 0.72rem;
-}
-
-.node-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.7rem;
-  background: rgba(220, 38, 38, 0.1);
-  color: #DC2626;
-  font-family: var(--font-mono);
-}
-
-.node-badge.connected {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
-  font-weight: 500;
-}
-
-.profile-actions {
-  display: flex;
   gap: 10px;
 }
 
-.action-btn-sync {
-  flex: 1;
-  padding: 9px;
-  background: var(--color-accent);
-  color: white;
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  font-weight: 500;
-  transition: background 0.2s;
+.unit-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.unit-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.unit-nick {
+  font-size: 0.85rem;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.unit-desc {
+  font-size: 0.65rem;
+  color: #727782;
+}
+
+.unit-label {
+  font-size: 0.62rem;
+  color: #555962;
+  letter-spacing: 0.08em;
+}
+
+.endpoint-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.endpoint-line code {
+  font-size: 0.72rem;
+  color: #10B981;
+  background: #0E0F12;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.ping-badge {
+  font-size: 0.65rem;
+  color: #EF4444;
+}
+.ping-badge.ok {
+  color: #10B981;
+}
+
+.diag-hint {
+  font-size: 0.68rem;
+  color: #8E929A;
+  margin: 0;
+}
+
+.diag-action-btn {
+  padding: 6px 12px;
+  background: #252830;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #FFFFFF;
+  font-size: 0.72rem;
   cursor: pointer;
-}
-
-.action-btn-sync:hover {
-  background: var(--color-accent-dark);
-}
-
-.action-btn-auth {
-  padding: 9px 14px;
-  background: var(--color-bg-alt);
-  color: var(--color-text-light);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  font-size: 0.78rem;
   transition: all 0.2s;
-  cursor: pointer;
-  white-space: nowrap;
+  font-family: inherit;
+}
+.diag-action-btn:hover:not(:disabled) {
+  background: #FF5500;
+  border-color: #FF5500;
 }
 
-.action-btn-auth:hover {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
+/* ── 通用 Spinner ── */
+.te-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #FF5500;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-.action-btn-auth.primary {
-  background: var(--color-accent);
-  color: white;
-  border-color: var(--color-accent);
+.te-spinner.primary {
+  border-top-color: #FFFFFF;
 }
 
-.action-btn-auth.primary:hover {
-  background: var(--color-accent-dark);
+.te-spinner-mini {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #FF5500;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-.action-btn-logout {
-  padding: 9px 12px;
-  background: transparent;
-  color: var(--color-text-lighter);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-.action-btn-logout:hover {
-  color: #DC2626;
-  border-color: #DC2626;
+/* ── 过渡动效 ── */
+.remote-pop-enter-active,
+.remote-pop-leave-active {
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.remote-pop-enter-from { opacity: 0; transform: translateY(16px) scale(0.92); }
+.remote-pop-leave-to   { opacity: 0; transform: translateY(12px) scale(0.95); }
 
-/* 进出过渡 */
-.capsule-fade-enter-active,
-.capsule-fade-leave-active {
-  transition: all 0.35s var(--ease);
+.console-pop-enter-active,
+.console-pop-leave-active {
+  transition: all 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.capsule-fade-enter-from {
-  opacity: 0;
-  transform: translateY(24px) scale(0.88);
-}
-.capsule-fade-leave-to {
-  opacity: 0;
-  transform: translateY(16px) scale(0.92);
-}
+.console-pop-enter-from { opacity: 0; transform: scale(0.94) translateY(12px); }
+.console-pop-leave-to   { opacity: 0; transform: scale(0.96) translateY(-8px); }
 
-.modal-pop-enter-active {
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+.diag-pop-enter-active,
+.diag-pop-leave-active {
+  transition: all 0.25s ease;
 }
-.modal-pop-leave-active {
-  transition: all 0.25s var(--ease);
-}
-.modal-pop-enter-from {
-  opacity: 0;
-  transform: scale(0.88) translateY(20px);
-}
-.modal-pop-leave-to {
-  opacity: 0;
-  transform: scale(0.94) translateY(10px);
-}
+.diag-pop-enter-from,
+.diag-pop-leave-to { opacity: 0; transform: scale(0.94); }
 
+/* ── 移动端适配 ── */
 @media (max-width: 600px) {
-  .player-capsule {
+  .pocket-remote {
     left: 16px;
-    bottom: 24px;
-    padding: 6px 10px 6px 6px;
+    bottom: 20px;
+    padding: 6px 12px 6px 8px;
   }
-  .capsule-info { max-width: 85px; }
-  .player-card { padding: 16px; max-width: 92vw; }
-  .deck-stage { height: 180px; }
-  .turntable-deck { width: 180px; height: 175px; }
-  .lyrics-deck { height: 180px; }
-  .lyrics-spacer { height: 60px; }
-  .turntable-platter { width: 164px; height: 164px; }
-  .vinyl-record { width: 154px; height: 154px; }
-  .g-1 { width: 130px; height: 130px; }
-  .g-2 { width: 104px; height: 104px; }
-  .g-3 { width: 80px; height: 80px; }
-  .vinyl-label { width: 62px; height: 62px; }
-  .tonearm-assembly { width: 50px; height: 100px; transform-origin: 38px 12px; }
-  .arm-tube { height: 70px; }
-  .arm-rest-post { top: 12px; right: 30px; }
-  .volume-slider { width: 45px; }
-  .tab-btn { font-size: 0.7rem; padding: 5px 2px; }
-  .station-title { max-width: 100px; }
-  .tab-views-container { min-height: 280px; }
-  .tab-view-search,
-  .tab-view-playlist,
-  .tab-view-user-playlists {
-    min-height: 280px;
-    max-height: 50vh;
-  }
-  .main-play-btn { width: 46px; height: 46px; }
+  .remote-display { max-width: 100px; }
+  .console-scrim { padding: 12px; }
+  .console-chassis { max-width: 100%; border-radius: 16px; }
+  .console-stage-viewport { min-height: 350px; max-height: 380px; padding: 12px 14px; }
+  .direct-drive-deck { width: 160px; height: 160px; }
+  .strobe-bezel { width: 160px; height: 160px; }
+  .vinyl-platter-body { width: 142px; height: 142px; }
+  .center-clamp { width: 58px; height: 58px; }
+  .hardware-control-deck { padding: 10px 14px 14px; }
+  .hw-fader-block { display: none; } /* 移动端隐藏较宽的音量条，腾出按键空间 */
 }
 </style>
