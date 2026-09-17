@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useNeteaseAuth } from '@/composables/useNeteaseAuth'
+import { useLyrics } from '@/composables/useLyrics'
 import type { Track } from '@/data/playlist'
 
 const {
@@ -273,6 +274,82 @@ watch(activeTab, (tab) => {
     }, 40)
   }
 })
+
+// ── 实时歌词系统 (Live Lyrics System) ──
+const {
+  currentLyrics,
+  currentLineIndex,
+  isLoadingLyrics,
+  hasLyrics,
+  isInstrumental,
+} = useLyrics()
+
+const showLyricsView = ref(false)
+const lyricsScrollContainer = ref<HTMLElement | null>(null)
+const lyricLineRefs = ref<HTMLElement[]>([])
+let isUserScrollingLyrics = false
+let userScrollTimer: number | null = null
+
+function setLyricLineRef(el: any, idx: number) {
+  if (el) {
+    lyricLineRefs.value[idx] = el as HTMLElement
+  }
+}
+
+function handleUserLyricScroll() {
+  isUserScrollingLyrics = true
+  if (userScrollTimer) clearTimeout(userScrollTimer)
+  userScrollTimer = window.setTimeout(() => {
+    isUserScrollingLyrics = false
+    scrollToActiveLyric(true)
+  }, 2500)
+}
+
+function scrollToActiveLyric(smooth = true) {
+  if (isUserScrollingLyrics) return
+  if (!lyricsScrollContainer.value) return
+  const activeIdx = currentLineIndex.value
+  if (activeIdx < 0) return
+  const el = lyricLineRefs.value[activeIdx]
+  if (!el) return
+
+  const container = lyricsScrollContainer.value
+  const targetTop = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2
+
+  container.scrollTo({
+    top: Math.max(0, targetTop),
+    behavior: smooth ? 'smooth' : 'auto',
+  })
+}
+
+function handleLyricClick(time: number) {
+  seek(time)
+  isUserScrollingLyrics = false
+  if (userScrollTimer) clearTimeout(userScrollTimer)
+}
+
+watch(currentLineIndex, () => {
+  if (showLyricsView.value) {
+    scrollToActiveLyric(true)
+  }
+})
+
+watch(showLyricsView, (val) => {
+  if (val) {
+    nextTick(() => {
+      scrollToActiveLyric(false)
+    })
+  }
+})
+
+watch(currentLyrics, () => {
+  lyricLineRefs.value = []
+  if (showLyricsView.value) {
+    nextTick(() => {
+      scrollToActiveLyric(false)
+    })
+  }
+})
 </script>
 
 <template>
@@ -393,43 +470,124 @@ watch(activeTab, (tab) => {
             <!-- TAB 1: 唱机主视角 (Player View) -->
             <Transition name="tab-fade" mode="out-in">
             <div v-if="activeTab === 'player'" key="player" class="tab-view-player">
-            <div class="turntable-deck">
-              <!-- 底盘与黑胶唱片 -->
-              <div class="turntable-platter">
-                <div class="vinyl-record" :class="{ spinning: isPlaying }">
-                  <div class="vinyl-groove g-1"></div>
-                  <div class="vinyl-groove g-2"></div>
-                  <div class="vinyl-groove g-3"></div>
-                  <div class="vinyl-light-reflection"></div>
-                  <!-- 唱片中心真实封面轮盘 -->
-                  <div class="vinyl-label">
-                    <img :src="currentTrack.coverUrl" alt="cover" class="label-img" />
-                    <div class="label-spindle"></div>
+            <!-- 唱机 / 歌词 双模交互舞台 -->
+            <div class="deck-stage">
+              <!-- 词/盘 快捷切换胶囊按钮 -->
+              <button
+                class="deck-mode-toggle-btn"
+                :class="{ 'is-lyrics': showLyricsView }"
+                @click="showLyricsView = !showLyricsView"
+                :title="showLyricsView ? '返回黑胶唱盘' : '查看实时同步歌词'"
+              >
+                <span class="mode-toggle-icon">{{ showLyricsView ? '💿' : '💬' }}</span>
+                <span class="mode-toggle-label">{{ showLyricsView ? '唱盘' : '歌词' }}</span>
+              </button>
+
+              <Transition name="deck-flip" mode="out-in">
+                <!-- 视角 A: 拟物黑胶唱机 (点击唱片亦可直接切换至歌词) -->
+                <div v-if="!showLyricsView" key="turntable" class="turntable-deck">
+                  <!-- 底盘与黑胶唱片 -->
+                  <div
+                    class="turntable-platter"
+                    @click="showLyricsView = true"
+                    title="点击切换至实时歌词"
+                  >
+                    <div class="vinyl-record" :class="{ spinning: isPlaying }">
+                      <div class="vinyl-groove g-1"></div>
+                      <div class="vinyl-groove g-2"></div>
+                      <div class="vinyl-groove g-3"></div>
+                      <div class="vinyl-light-reflection"></div>
+                      <!-- 唱片中心真实封面轮盘 -->
+                      <div class="vinyl-label">
+                        <img :src="currentTrack.coverUrl" alt="cover" class="label-img" />
+                        <div class="label-spindle"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 唱臂停放支架 (Rest Post) -->
+                  <div class="arm-rest-post" title="唱臂复位支架">
+                    <div class="rest-cradle"></div>
+                  </div>
+
+                  <!-- 拟物唱臂总成 (Tonearm Assembly) -->
+                  <div class="tonearm-assembly" :class="{ playing: isPlaying }">
+                    <!-- 唱臂枢轴底座 -->
+                    <div class="arm-pivot-chassis">
+                      <div class="pivot-bearing"></div>
+                    </div>
+                    <!-- 臂杆平衡配重 -->
+                    <div class="arm-counterweight"></div>
+                    <!-- 唱臂金属杆 -->
+                    <div class="arm-tube">
+                      <!-- 唱头/唱针总成 -->
+                      <div class="arm-headshell">
+                        <div class="arm-stylus"></div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- 唱臂停放支架 (Rest Post) -->
-              <div class="arm-rest-post" title="唱臂复位支架">
-                <div class="rest-cradle"></div>
-              </div>
+                <!-- 视角 B: 实时同步歌词视图 (Live Synchronized Lyrics) -->
+                <div v-else key="lyrics" class="lyrics-deck">
+                  <div class="lyrics-header-bar">
+                    <span class="lyrics-indicator">
+                      <span class="lyrics-indicator-dot" :class="{ pulsing: isPlaying }"></span>
+                      <span>{{ isPlaying ? '实时同步' : '已暂停' }}</span>
+                    </span>
+                    <span v-if="currentTrack.isTrial" class="lyrics-trial-hint">
+                      试听片段 · 歌词将随音轨同步
+                    </span>
+                  </div>
 
-              <!-- 拟物唱臂总成 (Tonearm Assembly) -->
-              <div class="tonearm-assembly" :class="{ playing: isPlaying }">
-                <!-- 唱臂枢轴底座 -->
-                <div class="arm-pivot-chassis">
-                  <div class="pivot-bearing"></div>
-                </div>
-                <!-- 臂杆平衡配重 -->
-                <div class="arm-counterweight"></div>
-                <!-- 唱臂金属杆 -->
-                <div class="arm-tube">
-                  <!-- 唱头/唱针总成 -->
-                  <div class="arm-headshell">
-                    <div class="arm-stylus"></div>
+                  <div
+                    ref="lyricsScrollContainer"
+                    class="lyrics-scroll-container"
+                    @wheel="handleUserLyricScroll"
+                    @touchstart="handleUserLyricScroll"
+                  >
+                    <!-- 加载中 -->
+                    <div v-if="isLoadingLyrics" class="lyrics-state-msg">
+                      <span class="lyrics-spinner"></span>
+                      <span>正在拉取歌词灵感...</span>
+                    </div>
+
+                    <!-- 纯音乐或无歌词 -->
+                    <div
+                      v-else-if="isInstrumental || currentLyrics.length === 0"
+                      class="lyrics-state-msg instrumental"
+                    >
+                      <div class="instrumental-icon">♪</div>
+                      <p class="instrumental-main">纯音乐 · 请沉浸欣赏</p>
+                      <p class="instrumental-sub">无歌词收录，静心聆听音符流淌</p>
+                    </div>
+
+                    <!-- 歌词行列表 (支持点击跳转) -->
+                    <div v-else class="lyrics-list">
+                      <div class="lyrics-spacer"></div>
+                      <div
+                        v-for="(line, idx) in currentLyrics"
+                        :key="line.id"
+                        :ref="(el) => setLyricLineRef(el, idx)"
+                        class="lyric-line"
+                        :class="{
+                          active: idx === currentLineIndex,
+                          passed: idx < currentLineIndex,
+                          future: idx > currentLineIndex
+                        }"
+                        @click="handleLyricClick(line.time)"
+                        :title="`点击跳转至 ${formatTime(line.time)}`"
+                      >
+                        <div class="line-origin">{{ line.text }}</div>
+                        <div v-if="line.translation" class="line-translation">
+                          {{ line.translation }}
+                        </div>
+                      </div>
+                      <div class="lyrics-spacer"></div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Transition>
             </div>
 
             <!-- 曲目信息 -->
@@ -1226,12 +1384,76 @@ watch(activeTab, (tab) => {
   transform: translateY(-4px);
 }
 
+/* ── 唱机 / 歌词 双模舞台 (Deck Stage) ── */
+.deck-stage {
+  position: relative;
+  width: 100%;
+  height: 216px;
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 词/盘 快捷切换胶囊按钮 */
+.deck-mode-toggle-btn {
+  position: absolute;
+  top: 0;
+  right: 6px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--border-medium);
+  color: var(--color-text-light);
+  font-size: 0.74rem;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s var(--ease);
+  backdrop-filter: blur(8px);
+}
+
+.deck-mode-toggle-btn:hover {
+  background: #FFFFFF;
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 140, 110, 0.18);
+}
+
+.deck-mode-toggle-btn.is-lyrics {
+  background: rgba(124, 140, 110, 0.12);
+  color: var(--color-accent);
+  border-color: rgba(124, 140, 110, 0.35);
+}
+
+/* 唱片与歌词翻转过渡 (Smooth Deck Flip) */
+.deck-flip-enter-active,
+.deck-flip-leave-active {
+  transition: opacity 0.24s var(--ease), transform 0.24s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.deck-flip-enter-from {
+  opacity: 0;
+  transform: scale(0.96) translateY(6px);
+}
+
+.deck-flip-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translateY(-6px);
+}
+
 /* ── 拟物黑胶唱机 (Authentic Turntable) ── */
 .turntable-deck {
   position: relative;
   width: 224px;
   height: 210px;
-  margin: 0 auto 10px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1251,6 +1473,12 @@ watch(activeTab, (tab) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: transform 0.3s var(--ease);
+}
+
+.turntable-platter:hover {
+  transform: scale(1.02);
 }
 
 .vinyl-record {
@@ -1465,6 +1693,212 @@ watch(activeTab, (tab) => {
   background: #E11D48;
   border-radius: 1px;
   box-shadow: 0 0 5px #E11D48;
+}
+
+/* ── 实时同步歌词面板 (Live Synchronized Lyrics Deck) ── */
+.lyrics-deck {
+  width: 100%;
+  max-width: 410px;
+  height: 216px;
+  margin: 0 auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.lyrics-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 4px;
+  font-size: 0.7rem;
+  color: var(--color-text-lighter);
+  font-family: var(--font-mono);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  flex-shrink: 0;
+}
+
+.lyrics-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.04em;
+}
+
+.lyrics-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #A3B495;
+  transition: all 0.3s;
+}
+
+.lyrics-indicator-dot.pulsing {
+  background: var(--color-accent);
+  box-shadow: 0 0 6px var(--color-accent);
+  animation: lyric-dot-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes lyric-dot-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.65; }
+}
+
+.lyrics-trial-hint {
+  font-size: 0.68rem;
+  color: #D97706;
+}
+
+/* 歌词主滚动区域 */
+.lyrics-scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  padding: 0 16px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 1) 22%,
+    rgba(0, 0, 0, 1) 78%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 1) 22%,
+    rgba(0, 0, 0, 1) 78%,
+    transparent 100%
+  );
+}
+
+.lyrics-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.lyrics-spacer {
+  height: 82px;
+  flex-shrink: 0;
+}
+
+.lyrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+/* 单行歌词 */
+.lyric-line {
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.28s cubic-bezier(0.25, 1, 0.5, 1);
+  user-select: none;
+}
+
+.line-origin {
+  font-size: 0.92rem;
+  line-height: 1.48;
+  color: #7A7A7A;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  transition: all 0.25s var(--ease);
+}
+
+.line-translation {
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: #9C9890;
+  margin-top: 3px;
+  font-weight: 300;
+  transition: all 0.25s var(--ease);
+}
+
+/* 激活聚焦行 */
+.lyric-line.active {
+  transform: scale(1.05);
+}
+
+.lyric-line.active .line-origin {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-shadow: 0 2px 12px rgba(124, 140, 110, 0.3);
+}
+
+.lyric-line.active .line-translation {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #4A5840;
+}
+
+.lyric-line:hover:not(.active) {
+  background: rgba(124, 140, 110, 0.08);
+}
+
+.lyric-line:hover:not(.active) .line-origin {
+  color: var(--color-text);
+}
+
+/* 状态信息：加载中 / 纯音乐 */
+.lyrics-state-msg {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--color-text-lighter);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.lyrics-state-msg.instrumental {
+  padding: 16px;
+}
+
+.instrumental-icon {
+  font-size: 1.8rem;
+  color: var(--color-accent);
+  opacity: 0.85;
+  margin-bottom: 2px;
+  animation: float-note 3s ease-in-out infinite;
+}
+
+@keyframes float-note {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.instrumental-main {
+  font-family: var(--font-serif);
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.instrumental-sub {
+  font-size: 0.76rem;
+  color: var(--color-text-lighter);
+  letter-spacing: 0.04em;
+}
+
+.lyrics-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 /* 曲目信息 */
@@ -3160,7 +3594,10 @@ watch(activeTab, (tab) => {
   }
   .capsule-info { max-width: 85px; }
   .player-card { padding: 16px; max-width: 92vw; }
+  .deck-stage { height: 180px; }
   .turntable-deck { width: 180px; height: 175px; }
+  .lyrics-deck { height: 180px; }
+  .lyrics-spacer { height: 60px; }
   .turntable-platter { width: 164px; height: 164px; }
   .vinyl-record { width: 154px; height: 154px; }
   .g-1 { width: 130px; height: 130px; }

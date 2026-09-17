@@ -275,3 +275,59 @@ export async function searchNeteaseSongs(keyword: string, baseUrl?: string): Pro
 
   return []
 }
+
+export interface LyricResponse {
+  lrc: string
+  tlyric?: string
+  isInstrumental: boolean
+}
+
+const lyricCache = new Map<string, LyricResponse>()
+
+/**
+ * 获取单曲歌词及中文翻译（纯只读 GET，不携带任何 Cookie）
+ */
+export async function fetchSongLyric(songId: string | number, baseUrl?: string): Promise<LyricResponse | null> {
+  const cleanId = String(songId).replace(/\D/g, '')
+  if (!cleanId) {
+    return { lrc: '', isInstrumental: true }
+  }
+
+  if (lyricCache.has(cleanId)) {
+    return lyricCache.get(cleanId)!
+  }
+
+  const target = baseUrl || getSavedApiUrl()
+  if (!target) return null
+
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
+    const url = `${target}/lyric?id=${cleanId}&timestamp=${Date.now()}`
+    const res = await fetch(url, { signal: controller.signal })
+    clearTimeout(timer)
+
+    if (!res.ok) return null
+    const json = await res.json()
+
+    // 识别纯音乐或未收录
+    const nolyric = !!json.nolyric
+    const uncollected = !!json.uncollected
+    const lrcText = (json.lrc && typeof json.lrc.lyric === 'string') ? json.lrc.lyric : ''
+    const tlyricText = (json.tlyric && typeof json.tlyric.lyric === 'string') ? json.tlyric.lyric : ''
+
+    const isInstrumental = nolyric || uncollected || lrcText.includes('纯音乐，请欣赏') || lrcText.includes('纯音乐，没有歌词')
+
+    const result: LyricResponse = {
+      lrc: lrcText,
+      tlyric: tlyricText,
+      isInstrumental,
+    }
+
+    lyricCache.set(cleanId, result)
+    return result
+  } catch (err) {
+    console.warn(`[NeteaseApi] 获取歌曲 (ID: ${cleanId}) 歌词异常:`, err)
+    return null
+  }
+}

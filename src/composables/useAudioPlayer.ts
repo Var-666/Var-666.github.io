@@ -61,7 +61,7 @@ function initAudioEngine() {
   // 绑定原生音频事件
   audioEl.addEventListener('timeupdate', () => {
     if (audioEl) {
-      currentTime.value = Math.floor(audioEl.currentTime)
+      currentTime.value = audioEl.currentTime
       if (!isNaN(audioEl.duration) && audioEl.duration > 0) {
         duration.value = Math.floor(audioEl.duration)
       }
@@ -413,7 +413,7 @@ function seek(time: number) {
   if (!audioEl) return
   const safeTime = Math.max(0, Math.min(time, duration.value))
   audioEl.currentTime = safeTime
-  currentTime.value = Math.floor(safeTime)
+  currentTime.value = safeTime
 }
 
 function setVolume(val: number) {
