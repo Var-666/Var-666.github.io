@@ -326,7 +326,7 @@ watch(activeTab, (tab) => {
     <!-- 2. 展开态拟物唱机大卡片 (Expanded Modal Card) -->
     <Transition name="modal-pop">
       <div v-if="isExpanded" class="player-overlay" @click.self="toggleExpand">
-        <div class="player-card glass-card">
+        <div class="player-card">
           <!-- 双层顶栏：第一层电台身份与收起，第二层全宽分段控制选项卡 -->
           <div class="card-header-suite">
             <div class="header-identity-row">
@@ -738,7 +738,7 @@ watch(activeTab, (tab) => {
     <!-- 3. 网易云电台与节点状态弹窗 (NetEase Station Modal) -->
     <Transition name="modal-pop">
       <div v-if="showNeteaseModal" class="login-modal-overlay" @click.self="showNeteaseModal = false">
-        <div class="login-card glass-card">
+        <div class="login-card">
           <div class="login-header">
             <div class="header-left">
               <span class="cloud-icon">☕</span>
@@ -814,27 +814,26 @@ watch(activeTab, (tab) => {
   align-items: center;
   gap: 12px;
   padding: 6px 16px 6px 6px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid var(--glass-border);
+  background: #FAF7F2;
+  border: 1px solid var(--border-medium);
   border-radius: var(--radius-full);
   box-shadow:
-    0 10px 32px rgba(0, 0, 0, 0.08),
-    0 1px 3px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 12px 32px -4px rgba(44, 38, 33, 0.16),
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
   cursor: pointer;
   transition: all 0.35s var(--ease-spring);
   user-select: none;
+  z-index: 950;
 }
 
 .player-capsule:hover {
   transform: translateY(-3px) scale(1.02);
-  border-color: rgba(124, 140, 110, 0.45);
+  border-color: var(--color-accent);
   box-shadow:
-    0 14px 42px var(--color-accent-glow),
-    0 2px 8px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 16px 42px -4px rgba(124, 140, 110, 0.32),
+    0 6px 16px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 #FFFFFF;
 }
 
 .capsule-vinyl {
@@ -1000,9 +999,9 @@ watch(activeTab, (tab) => {
 .player-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(35, 30, 26, 0.48);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(28, 24, 20, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1016,13 +1015,13 @@ watch(activeTab, (tab) => {
   max-height: 90vh;
   padding: 24px;
   position: relative;
-  background: var(--color-bg);
+  background: #FAF7F2;
   border: 1px solid var(--border-medium);
   border-radius: 20px;
   box-shadow:
-    0 24px 64px -12px rgba(44, 38, 33, 0.28),
-    0 2px 10px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    0 32px 80px -12px rgba(20, 16, 12, 0.45),
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2404,9 +2403,9 @@ watch(activeTab, (tab) => {
 .login-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(44, 38, 33, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(28, 24, 20, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2417,11 +2416,14 @@ watch(activeTab, (tab) => {
 .login-card {
   width: 100%;
   max-width: 400px;
-  background: var(--color-bg);
-  border: 1px solid var(--card-border);
+  background: #FAF7F2;
+  border: 1px solid var(--border-medium);
   border-radius: var(--radius-lg);
-  padding: 22px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  padding: 24px;
+  box-shadow:
+    0 32px 80px -12px rgba(20, 16, 12, 0.45),
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: column;
 }
