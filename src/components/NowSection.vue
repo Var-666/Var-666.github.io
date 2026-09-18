@@ -95,42 +95,47 @@ onMounted(async () => {
 <template>
   <section id="now" class="section section-now" ref="sectionRef">
     <div class="container">
-      <!-- 标题 -->
+      <!-- 标题：达利相对论时空仪 -->
       <div class="section-header reveal">
-        <h2 class="section-title">此时此刻</h2>
+        <div class="surreal-kicker">✦ CONTINUUM // 达利相对论时空仪</div>
+        <h2 class="section-title">此时此刻 · 梦境切片</h2>
         <p class="section-subtitle">
-          受 Derek Sivers 的 /now 理念启发，记录我当前的生活体征、专注焦点与阶段足迹
+          「时间不是均质的机械指针，而是随意识流淌与凝结的梦境切片」—— 记录当前维度的引力读数、专注焦点与世界线跃迁
         </p>
       </div>
 
-      <!-- 实时生命体征控制台 (Live Telemetry Console) -->
-      <div class="live-console-card tile-card tilt-shine reveal">
+      <!-- 实时时空浑天仪控制台 (Celestial Astrolabe & Telemetry) -->
+      <div class="live-console-card tile-card tilt-shine surreal-portal-frame reveal">
+        <div class="astrolabe-backdrop" aria-hidden="true">
+          <div class="orbit-ring ring-1"></div>
+          <div class="orbit-ring ring-2"></div>
+        </div>
         <div class="console-grid">
-          <!-- 实时时间与时区 -->
+          <!-- 维度时间与时区 -->
           <div class="console-block">
-            <span class="console-label">当地时间</span>
+            <span class="console-label">✦ 当地天文时间 // LOCAL TIME</span>
             <div class="console-time-wrap">
               <span class="console-time">{{ timeStr || '15:28:00' }}</span>
               <span class="console-date">{{ dateStr }}</span>
             </div>
           </div>
 
-          <!-- 地理与气象 -->
+          <!-- 地理与以太气象 -->
           <div class="console-block">
             <div class="console-label-row">
-              <span class="console-label">身处之所</span>
-              <span v-if="isAutoLocated" class="auto-badge" title="已通过真实 IP 与气象 API 实时解析">实时定位</span>
+              <span class="console-label">✦ 现实锚点 // DIMENSION</span>
+              <span v-if="isAutoLocated" class="auto-badge" title="已通过以太网络实时解析真实座标">以太定位</span>
             </div>
             <div class="console-val-row">
-              <span class="geo-pin">📍</span>
+              <span class="geo-pin">🌐</span>
               <span class="console-val-main">{{ city }}</span>
               <span class="console-tag">{{ weather }} · {{ temp }}</span>
             </div>
           </div>
 
-          <!-- 当前在线状态 -->
+          <!-- 当前存在状态 -->
           <div class="console-block">
-            <span class="console-label">当前活跃状态</span>
+            <span class="console-label">✦ 意识同调态 // STATUS</span>
             <div class="console-val-row">
               <span class="live-status-dot" :class="{ working: isWorkingHour }"></span>
               <span class="console-val-main">{{ currentActivity }}</span>
@@ -140,17 +145,17 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- 四大近况视窗 (Four Focus Bento Tiles) -->
+      <!-- 四大近况视窗 (Four Surreal Dream Slices) -->
       <div class="now-grid">
-        <!-- 1. 在读书目 -->
+        <!-- 1. 在读经卷 -->
         <div
           :ref="(el) => { if (el) cardRefs[0] = el as HTMLElement }"
-          class="now-card tile-card tilt-shine reveal-scale delay-1"
+          class="now-card tile-card tilt-shine reveal-scale delay-1 surreal-portal-frame"
         >
           <div class="now-card-top">
             <div class="tile-chip">
               <span class="now-card-icon">📖</span>
-              <span>正在阅读</span>
+              <span>在读经卷</span>
             </div>
             <span class="book-edition-tag">原研哉 · 著</span>
           </div>
@@ -164,22 +169,22 @@ onMounted(async () => {
           </p>
         </div>
 
-        <!-- 2. 本周单曲循环 (实体黑胶互动视听卡) -->
+        <!-- 2. 本周单曲循环 (反重力天体唱盘视听卡) -->
         <div
           :ref="(el) => { if (el) cardRefs[1] = el as HTMLElement }"
-          class="now-card tile-card tilt-shine reveal-scale delay-2 interactive-music-card"
+          class="now-card tile-card tilt-shine reveal-scale delay-2 interactive-music-card surreal-portal-frame"
           role="button"
           tabindex="0"
-          aria-label="试听坂本龙一 andata 或展开黑胶唱机"
+          aria-label="试听坂本龙一 andata 或展开声学唱机"
           @click="handleMusicCardClick"
           @keydown.enter="handleMusicCardClick"
           @keydown.space.prevent="handleMusicCardClick"
-          title="点击试听 / 展开黑胶唱机"
+          title="点击试听 / 展开声学唱机"
         >
           <div class="now-card-top">
             <div class="tile-chip">
-              <span class="now-card-icon">{{ isAudioPlaying ? '🎵' : '🎧' }}</span>
-              <span>{{ isAudioPlaying ? '正在试听中' : '本周单曲循环' }}</span>
+              <span class="now-card-icon">{{ isAudioPlaying ? '🪐' : '🎧' }}</span>
+              <span>{{ isAudioPlaying ? '声波共振中' : '天体单曲循环' }}</span>
             </div>
             <div class="audio-waves" :class="{ playing: isAudioPlaying }">
               <span class="wave-bar w-1"></span>
@@ -190,7 +195,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- 实体黑胶微展台 -->
+          <!-- 反重力唱盘微展台 -->
           <div class="vinyl-mini-stage">
             <div class="mini-vinyl-disc" :class="{ spinning: isAudioPlaying }">
               <div class="mini-vinyl-grooves"></div>
@@ -207,65 +212,66 @@ onMounted(async () => {
                   @click.stop="handlePlayBtnClick"
                   :aria-label="isAudioPlaying ? '暂停' : '播放'"
                 >
-                  <span>{{ isAudioPlaying ? '❚❚ 暂停' : '▶ 试听' }}</span>
+                  <span>{{ isAudioPlaying ? '❚❚ 凝固音符' : '▶ 释放声波' }}</span>
                 </button>
                 <button
                   class="mini-vinyl-btn secondary"
                   @click.stop="handleExpandPlayerClick"
-                  aria-label="展开完整唱机面板"
+                  aria-label="展开完整声学唱机"
                 >
-                  <span>展开唱机 ↗</span>
+                  <span>展开唱盘 ↗</span>
                 </button>
               </div>
             </div>
           </div>
 
           <p class="now-card-desc">
-            写代码时最喜欢的背景律动。钢琴与环境噪音交织，平静、专注而深邃，让人迅速进入无杂质的心流状态。
+            写代码时最喜欢的背景律动。钢琴与环境噪音交织，失重、专注而深邃，让人迅速遁入无杂质的心流梦境。
           </p>
         </div>
 
         <!-- 3. 技术试验田 -->
         <div
           :ref="(el) => { if (el) cardRefs[2] = el as HTMLElement }"
-          class="now-card tile-card tilt-shine reveal-scale delay-3"
+          class="now-card tile-card tilt-shine reveal-scale delay-3 surreal-portal-frame"
         >
           <div class="now-card-top">
             <div class="tile-chip">
-              <span class="now-card-icon">🔬</span>
-              <span>技术试验田</span>
+              <span class="now-card-icon">🔮</span>
+              <span>量子炼金所</span>
             </div>
           </div>
           <h3 class="now-card-title">本地优先与声学合成</h3>
-          <p class="now-card-author">Web Audio · Local-First · Canvas</p>
+          <p class="now-card-author">Web Audio · Local-First · Canvas Shaders</p>
           <p class="now-card-desc">
-            最近在深入琢磨如何用 Web Audio API 做轻量声学交互，以及用 IndexedDB 让 Web 应用在离线状态下也有原生客户端般的毫秒级响应。
+            深入探索利用 Web Audio API 实时合成通感声学反馈，配合 CRDT 与 IndexedDB 构建无视断网的永恒客户端。
           </p>
         </div>
 
         <!-- 4. 日常生活感受 -->
         <div
           :ref="(el) => { if (el) cardRefs[3] = el as HTMLElement }"
-          class="now-card tile-card tilt-shine reveal-scale delay-4"
+          class="now-card tile-card tilt-shine reveal-scale delay-4 surreal-portal-frame"
         >
           <div class="now-card-top">
             <div class="tile-chip">
-              <span class="now-card-icon">🌿</span>
-              <span>生活琐事</span>
+              <span class="now-card-icon">🌙</span>
+              <span>现实游荡</span>
             </div>
           </div>
-          <h3 class="now-card-title">西湖边的秋风与旧纸</h3>
-          <p class="now-card-author">杭州 · 日常漫步</p>
+          <h3 class="now-card-title">西湖边的夜气与宣纸微粒</h3>
+          <p class="now-card-author">杭州 · 漫游行思</p>
           <p class="now-card-desc">
-            适逢初秋，周末喜欢在北山路和湖边骑行吹风。最近迷上了收集不同触感的手工宣纸与木质铅笔，感受物理介质带来的踏实感。
+            深宵常在北山街与断桥孤山独行。迷恋手工粗纹宣纸吸收墨汁的毛细瞬间，与纯数码屏幕的冷光形成奇妙的互质对照。
           </p>
         </div>
       </div>
 
-      <!-- 近期足迹时间流 (Interactive Footprints Ledger) -->
-      <div class="timeline-wrap tile-card reveal">
+      <!-- 近期足迹世界线 (Worldline Leaps & Chronicle) -->
+      <div class="timeline-wrap tile-card surreal-portal-frame reveal">
         <div class="timeline-header">
-          <h3 class="timeline-title">近期足迹与更迭</h3>
+          <div class="surreal-kicker">✦ WORLDLINE // 星宿纪事</div>
+          <h3 class="timeline-title">世界线跃迁与更迭记录</h3>
           <span class="timeline-sub">真实的时间刻度，记录每一步探索的痕迹（点击查看详情）</span>
         </div>
 
@@ -302,19 +308,69 @@ onMounted(async () => {
 
 <style scoped>
 .section-now {
-  background: var(--color-bg);
+  background: transparent;
   position: relative;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  border-top: 1px solid rgba(92, 225, 230, 0.12);
+  border-bottom: 1px solid rgba(92, 225, 230, 0.12);
 }
 
-/* 实时监控控制台 */
+.surreal-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
+  color: var(--color-ether-cyan);
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 12px rgba(92, 225, 230, 0.5);
+}
+
+/* 实时时空浑天仪控制台 (Celestial Astrolabe & Telemetry) */
 .live-console-card {
-  padding: 2.2rem 2.8rem;
-  margin-bottom: 3rem;
-  background: #FFFFFF;
-  border: 1px solid var(--border-light);
-  box-shadow: var(--tile-shadow);
+  padding: 2.4rem 3rem;
+  margin-bottom: 3.5rem;
+  background: rgba(18, 20, 41, 0.75);
+  border: 1px solid rgba(92, 225, 230, 0.22);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  position: relative;
+  overflow: hidden;
+}
+
+.astrolabe-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.orbit-ring {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ring-1 {
+  width: 520px;
+  height: 520px;
+  right: -140px;
+  top: -210px;
+  border: 1px dashed rgba(92, 225, 230, 0.16);
+  animation: astrolabe-spin 70s linear infinite;
+}
+
+.ring-2 {
+  width: 320px;
+  height: 320px;
+  right: -40px;
+  top: -110px;
+  border: 1px dashed rgba(247, 178, 103, 0.15);
+  animation: astrolabe-spin 45s linear infinite reverse;
+}
+
+@keyframes astrolabe-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .console-grid {
@@ -322,20 +378,23 @@ onMounted(async () => {
   grid-template-columns: 1.2fr 1fr 1.2fr;
   gap: 2.5rem;
   align-items: center;
+  position: relative;
+  z-index: 2;
 }
 
 .console-block {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .console-label {
-  font-family: var(--font-sans);
-  font-size: 0.76rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
   font-weight: 600;
-  color: var(--color-forest);
-  letter-spacing: 0.04em;
+  color: var(--color-ether-cyan);
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 10px rgba(92, 225, 230, 0.35);
 }
 
 .console-label-row {
@@ -347,11 +406,11 @@ onMounted(async () => {
 .auto-badge {
   font-family: var(--font-mono);
   font-size: 0.68rem;
-  padding: 1px 7px;
-  border-radius: var(--radius-xs);
-  background: var(--color-surface-sunken);
-  color: var(--color-forest);
-  border: 1px solid var(--border-light);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(92, 225, 230, 0.12);
+  color: var(--color-ether-cyan);
+  border: 1px solid rgba(92, 225, 230, 0.35);
   font-weight: 500;
 }
 
@@ -363,16 +422,17 @@ onMounted(async () => {
 
 .console-time {
   font-family: var(--font-mono);
-  font-size: 1.85rem;
+  font-size: 2.2rem;
   font-weight: 700;
-  color: var(--color-ink);
+  color: #FFFFFF;
+  text-shadow: 0 0 20px rgba(92, 225, 230, 0.45);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
 
 .console-date {
   font-size: 0.88rem;
-  color: var(--color-text-light);
+  color: var(--color-text-muted);
 }
 
 .console-val-row {
@@ -383,77 +443,103 @@ onMounted(async () => {
 }
 
 .geo-pin {
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 .console-val-main {
   font-family: var(--font-sans);
-  font-size: 1.12rem;
+  font-size: 1.15rem;
   font-weight: 600;
-  color: var(--color-ink);
+  color: #FFFFFF;
 }
 
 .console-tag {
-  font-size: 0.78rem;
-  padding: 3px 10px;
-  background: var(--color-surface-sunken);
-  border: 1px solid var(--border-light);
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  background: rgba(10, 11, 22, 0.65);
+  border: 1px solid rgba(92, 225, 230, 0.18);
   border-radius: var(--radius-full);
-  color: var(--color-text-light);
+  color: var(--color-text-muted);
 }
 
 .live-status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #10B981;
-  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
-  animation: pulse-ring 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  background: var(--color-ether-cyan);
+  box-shadow: 0 0 0 0 rgba(92, 225, 230, 0.6);
+  animation: pulse-ring-cyan 2.2s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 .live-status-dot.working {
-  background: #059669;
+  background: var(--color-solar-gold);
+  box-shadow: 0 0 0 0 rgba(247, 178, 103, 0.6);
+  animation: pulse-ring-gold 2.2s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
-@keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
-  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+@keyframes pulse-ring-cyan {
+  0% { box-shadow: 0 0 0 0 rgba(92, 225, 230, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(92, 225, 230, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(92, 225, 230, 0); }
+}
+
+@keyframes pulse-ring-gold {
+  0% { box-shadow: 0 0 0 0 rgba(247, 178, 103, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(247, 178, 103, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(247, 178, 103, 0); }
 }
 
 .activity-emoji {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
 }
 
-/* 四大近况 Bento 视窗 */
+/* 四大近况视窗 (Four Surreal Dream Slices) */
 .now-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 3rem;
+  gap: 1.8rem;
+  margin-bottom: 3.5rem;
 }
 
 .now-card {
-  padding: 2.2rem;
+  padding: 2.4rem;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background: #FFFFFF;
-  border: 1px solid var(--border-light);
-  box-shadow: var(--tile-shadow);
+  background: rgba(18, 20, 41, 0.72);
+  border: 1px solid rgba(92, 225, 230, 0.18);
+  border-radius: var(--radius);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  transition: transform 0.35s var(--ease-spring), border-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
 }
 
 .now-card:hover {
-  border-color: var(--color-border-hover);
-  box-shadow: var(--tile-shadow-hover);
+  transform: translateY(-5px);
+  border-color: rgba(92, 225, 230, 0.45);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(92, 225, 230, 0.2);
 }
 
 .now-card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.3rem;
+}
+
+.tile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 13px;
+  background: rgba(92, 225, 230, 0.1);
+  border: 1px solid rgba(92, 225, 230, 0.25);
+  border-radius: var(--radius-full);
+  color: var(--color-ether-cyan);
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .now-card-icon {
@@ -462,82 +548,86 @@ onMounted(async () => {
 
 .book-edition-tag {
   font-family: var(--font-mono);
-  font-size: 0.74rem;
-  color: var(--color-forest);
+  font-size: 0.76rem;
+  color: var(--color-solar-gold);
 }
 
 .now-card-title {
-  font-family: var(--font-sans);
-  font-size: 1.3rem;
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
   font-weight: 700;
-  color: var(--color-ink);
-  margin-bottom: 0.25rem;
+  color: #FFFFFF;
+  margin-bottom: 0.35rem;
   transition: color var(--transition);
 }
 
 .now-card:hover .now-card-title {
-  color: var(--color-forest);
+  color: var(--color-ether-cyan);
+  text-shadow: 0 0 15px rgba(92, 225, 230, 0.4);
 }
 
 .now-card-author {
-  font-size: 0.84rem;
-  color: var(--color-text-lighter);
-  margin-bottom: 1rem;
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+  margin-bottom: 1.1rem;
 }
 
 .book-progress-bar {
   width: 100%;
-  height: 5px;
-  background: var(--color-surface-sunken);
+  height: 6px;
+  background: rgba(10, 11, 22, 0.7);
+  border: 1px solid rgba(92, 225, 230, 0.15);
   border-radius: var(--radius-full);
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.3rem;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--color-forest);
+  background: linear-gradient(90deg, #5CE1E6, #D65DB1);
   border-radius: var(--radius-full);
+  box-shadow: 0 0 12px rgba(92, 225, 230, 0.5);
   transition: width 1.2s var(--ease);
 }
 
 .now-card-quote {
   font-family: var(--font-serif);
-  font-size: 0.94rem;
+  font-size: 0.96rem;
   line-height: 1.85;
-  color: var(--color-ink);
+  color: rgba(240, 242, 253, 0.9);
   padding-left: 14px;
-  border-left: 2px solid var(--color-forest);
+  border-left: 2px solid var(--color-ether-cyan);
+  font-style: italic;
 }
 
 .now-card-desc {
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   line-height: 1.8;
-  color: var(--color-text-light);
+  color: var(--color-text-muted);
   font-weight: 400;
 }
 
-/* 实体黑胶交互微展台 */
+/* 反重力唱盘微展台 */
 .vinyl-mini-stage {
   display: flex;
   align-items: center;
   gap: 18px;
   margin: 1.2rem 0;
-  padding: 14px 16px;
-  background: var(--color-surface-sunken);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
+  padding: 16px 18px;
+  background: rgba(10, 11, 22, 0.65);
+  border: 1px solid rgba(92, 225, 230, 0.16);
+  border-radius: var(--radius);
 }
 
 .mini-vinyl-disc {
-  width: 68px;
-  height: 68px;
-  min-width: 68px;
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
   border-radius: 50%;
-  background: radial-gradient(circle, #2C3530 0%, #1A221E 60%, #121815 100%);
+  background: radial-gradient(circle, #25284A 0%, #13152B 55%, #0A0B16 100%);
   position: relative;
-  box-shadow: 0 4px 14px rgba(45, 65, 52, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7), 0 0 15px rgba(92, 225, 230, 0.25);
+  border: 1px solid rgba(92, 225, 230, 0.35);
 }
 
 .mini-vinyl-disc.spinning {
@@ -553,7 +643,7 @@ onMounted(async () => {
   position: absolute;
   inset: 6px;
   border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border: 1px dashed rgba(92, 225, 230, 0.25);
   pointer-events: none;
 }
 
@@ -561,18 +651,18 @@ onMounted(async () => {
   position: absolute;
   inset: 22px;
   border-radius: 50%;
-  background: var(--color-sunlit);
+  background: linear-gradient(135deg, #F7B267, #D65DB1);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 6px var(--color-sunlit-glow);
+  box-shadow: 0 0 10px rgba(247, 178, 103, 0.6);
 }
 
 .vinyl-center-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #121815;
+  background: #0A0B16;
 }
 
 .vinyl-meta-info {
@@ -582,56 +672,56 @@ onMounted(async () => {
 
 .vinyl-meta-info .now-card-title {
   margin-bottom: 2px;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
 }
 
 .vinyl-meta-info .now-card-author {
-  margin-bottom: 8px;
-  font-size: 0.78rem;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
 }
 
 .mini-vinyl-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .mini-vinyl-btn {
-  padding: 6px 14px;
-  font-size: 0.76rem;
+  padding: 7px 16px;
+  font-size: 0.78rem;
   border-radius: var(--radius-full);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-weight: 500;
-  transition: transform var(--transition), background-color var(--transition), border-color var(--transition), color var(--transition);
+  transition: all 0.3s var(--ease);
 }
 
 .mini-vinyl-btn.primary {
-  background: var(--color-forest);
-  color: #FFFFFF;
-  font-weight: 600;
-  border: 1px solid var(--color-forest-light);
-  box-shadow: 0 2px 8px var(--color-forest-glow);
+  background: linear-gradient(135deg, #5CE1E6, #35B4BA);
+  color: #0A0B16;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 0 15px rgba(92, 225, 230, 0.4);
 }
 
 .mini-vinyl-btn.primary:hover {
-  background: var(--color-forest-light);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(92, 225, 230, 0.7);
 }
 
 .mini-vinyl-btn.secondary {
-  background: #FFFFFF;
-  border: 1px solid var(--border-medium);
-  color: var(--color-text-light);
+  background: rgba(18, 20, 41, 0.8);
+  border: 1px solid rgba(92, 225, 230, 0.25);
+  color: var(--color-ether-cyan);
 }
 
 .mini-vinyl-btn.secondary:hover {
-  background: #FFFFFF;
-  color: var(--color-forest);
-  border-color: var(--color-forest);
-  transform: translateY(-1px);
+  background: rgba(92, 225, 230, 0.12);
+  border-color: var(--color-ether-cyan);
+  color: #FFFFFF;
+  transform: translateY(-2px);
 }
 
 /* 音频波形跳动动画 */
@@ -644,9 +734,10 @@ onMounted(async () => {
 
 .wave-bar {
   width: 2.5px;
-  background: var(--color-forest);
+  background: var(--color-ether-cyan);
   border-radius: 1px;
   height: 5px;
+  box-shadow: 0 0 6px rgba(92, 225, 230, 0.7);
   transition: height 0.3s var(--ease), opacity 0.3s var(--ease);
 }
 
@@ -670,39 +761,42 @@ onMounted(async () => {
 }
 
 .interactive-music-card:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 3px;
 }
 
 .interactive-music-card:hover {
-  border-color: var(--color-forest);
+  border-color: var(--color-ether-cyan);
 }
 
-/* 足迹时间流 */
+/* 世界线跃迁与更迭记录 */
 .timeline-wrap {
-  padding: 2.8rem;
-  background: #FFFFFF;
-  border: 1px solid var(--border-light);
-  box-shadow: var(--tile-shadow);
+  padding: 3rem;
+  background: rgba(18, 20, 41, 0.72);
+  border: 1px solid rgba(92, 225, 230, 0.2);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 
 .timeline-header {
   margin-bottom: 2rem;
   padding-bottom: 1.2rem;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .timeline-title {
-  font-family: var(--font-sans);
-  font-size: 1.35rem;
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
   font-weight: 700;
-  color: var(--color-ink);
+  color: #FFFFFF;
   margin-bottom: 4px;
 }
 
 .timeline-sub {
-  font-size: 0.84rem;
-  color: var(--color-text-lighter);
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
 }
 
 .timeline-list {
@@ -719,40 +813,42 @@ onMounted(async () => {
   top: 6px;
   bottom: 6px;
   left: 6px;
-  width: 1.5px;
-  background: var(--border-medium);
+  width: 2px;
+  background: linear-gradient(to bottom, #5CE1E6, #D65DB1, transparent);
+  box-shadow: 0 0 8px rgba(92, 225, 230, 0.4);
 }
 
 .timeline-item {
   position: relative;
-  padding: 12px 16px;
-  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  border-radius: var(--radius);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 0.24s var(--ease), background-color 0.24s var(--ease), border-color 0.24s var(--ease);
+  transition: transform 0.25s var(--ease), background-color 0.25s var(--ease), border-color 0.25s var(--ease);
 }
 
 .timeline-item:hover {
-  transform: translateX(4px);
-  background: var(--color-surface-sunken);
-  border-color: var(--border-light);
+  transform: translateX(6px);
+  background: rgba(10, 11, 22, 0.6);
+  border-color: rgba(92, 225, 230, 0.25);
 }
 
 .timeline-item.expanded {
-  background: var(--color-surface-sunken);
-  border-color: var(--border-medium);
-  box-shadow: 0 4px 14px rgba(45, 65, 52, 0.05);
+  background: rgba(10, 11, 22, 0.75);
+  border-color: rgba(92, 225, 230, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 
 .timeline-point {
   position: absolute;
   left: -1.8rem;
-  top: 18px;
-  width: 13px;
-  height: 13px;
+  top: 20px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #FFFFFF;
-  border: 2px solid var(--color-forest);
+  background: #0A0B16;
+  border: 2px solid var(--color-ether-cyan);
+  box-shadow: 0 0 10px rgba(92, 225, 230, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -761,14 +857,15 @@ onMounted(async () => {
 
 .timeline-item:hover .timeline-point,
 .timeline-item.expanded .timeline-point {
-  box-shadow: 0 0 0 4px var(--color-forest-glow);
-  transform: scale(1.2);
+  box-shadow: 0 0 15px var(--color-ether-cyan);
+  transform: scale(1.3);
+  border-color: #FFFFFF;
 }
 
 .point-core {
-  width: 3px;
-  height: 3px;
-  background: var(--color-forest);
+  width: 4px;
+  height: 4px;
+  background: var(--color-ether-cyan);
   border-radius: 50%;
 }
 
@@ -776,63 +873,63 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   flex-wrap: wrap;
 }
 
 .item-date {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  color: var(--color-forest);
+  color: var(--color-solar-gold);
 }
 
 .item-tag {
-  font-size: 0.72rem;
-  padding: 1px 8px;
-  background: var(--color-surface-sunken);
-  border: 1px solid var(--border-light);
+  font-size: 0.74rem;
+  padding: 2px 10px;
+  background: rgba(10, 11, 22, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-full);
-  color: var(--color-text-light);
+  color: var(--color-text-muted);
 }
 
 .item-highlight-tag {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  padding: 1px 8px;
-  background: rgba(62, 107, 72, 0.08);
-  color: var(--color-forest);
+  font-size: 0.74rem;
+  padding: 2px 10px;
+  background: rgba(92, 225, 230, 0.12);
+  color: var(--color-ether-cyan);
   border-radius: var(--radius-full);
-  border: 1px solid rgba(62, 107, 72, 0.2);
+  border: 1px solid rgba(92, 225, 230, 0.3);
 }
 
 .item-title {
-  font-family: var(--font-sans);
-  font-size: 1.08rem;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
   font-weight: 600;
-  color: var(--color-ink);
-  margin-bottom: 4px;
+  color: #FFFFFF;
+  margin-bottom: 6px;
   transition: color var(--transition);
 }
 
 .timeline-item:hover .item-title,
 .timeline-item.expanded .item-title {
-  color: var(--color-forest);
+  color: var(--color-ether-cyan);
 }
 
 .item-detail {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   line-height: 1.75;
-  color: var(--color-text-light);
+  color: var(--color-text-muted);
   font-weight: 400;
 }
 
 @media (max-width: 900px) {
-  .console-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .console-grid { grid-template-columns: 1fr; gap: 1.8rem; }
   .now-grid { grid-template-columns: 1fr; }
-  .live-console-card { padding: 1.8rem 1.4rem; }
-  .now-card { padding: 1.8rem 1.4rem; }
-  .timeline-wrap { padding: 1.8rem 1.4rem; }
+  .live-console-card { padding: 2rem 1.6rem; }
+  .now-card { padding: 2rem 1.6rem; }
+  .timeline-wrap { padding: 2rem 1.6rem; }
   .vinyl-mini-stage { flex-direction: column; align-items: flex-start; }
 }
 </style>

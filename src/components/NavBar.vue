@@ -14,12 +14,12 @@ let lastScrollY = 0
 const SCROLL_DELTA_THRESHOLD = 6 // 小抖动不触发，防止滚动吸附震颤
 
 const navLinks = [
-  { label: '首页', href: '#hero', id: 'hero' },
-  { label: '关于', href: '#about', id: 'about' },
-  { label: '近况', href: '#now', id: 'now' },
-  { label: '技能', href: '#skills', id: 'skills' },
+  { label: '维度', href: '#hero', id: 'hero' },
+  { label: '形而上', href: '#about', id: 'about' },
+  { label: '时空仪', href: '#now', id: 'now' },
+  { label: '星宿', href: '#skills', id: 'skills' },
   { label: '小木屋 🌲', href: '#cabin', id: 'cabin' },
-  { label: '联系', href: '#contact', id: 'contact' },
+  { label: '信笺', href: '#contact', id: 'contact' },
 ]
 
 function handleScroll() {
@@ -78,7 +78,7 @@ onUnmounted(() => {
     <div class="nav-container container">
       <!-- Logo -->
       <a class="nav-logo" href="#hero" @click.prevent="scrollTo('#hero')">
-        <span class="logo-icon">🌿</span>
+        <span class="logo-icon">👁️</span>
         <span class="logo-text">var</span>
       </a>
 
@@ -97,7 +97,7 @@ onUnmounted(() => {
       </ul>
 
       <!-- 实时微胶囊 (Live Pulse Pill) -->
-      <button class="nav-live-pill" @click="scrollTo('#now')" aria-label="查看当前实时近况与生活状态" title="查看当前实时近况与生活状态">
+      <button class="nav-live-pill" @click="scrollTo('#now')" aria-label="查看时空仪与现实体征" title="查看时空仪与现实体征">
         <span class="live-pulse-dot"></span>
         <span class="live-clock">{{ timeStr || '15:28' }}</span>
         <span class="live-city">{{ city }}</span>
@@ -150,10 +150,10 @@ onUnmounted(() => {
   height: var(--nav-height);
   display: flex;
   align-items: center;
-  background: rgba(248, 247, 242, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(45, 65, 52, 0.08);
+  background: rgba(10, 11, 22, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(92, 225, 230, 0.15);
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
               height 0.24s var(--ease),
               background-color 0.24s var(--ease),
@@ -169,10 +169,10 @@ onUnmounted(() => {
 
 /* 滚动紧凑态 */
 .navbar.scrolled {
-  height: 56px;
-  background: rgba(255, 255, 255, 0.94);
-  border-bottom: 1px solid rgba(45, 65, 52, 0.1);
-  box-shadow: 0 4px 20px -2px rgba(45, 65, 52, 0.08);
+  height: 58px;
+  background: rgba(10, 11, 22, 0.94);
+  border-bottom: 1px solid rgba(92, 225, 230, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65);
 }
 
 .navbar.scrolled .logo-icon {
@@ -216,34 +216,36 @@ onUnmounted(() => {
 }
 
 .logo-icon {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-surface-sunken);
-  color: var(--color-forest);
+  background: rgba(92, 225, 230, 0.1);
+  color: var(--color-ether-cyan);
   border-radius: var(--radius-sm);
-  font-size: 1.1rem;
-  box-shadow: 0 2px 8px rgba(45, 65, 52, 0.08);
-  transition: transform var(--transition-spring), background-color var(--transition-spring);
+  font-size: 1.15rem;
+  border: 1px solid rgba(92, 225, 230, 0.35);
+  box-shadow: 0 0 16px rgba(92, 225, 230, 0.25);
+  transition: transform var(--transition-spring), box-shadow var(--transition-spring);
 }
 
 .nav-logo:hover .logo-icon {
-  transform: rotate(-6deg) scale(1.08);
+  transform: rotate(-8deg) scale(1.1);
+  box-shadow: 0 0 24px rgba(92, 225, 230, 0.45);
 }
 
 .nav-logo:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 4px;
 }
 
 .logo-text {
-  letter-spacing: 0.02em;
-  font-family: var(--font-sans);
+  letter-spacing: 0.04em;
+  font-family: var(--font-mono);
   font-weight: 700;
   font-size: 1.25rem;
-  color: var(--color-ink);
+  color: #F0F2FD;
 }
 
 /* Desktop Links */
@@ -254,31 +256,32 @@ onUnmounted(() => {
 }
 
 .nav-link {
-  padding: 6px 14px;
+  padding: 6px 15px;
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--color-text-light);
   border-radius: var(--radius-full);
-  transition: color var(--transition), background-color var(--transition);
-  letter-spacing: 0.01em;
+  transition: color var(--transition), background-color var(--transition), text-shadow var(--transition);
+  letter-spacing: 0.02em;
   position: relative;
 }
 
 .nav-link:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 2px;
 }
 
 .nav-link:hover {
-  color: var(--color-forest);
-  background: rgba(62, 107, 72, 0.06);
+  color: var(--color-ether-cyan);
+  background: rgba(92, 225, 230, 0.08);
 }
 
 /* 活跃链接指示 */
 .nav-link.active {
-  color: var(--color-forest);
+  color: var(--color-ether-cyan);
   font-weight: 600;
-  background: rgba(62, 107, 72, 0.09);
+  background: rgba(92, 225, 230, 0.12);
+  text-shadow: 0 0 10px rgba(92, 225, 230, 0.5);
 }
 
 .nav-link.active::after {
@@ -287,9 +290,10 @@ onUnmounted(() => {
   bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
-  width: 12px;
+  width: 14px;
   height: 2px;
-  background: var(--color-forest);
+  background: var(--color-ether-cyan);
+  box-shadow: 0 0 8px var(--color-ether-cyan);
   border-radius: var(--radius-full);
 }
 
@@ -300,12 +304,13 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 2.5px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .scroll-progress-bar {
   height: 100%;
-  background: var(--color-forest);
+  background: linear-gradient(90deg, #5CE1E6 0%, #F7B267 50%, #D65DB1 100%);
+  box-shadow: 0 0 12px rgba(92, 225, 230, 0.6);
   transition: width 0.08s linear;
 }
 
@@ -322,7 +327,7 @@ onUnmounted(() => {
 }
 
 .mobile-toggle:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 2px;
 }
 
@@ -330,7 +335,7 @@ onUnmounted(() => {
   display: block;
   width: 22px;
   height: 2px;
-  background: var(--color-ink);
+  background: #F0F2FD;
   border-radius: var(--radius-full);
   transition: transform var(--transition), opacity var(--transition);
 }
@@ -353,11 +358,11 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 5px 14px;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid var(--border-medium);
+  background: rgba(20, 23, 48, 0.75);
+  border: 1px solid rgba(92, 225, 230, 0.22);
   border-radius: var(--radius-full);
-  box-shadow: 0 2px 8px rgba(45, 65, 52, 0.04);
-  color: var(--color-ink);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  color: #F0F2FD;
   font-size: 0.78rem;
   font-family: var(--font-mono);
   cursor: pointer;
@@ -365,34 +370,34 @@ onUnmounted(() => {
 }
 
 .nav-live-pill:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 2px;
 }
 
 .nav-live-pill:hover {
-  border-color: var(--color-forest);
-  background: #FFFFFF;
+  border-color: var(--color-ether-cyan);
+  background: rgba(28, 33, 68, 0.9);
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(45, 65, 52, 0.08);
+  box-shadow: 0 0 16px rgba(92, 225, 230, 0.35);
 }
 
 .live-pulse-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #10B981;
-  box-shadow: 0 0 8px #10B981;
+  background: var(--color-ether-cyan);
+  box-shadow: 0 0 8px var(--color-ether-cyan);
   animation: pulse-ring 2s infinite;
 }
 
 @keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
-  70% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(92, 225, 230, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(92, 225, 230, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(92, 225, 230, 0); }
 }
 
 .live-clock {
-  color: var(--color-ink);
+  color: #F0F2FD;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -414,9 +419,9 @@ onUnmounted(() => {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(248, 247, 242, 0.98);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(10, 11, 22, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -435,7 +440,7 @@ onUnmounted(() => {
   font-family: var(--font-sans);
   font-weight: 600;
   font-size: 1.35rem;
-  color: var(--color-ink);
+  color: #F0F2FD;
   padding: 10px 24px;
   border-radius: var(--radius-full);
   text-decoration: none;
@@ -443,13 +448,13 @@ onUnmounted(() => {
 }
 
 .mobile-link:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 2px;
 }
 
 .mobile-link:hover {
-  color: var(--color-forest);
-  background: rgba(62, 107, 72, 0.08);
+  color: var(--color-ether-cyan);
+  background: rgba(92, 225, 230, 0.12);
 }
 
 @media (max-width: 768px) {

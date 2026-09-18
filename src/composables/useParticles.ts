@@ -33,19 +33,19 @@ export function useParticles() {
   const CONNECTION_DISTANCE = 120
   const MOUSE_RADIUS = 150
 
-  // 林间微风与日光花粉孢子调色盘 (契合温润米白日光背景)
+  // 超现实形而上宇宙调色盘 (以太微光青、炼金金、梦境紫粉与量子白)
   const COLORS = [
-    'rgba(62, 107, 72, VAR)',   // 森林树影绿
-    'rgba(217, 155, 75, VAR)',  // 晨光暖金
-    'rgba(120, 163, 132, VAR)', // 嫩芽薄荷
-    'rgba(200, 90, 72, VAR)',   // 浆果珊瑚
-    'rgba(155, 185, 165, VAR)', // 晨雾苍翠
+    'rgba(92, 225, 230, VAR)',  // 以太微光青
+    'rgba(247, 178, 103, VAR)', // 达利炼金熔金
+    'rgba(214, 93, 177, VAR)',  // 梦境玫瑰粉紫
+    'rgba(255, 255, 255, VAR)', // 量子恒星白
+    'rgba(142, 110, 219, VAR)', // 形而上暮光紫
   ]
 
   function createParticle(width: number, height: number): Particle {
-    const baseOpacity = 0.25 + Math.random() * 0.45
+    const baseOpacity = 0.2 + Math.random() * 0.55
     const colorTemplate = COLORS[Math.floor(Math.random() * COLORS.length)]
-    const radius = 1.2 + Math.random() * 2.8
+    const radius = 1.0 + Math.random() * 2.5
 
     return {
       x: Math.random() * width,
@@ -53,13 +53,13 @@ export function useParticles() {
       radius,
       baseRadius: radius,
       color: colorTemplate.replace('VAR', String(baseOpacity)),
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: -0.1 - Math.random() * 0.3,  // 缓慢上升
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: -0.15 - Math.random() * 0.35,  // 缓慢升腾
       opacity: baseOpacity,
       baseOpacity,
       phase: Math.random() * Math.PI * 2,
-      pulseSpeed: 0.005 + Math.random() * 0.015,
-      drift: 0.3 + Math.random() * 0.8,
+      pulseSpeed: 0.006 + Math.random() * 0.018,
+      drift: 0.35 + Math.random() * 0.9,
     }
   }
 
@@ -74,16 +74,16 @@ export function useParticles() {
     if (!ctx) return
 
     // 脉冲效果 — 半径随时间缓慢变化
-    const pulse = Math.sin(p.phase) * 0.3 + 1
+    const pulse = Math.sin(p.phase) * 0.35 + 1
     const r = p.baseRadius * pulse
 
-    // 绘制发光效果
-    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3)
+    // 绘制发光以太光晕
+    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 4)
     gradient.addColorStop(0, p.color)
     gradient.addColorStop(1, 'transparent')
 
     ctx.beginPath()
-    ctx.arc(p.x, p.y, r * 3, 0, Math.PI * 2)
+    ctx.arc(p.x, p.y, r * 4, 0, Math.PI * 2)
     ctx.fillStyle = gradient
     ctx.fill()
 
@@ -104,12 +104,12 @@ export function useParticles() {
         const dist = Math.sqrt(dx * dx + dy * dy)
 
         if (dist < CONNECTION_DISTANCE) {
-          const opacity = (1 - dist / CONNECTION_DISTANCE) * 0.1
+          const opacity = (1 - dist / CONNECTION_DISTANCE) * 0.14
           ctx.beginPath()
           ctx.moveTo(particles[i].x, particles[i].y)
           ctx.lineTo(particles[j].x, particles[j].y)
-          ctx.strokeStyle = `rgba(62, 107, 72, ${opacity})`
-          ctx.lineWidth = 0.5
+          ctx.strokeStyle = `rgba(92, 225, 230, ${opacity})`
+          ctx.lineWidth = 0.6
           ctx.stroke()
         }
       }

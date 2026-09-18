@@ -1,110 +1,105 @@
 /* ======================================================
-   全局样式 — 林间晨光与随性工作室 (Sunlit Woodland & Breeze Studio)
-   遵循 frontend-design 设计规范 · 强调自然、呼吸感、去严肃化
+   全局样式 — 超现实数码艺术空间 (The Persistence of Daydreams · Digital Surrealism)
+   遵循 frontend-design 设计规范 · 强调形而上几何、非欧空间、艺术通感
    ====================================================== */
 
 /* ── CSS 自定义属性 ── */
 :root {
-  /* 核心色彩 — 日光纸质底色与鲜活植物墨水 */
-  --color-base: #F8F7F2;           /* 柔和温润的晨光日光纸质底色 */
+  /* 核心色彩 — 形而上宇宙深渊、暮光紫绀与以太微光 */
+  --color-base: #0A0B16;           /* 宇宙深渊底色，沉静深邃 */
   --color-bg: var(--color-base);
-  --color-bg-alt: #F1EFEA;         /* 次级暖纸底色 */
-  --color-surface: #FFFFFF;        /* 温润纯净的卵石白卡片 */
-  --color-surface-hover: #FAFCF9;  /* 悬停时透出极浅草木清白 */
-  --color-surface-sunken: #EEF2EB; /* 茶沫淡绿内凹底色 (标签/输入框) */
+  --color-bg-alt: #121429;         /* 暮色紫绀副底色 */
+  --color-surface: rgba(20, 23, 48, 0.72);      /* 液态水银半透卡片浮台 */
+  --color-surface-hover: rgba(28, 33, 68, 0.85); /* 悬停以太微光浮台 */
+  --color-surface-sunken: rgba(10, 12, 26, 0.85);/* 凹陷引力井底色 */
 
-  --color-border: rgba(45, 65, 52, 0.08);
-  --color-border-subtle: rgba(45, 65, 52, 0.05);
-  --color-border-hover: rgba(62, 107, 72, 0.35);
-  --color-grout: rgba(45, 65, 52, 0.08);
-  --color-grout-subtle: rgba(45, 65, 52, 0.04);
-  --color-grout-dark: rgba(45, 65, 52, 0.12);
+  --color-border: rgba(92, 225, 230, 0.16);
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-hover: rgba(92, 225, 230, 0.45);
+  --color-grout: rgba(92, 225, 230, 0.1);
+  --color-grout-subtle: rgba(255, 255, 255, 0.04);
+  --color-grout-dark: rgba(0, 0, 0, 0.4);
 
-  --color-ink: #243329;            /* 松针墨绿，高清晰、自然不刺眼 */
+  --color-ink: #F0F2FD;            /* 纯净星光墨色 */
   --color-text: var(--color-ink);
-  --color-text-light: #5A6F62;     /* 雾松苔灰，呼吸感正文 */
-  --color-text-lighter: #889A8E;   /* 芦苇浅灰，辅助说明与元数据 */
+  --color-text-light: #A2A7CB;     /* 梦境星云浅灰 */
+  --color-text-lighter: #6E749D;   /* 深空暗灰标注 */
 
-  /* 鲜活草木绿 (主强调色 / 自然生机) */
-  --color-forest: #3E6B48;
-  --color-forest-light: #54875F;
-  --color-forest-dark: #2B4E33;
-  --color-forest-glow: rgba(62, 107, 72, 0.18);
-  --color-forest-glow-strong: rgba(62, 107, 72, 0.35);
-  --color-accent: var(--color-forest);
-  --color-accent-light: var(--color-forest-light);
-  --color-accent-dark: var(--color-forest-dark);
-  --color-accent-glow: var(--color-forest-glow);
-  --color-accent-glow-strong: var(--color-forest-glow-strong);
-  --color-accent-soft: rgba(62, 107, 72, 0.08);
+  /* 以太微光青 (主强调色 / 维度裂隙之光) */
+  --color-ether-cyan: #5CE1E6;
+  --color-accent: var(--color-ether-cyan);
+  --color-accent-light: #82EBF0;
+  --color-accent-dark: #32B3B8;
+  --color-accent-glow: rgba(92, 225, 230, 0.28);
+  --color-accent-glow-strong: rgba(92, 225, 230, 0.55);
+  --color-accent-soft: rgba(92, 225, 230, 0.1);
 
-  /* 暖日光斑与晨光琥珀 (暖色辅助 / 趣味细节) */
-  --color-sunlit: #D99B4B;
-  --color-sunlit-light: #F4C47F;
-  --color-sunlit-dark: #B87E32;
-  --color-sunlit-glow: rgba(217, 155, 75, 0.25);
-  --color-amber: var(--color-sunlit);
-  --color-amber-light: var(--color-sunlit-light);
-  --color-amber-dark: var(--color-sunlit-dark);
+  /* 达利炼金熔金 (太阳融化之金 / 相对论时间) */
+  --color-solar-gold: #F7B267;
+  --color-amber: var(--color-solar-gold);
+  --color-amber-light: #FCD6A1;
+  --color-amber-dark: #D48F45;
+  --color-sunlit: var(--color-solar-gold);
 
-  /* 浆果珊瑚红 (标志性红便帽点缀) */
-  --color-coral: #C85A48;
-  --color-terracotta: var(--color-coral);
+  /* 梦境玫瑰粉紫 (超现实感性异化) */
+  --color-dream-rose: #D65DB1;
+  --color-coral: var(--color-dream-rose);
+  --color-terracotta: var(--color-dream-rose);
 
-  /* 深色场景兼容变量 (用于小木屋与局部暗调视窗) */
-  --color-bg-dark: #1A261E;        /* 与小木屋森林背景无缝统一 */
-  --color-bg-dark-alt: #141F18;
-  --color-slate-surface: #223228;
-  --color-slate-border: rgba(255, 255, 255, 0.1);
-  --color-text-inv: #F8F7F2;
-  --color-text-inv-light: rgba(248, 247, 242, 0.7);
+  /* 深色场景兼容变量 */
+  --color-bg-dark: #0A0B16;
+  --color-bg-dark-alt: #121429;
+  --color-slate-surface: rgba(20, 23, 48, 0.75);
+  --color-slate-border: rgba(92, 225, 230, 0.18);
+  --color-text-inv: #F0F2FD;
+  --color-text-inv-light: rgba(240, 242, 253, 0.7);
 
-  /* 自然卵石微浮台质感 */
-  --tile-bg: #FFFFFF;
-  --tile-border: rgba(45, 65, 52, 0.08);
-  --tile-shadow: 0 4px 20px -2px rgba(45, 65, 52, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02);
-  --tile-shadow-hover: 0 12px 32px -4px rgba(45, 65, 52, 0.12), 0 0 0 1px rgba(62, 107, 72, 0.25);
+  /* 超现实浮空透镜质感 (Prismatic Plinth) */
+  --tile-bg: rgba(18, 21, 44, 0.72);
+  --tile-border: rgba(92, 225, 230, 0.16);
+  --tile-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --tile-shadow-hover: 0 24px 64px -6px rgba(92, 225, 230, 0.22), 0 0 0 1px rgba(92, 225, 230, 0.45);
 
-  /* 兼容 glass-card */
-  --glass-bg: rgba(255, 255, 255, 0.82);
-  --glass-bg-hover: rgba(255, 255, 255, 0.95);
-  --glass-bg-dark: #223228;
-  --glass-bg-dark-hover: #2B3D32;
-  --glass-border: rgba(45, 65, 52, 0.08);
-  --glass-border-dark: rgba(255, 255, 255, 0.1);
+  /* 玻璃质感 */
+  --glass-bg: rgba(18, 21, 44, 0.65);
+  --glass-bg-hover: rgba(26, 30, 60, 0.85);
+  --glass-bg-dark: rgba(14, 16, 36, 0.85);
+  --glass-bg-dark-hover: rgba(22, 26, 52, 0.95);
+  --glass-border: rgba(92, 225, 230, 0.18);
+  --glass-border-dark: rgba(92, 225, 230, 0.25);
   --glass-shadow: var(--tile-shadow);
   --glass-shadow-hover: var(--tile-shadow-hover);
 
-  /* 圆角 */
-  --radius-lg: 20px;
-  --radius: 14px;
-  --radius-sm: 9px;
-  --radius-xs: 5px;
+  /* 几何尺度 */
+  --radius-lg: 22px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
   --radius-full: 9999px;
 
   /* 字体族系 */
-  --font-serif: 'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'STSong', serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  --font-serif: 'Noto Serif SC', 'Songti SC', serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   /* 边框与间距 */
-  --border-light: rgba(45, 65, 52, 0.08);
-  --border-medium: rgba(45, 65, 52, 0.15);
+  --border-light: rgba(92, 225, 230, 0.12);
+  --border-medium: rgba(92, 225, 230, 0.22);
   --shadow-card: var(--tile-shadow);
-  --card-border: rgba(45, 65, 52, 0.08);
+  --card-border: var(--tile-border);
 
   /* 动效缓冲 */
-  --ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --transition: 0.24s var(--ease);
-  --transition-slow: 0.5s var(--ease);
-  --transition-spring: 0.36s var(--ease-spring);
+  --transition: 0.28s var(--ease);
+  --transition-slow: 0.6s var(--ease);
+  --transition-spring: 0.4s var(--ease-spring);
 
   /* 页面尺度 */
-  --section-padding: 100px 0;
-  --container-width: 1120px;
-  --nav-height: 68px;
+  --section-padding: 110px 0;
+  --container-width: 1160px;
+  --nav-height: 72px;
 }
 
 /* ── 全局重置 ── */
@@ -120,7 +115,7 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 button, a, input, select, textarea {
@@ -133,8 +128,11 @@ body {
   font-weight: 400;
   color: var(--color-text);
   background-color: var(--color-bg);
-  background-image: radial-gradient(rgba(45, 65, 52, 0.04) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image:
+    radial-gradient(rgba(92, 225, 230, 0.08) 1.2px, transparent 1.2px),
+    linear-gradient(180deg, #0A0B16 0%, #121429 45%, #0D0E1C 100%);
+  background-size: 36px 36px, 100% 100%;
+  background-attachment: fixed;
   line-height: 1.7;
   overflow-x: hidden;
 }
@@ -257,18 +255,54 @@ ul, ol {
   border-color: var(--color-border-hover);
 }
 
-/* 自然风小标签 */
+/* ── 超现实主义专属造型 (Digital Surrealism Utilities) ── */
+.surreal-arch {
+  border-radius: 120px 120px 18px 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.surreal-portal-frame {
+  position: relative;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07) 0%, rgba(20, 24, 52, 0.75) 100%);
+  border: 1px solid rgba(92, 225, 230, 0.25);
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.8), 0 0 30px rgba(92, 225, 230, 0.12);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.surreal-portal-frame::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(92, 225, 230, 0.6) 0%, transparent 40%, rgba(247, 178, 103, 0.4) 80%, rgba(214, 93, 177, 0.6) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.surreal-glow-text {
+  background: linear-gradient(135deg, #FFFFFF 0%, #B8E4F9 50%, #F7B267 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 自然风小标签 (异化为星象符文) */
 .tile-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
+  padding: 5px 14px;
   font-size: 0.8rem;
   font-weight: 500;
   border-radius: var(--radius-full);
-  background: var(--color-surface-sunken);
-  border: 1px solid var(--border-light);
-  color: var(--color-text-light);
+  background: rgba(92, 225, 230, 0.08);
+  border: 1px solid rgba(92, 225, 230, 0.2);
+  color: var(--color-ether-cyan);
 }
 
 /* ── 滚动渐入动画 ── */
@@ -324,89 +358,91 @@ ul, ol {
 .delay-5 { transition-delay: 0.4s; }
 .delay-6 { transition-delay: 0.48s; }
 
-/* ── 自然森林主按键 (Fresh Forest Button) ── */
+/* ── 以太微光主按键 (Ether Cyan Prism Button) ── */
 .tile-btn-primary,
 .glow-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 26px;
+  padding: 12px 28px;
   font-size: 0.95rem;
-  font-weight: 600;
-  color: #FFFFFF;
-  background: var(--color-forest);
-  border: 1px solid var(--color-forest-light);
+  font-weight: 700;
+  color: #0A0B16;
+  background: linear-gradient(135deg, #5CE1E6 0%, #35B4BA 100%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: var(--radius-full);
   cursor: pointer;
-  box-shadow: 0 4px 14px var(--color-forest-glow);
+  box-shadow: 0 4px 24px rgba(92, 225, 230, 0.35), 0 0 0 1px rgba(92, 225, 230, 0.4);
   transition: background-color var(--transition), transform var(--transition), box-shadow var(--transition), border-color var(--transition);
   letter-spacing: 0.02em;
 }
 
 .tile-btn-primary:focus-visible,
 .glow-btn:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 3px;
 }
 
 .tile-btn-primary:hover,
 .glow-btn:hover {
-  background: var(--color-forest-light);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px var(--color-forest-glow-strong);
+  background: linear-gradient(135deg, #82EBF0 0%, #5CE1E6 100%);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 32px rgba(92, 225, 230, 0.55), 0 0 16px rgba(92, 225, 230, 0.4);
 }
 
 .tile-btn-primary:active,
 .glow-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-/* 次级日光暖白按键 */
+/* 次级形而上透镜按键 (Metaphysical Lens Button) */
 .tile-btn-secondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 24px;
+  padding: 12px 26px;
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--color-ink);
-  background: #FFFFFF;
-  border: 1px solid var(--border-medium);
+  color: #F0F2FD;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(92, 225, 230, 0.28);
   border-radius: var(--radius-full);
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(45, 65, 52, 0.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   transition: background-color var(--transition), transform var(--transition), box-shadow var(--transition), border-color var(--transition), color var(--transition);
 }
 
 .tile-btn-secondary:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 3px;
 }
 
 .tile-btn-secondary:hover {
-  background: #FFFFFF;
-  border-color: var(--color-forest);
-  color: var(--color-forest);
+  background: rgba(92, 225, 230, 0.12);
+  border-color: var(--color-ether-cyan);
+  color: #FFFFFF;
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(45, 65, 52, 0.1);
+  box-shadow: 0 8px 24px rgba(92, 225, 230, 0.25);
 }
 
-/* ── 自然圆润输入框 (Sunlit Soft Inputs) ── */
+/* ── 超现实凹面透镜输入框 (Prismatic Lens Inputs) ── */
 .glow-input,
 .tile-input {
   width: 100%;
   padding: 13px 18px;
   font-size: 0.95rem;
   font-family: var(--font-sans);
-  color: var(--color-text);
-  background: #FFFFFF;
-  border: 1px solid var(--border-medium);
+  color: #F0F2FD;
+  background: rgba(10, 12, 26, 0.85);
+  border: 1px solid rgba(92, 225, 230, 0.2);
   border-radius: var(--radius-sm);
   outline: none;
-  box-shadow: inset 0 1px 3px rgba(45, 65, 52, 0.04);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
   transition: border-color var(--transition), background-color var(--transition), box-shadow var(--transition);
 }
 
@@ -419,11 +455,12 @@ ul, ol {
 .tile-input:focus,
 .glow-input:focus-visible,
 .tile-input:focus-visible {
-  border-color: var(--color-forest);
-  background: #FFFFFF;
+  border-color: var(--color-ether-cyan);
+  background: rgba(14, 17, 36, 0.95);
   box-shadow:
-    inset 0 1px 3px rgba(45, 65, 52, 0.04),
-    0 0 0 3px var(--color-forest-glow);
+    inset 0 2px 6px rgba(0, 0, 0, 0.6),
+    0 0 0 3px rgba(92, 225, 230, 0.25),
+    0 0 18px rgba(92, 225, 230, 0.2);
 }
 
 

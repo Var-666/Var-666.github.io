@@ -9,7 +9,7 @@ const statsRef = ref<HTMLElement | null>(null)
 const { observeAll } = useScrollReveal()
 const { bind: bindTilt } = useTilt({ max: 8, scale: 1.02, speed: 400 })
 
-// 我在意的小事
+// 我在意的美学悖论
 interface CraftPillar {
   icon: string
   title: string
@@ -19,22 +19,22 @@ interface CraftPillar {
 
 const pillars: CraftPillar[] = [
   {
-    icon: '🌿',
-    title: '呼吸感与留白',
-    subtitle: 'Breathing Space & Harmony',
-    desc: '拒绝紧绷与过度装饰，让文字、间距与色彩像自然树影一样舒展，阅读与浏览都毫不费力。',
+    icon: '🪞',
+    title: '反重力构型',
+    subtitle: 'ANTI-GRAVITY ARCHITECTURE',
+    desc: '打破扁平矩形盒子的平庸束缚。在非欧几何与三维微景深中，让界面化为具有浮游质量与失重呼吸感的交互雕塑。',
   },
   {
-    icon: '🎈',
-    title: '生动轻盈的微动效',
-    subtitle: 'Playful Motion & Delight',
-    desc: '轻微弹跳、物理阻尼与平滑过渡，让每次点击和滑动都充满像真实触碰小物件一般的乐趣。',
+    icon: '⏳',
+    title: '融化的时空切片',
+    subtitle: 'THE MELTING CONTINUUM',
+    desc: '汲取达利相对论钟盘的启发，毫秒级动效不仅是平滑缓冲，而是将时间的流逝凝固为液态水银般的诗意轨迹。',
   },
   {
-    icon: '☕',
-    title: '温度与人情味',
-    subtitle: 'Warmth & Human Touch',
-    desc: '技术代码虽然冷静，但用心做出的产品能够传递善意与陪伴，让人感到放松和被尊重。',
+    icon: '🌌',
+    title: '声画量子通感',
+    subtitle: 'ONEIRIC SYNESTHESIA',
+    desc: '跨越感官维度。傅里叶声频在视野中激起引力水纹，微交互触觉产生声学回响，实现眼耳心通感的超现实沉浸。',
   },
 ]
 
@@ -49,9 +49,9 @@ interface StatItem {
 }
 
 const stats = ref<StatItem[]>([
-  { end: 3, suffix: '+', label: '年写代码与设计', current: '0+' },
-  { end: 365, suffix: '+', label: '天保持日常探索', current: '0+' },
-  { end: 100, suffix: '%', label: '对好玩事物的热爱', current: '0%' },
+  { end: 3, suffix: '+', label: '恒星年 · 深度编程与美学构想', current: '0+' },
+  { end: 365, suffix: '+', label: '天文学日 · 跨维度日常探索', current: '0+' },
+  { end: 100, suffix: '%', label: '纯度 · 超现实创造欲望', current: '0%' },
 ])
 
 let countersStarted = false
@@ -111,51 +111,53 @@ onMounted(async () => {
   <section id="about" class="section" ref="sectionRef">
     <div class="container">
       <div class="section-header reveal">
-        <h2 class="section-title">关于我与日常</h2>
-        <p class="section-subtitle">写写代码，看看世界，用平和好奇的心态做出让自己和别人都感到舒服的体验</p>
+        <h2 class="section-title">形而上空间 · 关于我</h2>
+        <p class="section-subtitle">在虚实镜像与相对论时空之间，探求代码所能抵达的超现实艺术边界</p>
       </div>
 
       <div class="about-grid">
-        <!-- 左侧：多维拱门肖像壁龛 -->
+        <!-- 左侧：形而上拱门肖像壁龛 (De Chirico Arcade Niche) -->
         <div class="about-avatar-col reveal-left">
-          <div class="avatar-ceramic-niche tile-card">
+          <div class="avatar-ceramic-niche surreal-portal-frame">
             <div class="niche-ambient-halo" aria-hidden="true"></div>
             <div class="avatar-portrait-wrap">
               <svg viewBox="0 0 48 48" width="100%" height="100%" class="avatar-svg">
-                <circle cx="24" cy="24" r="24" fill="#4A7356" />
-                <path d="M10 44 C10 35, 17 33, 24 33 C31 33, 38 35, 38 44 Z" fill="#2D4634" />
-                <path d="M14 44 C14 36, 18 34, 24 34 C30 34, 34 36, 34 44 Z" fill="#588157" />
+                <circle cx="24" cy="24" r="24" fill="#151B3D" />
+                <!-- 日月双蚀光环 -->
+                <circle cx="24" cy="24" r="21" fill="none" stroke="#5CE1E6" stroke-width="1" stroke-dasharray="3 3" opacity="0.6" />
+                <path d="M10 44 C10 35, 17 33, 24 33 C31 33, 38 35, 38 44 Z" fill="#1E2752" />
+                <path d="M14 44 C14 36, 18 34, 24 34 C30 34, 34 36, 34 44 Z" fill="#2E3C75" />
                 <path d="M22 34 L24 37 L26 34 Z" fill="#FFFFFF" />
-                <circle cx="24" cy="24" r="10.5" fill="#ffd3b6" />
-                <path d="M15 21 Q19 25 24 20 Q29 25 33 21 Q30 14 24 14 Q18 14 15 21 Z" fill="#2E1C14" />
-                <circle cx="20.5" cy="23.5" r="1.5" fill="#131716" />
-                <circle cx="27.5" cy="23.5" r="1.5" fill="#131716" />
-                <ellipse cx="18.5" cy="26.5" rx="2.2" ry="1.2" fill="#ff7979" opacity="0.65" />
-                <ellipse cx="29.5" cy="26.5" rx="2.2" ry="1.2" fill="#ff7979" opacity="0.65" />
-                <path d="M22 26.5 Q24 28.5 26 26.5" stroke="#b33939" stroke-width="1.2" stroke-linecap="round" fill="none" />
-                <!-- 标志性深红便帽 (Red Beanie) -->
-                <path d="M12 18 C12 8, 36 8, 36 18 Z" fill="#C85A48" />
-                <rect x="11" y="16" width="26" height="4.5" rx="2.2" fill="#A84434" />
+                <circle cx="24" cy="24" r="10.5" fill="#F4D3BD" />
+                <path d="M15 21 Q19 25 24 20 Q29 25 33 21 Q30 14 24 14 Q18 14 15 21 Z" fill="#1A1C28" />
+                <circle cx="20.5" cy="23.5" r="1.5" fill="#0A0B16" />
+                <circle cx="27.5" cy="23.5" r="1.5" fill="#0A0B16" />
+                <ellipse cx="18.5" cy="26.5" rx="2.2" ry="1.2" fill="#E24A68" opacity="0.6" />
+                <ellipse cx="29.5" cy="26.5" rx="2.2" ry="1.2" fill="#E24A68" opacity="0.6" />
+                <path d="M22 26.5 Q24 28.5 26 26.5" stroke="#E24A68" stroke-width="1.2" stroke-linecap="round" fill="none" />
+                <!-- 标志性深红便帽 (异化为超现实玫瑰绯红) -->
+                <path d="M12 18 C12 8, 36 8, 36 18 Z" fill="#E24A68" />
+                <rect x="11" y="16" width="26" height="4.5" rx="2.2" fill="#C23652" />
               </svg>
             </div>
 
             <div class="avatar-foot-badge">
               <span class="foot-dot"></span>
-              <span class="foot-text">生活在杭州 · 喜欢晴天与音乐</span>
+              <span class="foot-text">现实驻留：杭州 · 漫游于以太之间</span>
             </div>
           </div>
         </div>
 
-        <!-- 右侧：工坊画案与三大柱石 -->
+        <!-- 右侧：形而上画案与三大超现实造物悖论 -->
         <div class="about-info-col reveal-right">
-          <div ref="cardRef" class="tile-card about-card tilt-shine">
+          <div ref="cardRef" class="tile-card about-card tilt-shine surreal-portal-frame">
             <div class="about-card-header">
-              <span class="card-kicker">🌱 关于 · ABOUT ME</span>
-              <h3 class="about-heading">你好，我是 var</h3>
+              <span class="card-kicker">✦ PARADOX // 形而上回廊</span>
+              <h3 class="about-heading">我是 var · 探索虚实界限</h3>
             </div>
 
             <p class="about-bio">
-              一名热爱前端交互与创意的开发者。比起严肃沉闷的教条和繁琐架构，我更喜欢把日常里的灵感写成充满自然呼吸感的小玩意——干净的代码、舒服的配色与顺手好用的微交互。
+              在理性逻辑与超现实想象的交汇处构建界面。我迷恋德·基里科的深邃投影、马格利特的错位天空与达利融化的时间感——将代码雕琢为兼具失重质感、量子通感与生命律动的数字交互艺术品。
             </p>
 
             <!-- 三大关注点交互微视窗 -->
@@ -182,7 +184,7 @@ onMounted(async () => {
               </div>
             </div>
 
-            <!-- 统计数字 — 3 格实体微浮台 -->
+            <!-- 统计数字 — 3 座悬浮形而上基石 -->
             <div class="about-stats-grid" ref="statsRef">
               <div
                 v-for="stat in stats"
@@ -208,7 +210,7 @@ onMounted(async () => {
   align-items: stretch;
 }
 
-/* 陶艺拱门肖像壁龛 */
+/* 形而上拱门肖像壁龛 (De Chirico Arcade Niche) */
 .about-avatar-col {
   display: flex;
   flex-direction: column;
@@ -216,11 +218,11 @@ onMounted(async () => {
 }
 
 .avatar-ceramic-niche {
-  background: #FFFFFF;
-  border: 1px solid var(--border-light);
-  border-radius: 140px 140px var(--radius) var(--radius);
-  box-shadow: var(--tile-shadow);
-  padding: 38px 24px 28px;
+  background: rgba(18, 20, 41, 0.72);
+  border: 1px solid rgba(92, 225, 230, 0.22);
+  border-radius: 160px 160px var(--radius) var(--radius);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  padding: 44px 24px 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -228,13 +230,15 @@ onMounted(async () => {
   text-align: center;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
 }
 
 .avatar-ceramic-niche:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--tile-shadow-hover);
-  border-color: var(--color-border-hover);
+  transform: translateY(-4px);
+  box-shadow: 0 32px 70px rgba(0, 0, 0, 0.7), 0 0 35px rgba(92, 225, 230, 0.2);
+  border-color: rgba(92, 225, 230, 0.45);
 }
 
 .niche-ambient-halo {
@@ -242,55 +246,58 @@ onMounted(async () => {
   top: 35%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, rgba(62, 107, 72, 0.12) 0%, transparent 70%);
-  filter: blur(30px);
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(92, 225, 230, 0.22) 0%, rgba(214, 93, 177, 0.12) 45%, transparent 70%);
+  filter: blur(35px);
   pointer-events: none;
 }
 
 .avatar-portrait-wrap {
-  width: 170px;
-  height: 170px;
+  width: 176px;
+  height: 176px;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(45, 65, 52, 0.12);
-  border: 3px solid rgba(62, 107, 72, 0.2);
-  margin-bottom: 1.5rem;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 25px rgba(92, 225, 230, 0.25);
+  border: 2px solid rgba(92, 225, 230, 0.4);
+  margin-bottom: 1.8rem;
   position: relative;
   z-index: 2;
-  transition: transform 0.35s var(--ease-spring), border-color 0.35s var(--ease);
+  transition: transform 0.4s var(--ease-spring), border-color 0.4s var(--ease), box-shadow 0.4s var(--ease);
 }
 
 .avatar-ceramic-niche:hover .avatar-portrait-wrap {
-  transform: scale(1.04);
-  border-color: var(--color-forest);
+  transform: scale(1.05) rotate(1deg);
+  border-color: var(--color-ether-cyan);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 35px rgba(92, 225, 230, 0.45);
 }
 
 .avatar-foot-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 16px;
-  background: var(--color-surface-sunken);
-  border: 1px solid var(--border-light);
+  padding: 8px 18px;
+  background: rgba(10, 11, 22, 0.75);
+  border: 1px solid rgba(92, 225, 230, 0.2);
   border-radius: var(--radius-full);
-  font-size: 0.78rem;
-  color: var(--color-text-light);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
   font-weight: 500;
   position: relative;
   z-index: 2;
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .foot-dot {
   width: 6px;
   height: 6px;
-  background: var(--color-forest);
+  background: var(--color-ether-cyan);
   border-radius: 50%;
-  box-shadow: 0 0 6px var(--color-forest);
+  box-shadow: 0 0 8px var(--color-ether-cyan);
 }
 
-/* 右侧信息瓷砖卡片 */
+/* 右侧信息瓷砖卡片 — 形而上画案 */
 .about-info-col {
   display: flex;
 }
@@ -301,9 +308,12 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: #FFFFFF;
-  border: 1px solid var(--border-light);
-  box-shadow: var(--tile-shadow);
+  background: rgba(18, 20, 41, 0.72);
+  border: 1px solid rgba(92, 225, 230, 0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 
 .about-card-header {
@@ -312,151 +322,156 @@ onMounted(async () => {
 
 .card-kicker {
   display: inline-block;
-  font-family: var(--font-sans);
-  font-size: 0.76rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
   font-weight: 600;
-  color: var(--color-forest);
-  letter-spacing: 0.04em;
-  margin-bottom: 0.4rem;
+  color: var(--color-ether-cyan);
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 12px rgba(92, 225, 230, 0.4);
 }
 
 .about-heading {
-  font-family: var(--font-sans);
-  font-size: 1.85rem;
+  font-family: var(--font-serif);
+  font-size: 2.1rem;
   font-weight: 700;
   color: var(--color-ink);
   letter-spacing: -0.01em;
 }
 
 .about-bio {
-  font-size: 0.98rem;
-  line-height: 1.85;
-  color: var(--color-text-light);
-  margin-bottom: 1.2rem;
+  font-size: 1.02rem;
+  line-height: 1.9;
+  color: var(--color-text-muted);
+  margin-bottom: 1.5rem;
   font-weight: 400;
 }
 
 /* 三大关注点交互微视窗 */
 .craft-pillars-wrap {
-  margin: 1.2rem 0 1.5rem;
+  margin: 1.2rem 0 1.8rem;
 }
 
 .pillars-nav {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .pillar-tab {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 10px 14px;
-  background: var(--color-surface-sunken);
-  border: 1px solid var(--border-light);
+  background: rgba(10, 11, 22, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-full);
-  color: var(--color-text-light);
+  color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 500;
-  transition: border-color var(--transition), background-color var(--transition), color var(--transition), transform var(--transition);
+  transition: all 0.3s var(--ease);
 }
 
 .pillar-tab:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 2px;
 }
 
 .pillar-tab:hover {
-  background: #FFFFFF;
-  border-color: var(--color-forest);
-  color: var(--color-forest);
+  background: rgba(92, 225, 230, 0.08);
+  border-color: rgba(92, 225, 230, 0.3);
+  color: #FFFFFF;
 }
 
 .pillar-tab.active {
-  border-color: var(--color-forest);
-  background: var(--color-forest);
+  border-color: var(--color-ether-cyan);
+  background: linear-gradient(135deg, rgba(92, 225, 230, 0.22), rgba(214, 93, 177, 0.18));
   color: #FFFFFF;
-  box-shadow: 0 4px 12px var(--color-forest-glow);
+  box-shadow: 0 0 20px rgba(92, 225, 230, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .pillar-tab-icon {
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .pillar-detail-box {
-  padding: 18px 22px;
-  background: var(--color-surface-sunken);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  box-shadow: inset 0 1px 3px rgba(45, 65, 52, 0.04);
+  padding: 20px 24px;
+  background: rgba(10, 11, 22, 0.7);
+  border: 1px solid rgba(92, 225, 230, 0.15);
+  border-radius: var(--radius);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .pillar-subtitle {
   font-family: var(--font-mono);
-  font-size: 0.74rem;
-  color: var(--color-forest);
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
+  font-size: 0.76rem;
+  color: var(--color-solar-gold);
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
   display: block;
   font-weight: 600;
 }
 
 .pillar-desc {
-  font-size: 0.92rem;
-  color: var(--color-ink);
-  line-height: 1.7;
+  font-size: 0.94rem;
+  color: var(--color-text);
+  line-height: 1.75;
 }
 
-/* 统计数据 — 3 格实体微浮台 */
+/* 统计数据 — 3 座悬浮形而上基石 */
 .about-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-top: 1.6rem;
   padding-top: 1.6rem;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .stat-tile {
-  background: var(--color-surface-sunken);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  padding: 16px 14px;
+  background: rgba(10, 11, 22, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 18px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 4px;
-  transition: transform var(--transition), border-color var(--transition), background-color var(--transition);
+  gap: 6px;
+  transition: transform 0.3s var(--ease-spring), border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
 }
 
 .stat-tile:hover {
-  transform: translateY(-2px);
-  background: #FFFFFF;
-  border-color: var(--color-forest);
-  box-shadow: 0 6px 16px rgba(45, 65, 52, 0.06);
+  transform: translateY(-4px);
+  background: rgba(18, 20, 41, 0.85);
+  border-color: rgba(92, 225, 230, 0.4);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 20px rgba(92, 225, 230, 0.18);
 }
 
 .stat-number {
   font-family: var(--font-mono);
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 700;
-  color: var(--color-forest);
+  color: var(--color-ether-cyan);
+  text-shadow: 0 0 15px rgba(92, 225, 230, 0.4);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
-  transition: color var(--transition);
+  display: inline-block;
+  transition: color var(--transition), transform 0.3s var(--ease-spring);
 }
 
 .stat-tile:hover .stat-number {
-  color: var(--color-forest-light);
+  color: #FFFFFF;
+  text-shadow: 0 0 20px rgba(92, 225, 230, 0.7);
 }
 
 .stat-label {
-  font-size: 0.78rem;
-  color: var(--color-text-light);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
   font-weight: 400;
+  letter-spacing: 0.02em;
 }
 
 /* 响应式 */
@@ -467,8 +482,8 @@ onMounted(async () => {
   }
 
   .avatar-ceramic-niche {
-    border-radius: var(--radius);
-    padding: 28px 20px;
+    border-radius: var(--radius-lg);
+    padding: 32px 20px;
     max-width: 320px;
     margin: 0 auto;
   }
@@ -494,7 +509,7 @@ onMounted(async () => {
   .stat-tile {
     flex-direction: row;
     justify-content: space-between;
-    padding: 12px 18px;
+    padding: 14px 20px;
   }
 }
 </style>

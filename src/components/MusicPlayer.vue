@@ -257,9 +257,9 @@ function drawSpectrum() {
       const y = (h - barHeight) / 2
 
       const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight)
-      gradient.addColorStop(0, '#7C8C6E')
-      gradient.addColorStop(0.5, '#A3B495')
-      gradient.addColorStop(1, '#C4A882')
+      gradient.addColorStop(0, '#5CE1E6')
+      gradient.addColorStop(0.5, '#F7B267')
+      gradient.addColorStop(1, '#D65DB1')
 
       ctx.fillStyle = gradient
       ctx.beginPath()
@@ -1003,7 +1003,7 @@ onUnmounted(() => {
    GLAZED CERAMIC TILE & BENTO GRID PLAYER — 釉面陶瓷砖拼贴设计系统
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── 1. 悬浮釉面陶瓷骨牌胶囊 (Ceramic Domino Capsule) ── */
+/* ── 1. 悬浮液体水银/以太晶石胶囊 (Surreal Liquid Mercury Capsule) ── */
 .ceramic-capsule-domino {
   position: fixed;
   left: 24px;
@@ -1012,25 +1012,24 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 14px 8px 10px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(62, 107, 72, 0.18);
-  border-radius: 24px;
+  padding: 8px 16px 8px 10px;
+  background: rgba(18, 20, 41, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(92, 225, 230, 0.3);
+  border-radius: 28px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 12px 32px -4px rgba(36, 51, 41, 0.12),
-    0 4px 12px rgba(36, 51, 41, 0.06);
+    0 16px 40px rgba(0, 0, 0, 0.65),
+    0 0 20px rgba(92, 225, 230, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
   cursor: pointer;
   transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), border-color 0.3s var(--ease-spring);
   user-select: none;
-  position: fixed;
   overflow: hidden;
 }
 
 .ceramic-capsule-domino:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 3px;
 }
 
@@ -1041,18 +1040,18 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 50%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
   pointer-events: none;
-  border-radius: 24px 24px 0 0;
+  border-radius: 28px 28px 0 0;
 }
 
 .ceramic-capsule-domino:hover {
-  transform: translateY(-3px) scale(1.02);
+  transform: translateY(-4px) scale(1.03);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 1),
-    0 20px 44px -6px rgba(36, 51, 41, 0.18),
-    0 0 0 1px rgba(62, 107, 72, 0.25);
-  border-color: var(--color-forest);
+    0 24px 50px rgba(0, 0, 0, 0.75),
+    0 0 30px rgba(92, 225, 230, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  border-color: var(--color-ether-cyan);
 }
 
 .capsule-sleeve {
@@ -1068,10 +1067,11 @@ onUnmounted(() => {
   position: relative;
   width: 36px;
   height: 36px;
-  border-radius: 6px;
+  border-radius: 8px;
   object-fit: cover;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .capsule-mini-disc {
@@ -1081,9 +1081,9 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: radial-gradient(circle, #252220 0%, #12100E 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  background: radial-gradient(circle, #25284A 0%, #13152B 55%, #0A0B16 100%);
+  border: 1px solid rgba(92, 225, 230, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 8px rgba(92, 225, 230, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1094,7 +1094,7 @@ onUnmounted(() => {
 }
 
 .ceramic-capsule-domino:hover .capsule-mini-disc {
-  transform: translateX(8px);
+  transform: translateX(10px);
 }
 
 .capsule-mini-disc.spinning {
@@ -1110,8 +1110,9 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #E6C594;
+  background: var(--color-solar-gold);
   border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 6px var(--color-solar-gold);
 }
 
 .capsule-text-col {
@@ -1132,7 +1133,7 @@ onUnmounted(() => {
   font-family: var(--font-serif);
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--color-ink);
+  color: #FFFFFF;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1147,18 +1148,18 @@ onUnmounted(() => {
 }
 
 .capsule-tag.full {
-  background: rgba(62, 107, 72, 0.12);
-  color: var(--color-forest);
+  background: rgba(92, 225, 230, 0.15);
+  color: var(--color-ether-cyan);
 }
 
 .capsule-tag.trial {
-  background: rgba(217, 155, 75, 0.15);
-  color: #B4782A;
+  background: rgba(247, 178, 103, 0.15);
+  color: var(--color-solar-gold);
 }
 
 .capsule-artist {
   font-size: 0.72rem;
-  color: var(--color-text-light);
+  color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1173,7 +1174,7 @@ onUnmounted(() => {
 
 .p-bar {
   width: 2.5px;
-  background: rgba(62, 107, 72, 0.2);
+  background: rgba(92, 225, 230, 0.25);
   border-radius: 1px;
 }
 .p-bar.pb-1 { height: 5px; }
@@ -1181,7 +1182,8 @@ onUnmounted(() => {
 .p-bar.pb-3 { height: 7px; }
 
 .p-bar.play {
-  background: var(--color-forest);
+  background: var(--color-ether-cyan);
+  box-shadow: 0 0 8px var(--color-ether-cyan);
   animation: bar-flutter 1.2s ease-in-out infinite alternate;
 }
 .p-bar.pb-1.play { animation-delay: 0.1s; }
@@ -1197,44 +1199,45 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--color-forest);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #5CE1E6, #35B4BA);
+  color: #0A0B16;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(62, 107, 72, 0.25);
-  transition: transform 0.2s var(--ease), background-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  box-shadow: 0 0 12px rgba(92, 225, 230, 0.4);
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
   flex-shrink: 0;
+  border: none;
 }
 
 .capsule-play-action:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--color-ether-cyan);
   outline-offset: 2px;
 }
 
 .capsule-play-action:hover {
-  background: #2D5035;
-  transform: scale(1.08);
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(92, 225, 230, 0.7);
 }
 
 .artisan-spinner-sm {
   width: 12px;
   height: 12px;
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #FFFFFF;
+  border: 1.5px solid rgba(10, 11, 22, 0.4);
+  border-top-color: #0A0B16;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
-/* ── 2. 展开态：釉面陶瓷嵌瓷托盘 (Ceramic Mosaic Tray) ── */
+/* ── 2. 展开态：超现实以太声学星宿托盘 (Surreal Celestial Tray) ── */
 .studio-scrim {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: rgba(8, 11, 10, 0.82);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(6, 7, 14, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1245,40 +1248,40 @@ onUnmounted(() => {
 
 .ceramic-mosaic-tray {
   width: 100%;
-  max-width: 486px;
+  max-width: 490px;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   margin: auto;
-  background: #111614;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 26px;
-  padding: 12px;
+  background: rgba(10, 11, 22, 0.94);
+  border: 1px solid rgba(92, 225, 230, 0.25);
+  border-radius: 28px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   box-shadow:
-    0 34px 84px -10px rgba(0, 0, 0, 0.8),
-    0 8px 24px rgba(0, 0, 0, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    0 34px 84px -10px rgba(0, 0, 0, 0.95),
+    0 0 35px rgba(92, 225, 230, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
   position: relative;
   user-select: none;
 }
 
-/* 曜岩石板嵌面基础类 (Universal Obsidian Plinth Tile) */
+/* 虚空嵌面基础类 (Universal Void Plinth Tile) */
 .ceramic-tile {
-  background: linear-gradient(145deg, #1A221E 0%, #151B18 55%, #101513 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(21, 27, 61, 0.8) 0%, rgba(18, 20, 41, 0.85) 55%, rgba(10, 11, 22, 0.95) 100%);
+  border: 1px solid rgba(92, 225, 230, 0.16);
+  border-radius: 20px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-    0 4px 16px rgba(0, 0, 0, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 4px 16px rgba(0, 0, 0, 0.4);
   position: relative;
   overflow: hidden;
   transition: box-shadow 0.28s var(--ease), border-color 0.28s var(--ease), transform 0.28s var(--ease);
 }
 
-/* 曜石微光漫反射层 */
+/* 虚空微光漫反射层 */
 .ceramic-tile::before {
   content: '';
   position: absolute;
@@ -1288,12 +1291,12 @@ onUnmounted(() => {
   height: 26px;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.1) 0%,
     rgba(255, 255, 255, 0.02) 65%,
     transparent 100%
   );
   pointer-events: none;
-  border-radius: 18px 18px 0 0;
+  border-radius: 20px 20px 0 0;
   z-index: 1;
 }
 
@@ -1308,10 +1311,10 @@ onUnmounted(() => {
 .ceramic-tile:hover {
   transform: translateY(-2px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 8px 24px -3px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(230, 197, 148, 0.2);
-  border-color: rgba(230, 197, 148, 0.3);
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 24px -3px rgba(0, 0, 0, 0.7),
+    0 0 20px rgba(92, 225, 230, 0.2);
+  border-color: rgba(92, 225, 230, 0.35);
 }
 
 /* ── 瓷砖 01: 顶栏电台与导航瓷片 (Header Tile) ── */
