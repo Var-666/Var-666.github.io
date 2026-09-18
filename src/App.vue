@@ -65,31 +65,33 @@ onUnmounted(() => {
   bottom: 32px;
   right: 32px;
   z-index: 900;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--tile-bg);
-  border: 1px solid var(--tile-border);
-  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
   color: var(--color-ink);
-  box-shadow: var(--tile-shadow);
+  box-shadow: 0 6px 20px rgba(36, 51, 41, 0.12);
   cursor: pointer;
-  transition: transform var(--transition), background var(--transition), color var(--transition), box-shadow var(--transition);
+  transition: transform var(--transition), background var(--transition), color var(--transition), box-shadow var(--transition), border-color var(--transition);
 }
 
 .back-to-top:focus-visible {
-  outline: 2px solid var(--color-amber);
+  outline: 2px solid var(--color-forest);
   outline-offset: 3px;
 }
 
 .back-to-top:hover {
-  background: var(--color-amber);
-  color: #101412;
-  border-color: var(--color-amber-light);
-  transform: translateY(-2px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px rgba(230, 197, 148, 0.35);
+  background: var(--color-forest);
+  color: #FFFFFF;
+  border-color: var(--color-forest);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(62, 107, 72, 0.3);
 }
 
 .btt-enter-active { transition: opacity 0.3s var(--ease-spring), transform 0.3s var(--ease-spring); }

@@ -78,7 +78,7 @@ onUnmounted(() => {
     <div class="nav-container container">
       <!-- Logo -->
       <a class="nav-logo" href="#hero" @click.prevent="scrollTo('#hero')">
-        <span class="logo-icon">&gt;_</span>
+        <span class="logo-icon">🌿</span>
         <span class="logo-text">var</span>
       </a>
 
@@ -150,10 +150,10 @@ onUnmounted(() => {
   height: var(--nav-height);
   display: flex;
   align-items: center;
-  background: rgba(13, 17, 16, 0.82);
+  background: rgba(248, 247, 242, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(45, 65, 52, 0.08);
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
               height 0.24s var(--ease),
               background-color 0.24s var(--ease),
@@ -170,15 +170,15 @@ onUnmounted(() => {
 /* 滚动紧凑态 */
 .navbar.scrolled {
   height: 56px;
-  background: rgba(13, 17, 16, 0.94);
-  border-bottom: 1px solid rgba(230, 197, 148, 0.16);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid rgba(45, 65, 52, 0.1);
+  box-shadow: 0 4px 20px -2px rgba(45, 65, 52, 0.08);
 }
 
 .navbar.scrolled .logo-icon {
   width: 28px;
   height: 28px;
-  font-size: 0.76rem;
+  font-size: 0.9rem;
 }
 
 .navbar.scrolled .logo-text {
@@ -207,7 +207,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-weight: 600;
   font-size: 1.2rem;
   color: var(--color-ink);
@@ -221,30 +221,27 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-amber);
-  color: #101412;
-  border-radius: var(--radius-xs);
-  font-size: 0.82rem;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 8px rgba(230, 197, 148, 0.3);
+  background: var(--color-surface-sunken);
+  color: var(--color-forest);
+  border-radius: var(--radius-sm);
+  font-size: 1.1rem;
+  box-shadow: 0 2px 8px rgba(45, 65, 52, 0.08);
   transition: transform var(--transition-spring), background-color var(--transition-spring);
 }
 
 .nav-logo:hover .logo-icon {
   transform: rotate(-6deg) scale(1.08);
-  background: var(--color-amber-light);
 }
 
 .nav-logo:focus-visible {
-  outline: 2px solid var(--color-amber);
+  outline: 2px solid var(--color-forest);
   outline-offset: 4px;
 }
 
 .logo-text {
-  letter-spacing: 0.04em;
-  font-family: var(--font-serif);
-  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-family: var(--font-sans);
+  font-weight: 700;
   font-size: 1.25rem;
   color: var(--color-ink);
 }
@@ -252,47 +249,47 @@ onUnmounted(() => {
 /* Desktop Links */
 .nav-links {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
 }
 
 .nav-link {
   padding: 6px 14px;
   font-size: 0.9rem;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--color-text-light);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-full);
   transition: color var(--transition), background-color var(--transition);
   letter-spacing: 0.01em;
   position: relative;
 }
 
 .nav-link:focus-visible {
-  outline: 2px solid var(--color-amber);
+  outline: 2px solid var(--color-forest);
   outline-offset: 2px;
 }
 
 .nav-link:hover {
-  color: var(--color-ink);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-forest);
+  background: rgba(62, 107, 72, 0.06);
 }
 
 /* 活跃链接指示 */
 .nav-link.active {
-  color: var(--color-amber);
-  font-weight: 500;
-  background: rgba(230, 197, 148, 0.08);
+  color: var(--color-forest);
+  font-weight: 600;
+  background: rgba(62, 107, 72, 0.09);
 }
 
 .nav-link.active::after {
   content: '';
   position: absolute;
-  bottom: 0;
+  bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
-  width: 14px;
+  width: 12px;
   height: 2px;
-  background: var(--color-amber);
+  background: var(--color-forest);
   border-radius: var(--radius-full);
 }
 
@@ -302,13 +299,13 @@ onUnmounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 2.5px;
   background: transparent;
 }
 
 .scroll-progress-bar {
   height: 100%;
-  background: var(--color-amber);
+  background: var(--color-forest);
   transition: width 0.08s linear;
 }
 
@@ -325,7 +322,7 @@ onUnmounted(() => {
 }
 
 .mobile-toggle:focus-visible {
-  outline: 2px solid var(--color-amber);
+  outline: 2px solid var(--color-forest);
   outline-offset: 2px;
 }
 
@@ -355,11 +352,11 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-sm);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  box-shadow: 0 2px 8px rgba(45, 65, 52, 0.04);
   color: var(--color-ink);
   font-size: 0.78rem;
   font-family: var(--font-mono);
@@ -368,15 +365,15 @@ onUnmounted(() => {
 }
 
 .nav-live-pill:focus-visible {
-  outline: 2px solid var(--color-amber);
+  outline: 2px solid var(--color-forest);
   outline-offset: 2px;
 }
 
 .nav-live-pill:hover {
-  border-color: rgba(230, 197, 148, 0.4);
-  background: rgba(230, 197, 148, 0.08);
+  border-color: var(--color-forest);
+  background: #FFFFFF;
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 14px rgba(45, 65, 52, 0.08);
 }
 
 .live-pulse-dot {
@@ -417,7 +414,7 @@ onUnmounted(() => {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(13, 17, 16, 0.98);
+  background: rgba(248, 247, 242, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   flex-direction: column;
@@ -435,23 +432,24 @@ onUnmounted(() => {
 }
 
 .mobile-link {
-  font-family: var(--font-serif);
-  font-size: 1.4rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 1.35rem;
   color: var(--color-ink);
   padding: 10px 24px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   text-decoration: none;
   transition: color var(--transition), background-color var(--transition);
 }
 
 .mobile-link:focus-visible {
-  outline: 2px solid var(--color-amber);
+  outline: 2px solid var(--color-forest);
   outline-offset: 2px;
 }
 
 .mobile-link:hover {
-  color: var(--color-amber);
-  background: rgba(230, 197, 148, 0.08);
+  color: var(--color-forest);
+  background: rgba(62, 107, 72, 0.08);
 }
 
 @media (max-width: 768px) {

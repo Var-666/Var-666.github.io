@@ -1,98 +1,97 @@
 /* ======================================================
-   全局样式 — 暗调琥珀工坊与声音画廊 (Atelier & Dark Amber Gallery)
-   遵循 frontend-design 设计规范
+   全局样式 — 林间晨光与随性工作室 (Sunlit Woodland & Breeze Studio)
+   遵循 frontend-design 设计规范 · 强调自然、呼吸感、去严肃化
    ====================================================== */
 
 /* ── CSS 自定义属性 ── */
 :root {
-  /* 核心色彩 — 曜岩石板与暖金琥珀体系 */
-  --color-base: #0D1110;           /* 玄曜岩底色 */
+  /* 核心色彩 — 日光纸质底色与鲜活植物墨水 */
+  --color-base: #F8F7F2;           /* 柔和温润的晨光日光纸质底色 */
   --color-bg: var(--color-base);
-  --color-bg-alt: #121715;         /* 次级青石深色 */
-  --color-surface: #161D19;        /* 青石浮台卡片面 */
-  --color-surface-hover: #1C2420;
-  --color-surface-sunken: #090C0B; /* 内凹暗池底色 */
+  --color-bg-alt: #F1EFEA;         /* 次级暖纸底色 */
+  --color-surface: #FFFFFF;        /* 温润纯净的卵石白卡片 */
+  --color-surface-hover: #FAFCF9;  /* 悬停时透出极浅草木清白 */
+  --color-surface-sunken: #EEF2EB; /* 茶沫淡绿内凹底色 (标签/输入框) */
 
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-subtle: rgba(255, 255, 255, 0.04);
-  --color-border-hover: rgba(230, 197, 148, 0.35);
-  --color-grout: rgba(255, 255, 255, 0.08);
-  --color-grout-subtle: rgba(255, 255, 255, 0.04);
-  --color-grout-dark: rgba(255, 255, 255, 0.12);
+  --color-border: rgba(45, 65, 52, 0.08);
+  --color-border-subtle: rgba(45, 65, 52, 0.05);
+  --color-border-hover: rgba(62, 107, 72, 0.35);
+  --color-grout: rgba(45, 65, 52, 0.08);
+  --color-grout-subtle: rgba(45, 65, 52, 0.04);
+  --color-grout-dark: rgba(45, 65, 52, 0.12);
 
-  --color-ink: #F5F2EB;            /* 象牙白，高清晰度主文本 */
+  --color-ink: #243329;            /* 松针墨绿，高清晰、自然不刺眼 */
   --color-text: var(--color-ink);
-  --color-text-light: #A2ADA6;     /* 雾松浅灰，次级正文 */
-  --color-text-lighter: #68746E;   /* 石刻暗灰，辅助说明 */
+  --color-text-light: #5A6F62;     /* 雾松苔灰，呼吸感正文 */
+  --color-text-lighter: #889A8E;   /* 芦苇浅灰，辅助说明与元数据 */
 
-  /* 暖金琥珀 (主强调色 / 触控光芒) */
-  --color-amber: #E6C594;
-  --color-amber-light: #F3DFC0;
-  --color-amber-dark: #B8935D;
-  --color-amber-glow: rgba(230, 197, 148, 0.22);
-  --color-amber-glow-strong: rgba(230, 197, 148, 0.45);
-  --color-accent: var(--color-amber);
-  --color-accent-light: var(--color-amber-light);
-  --color-accent-dark: var(--color-amber-dark);
-  --color-accent-glow: var(--color-amber-glow);
-  --color-accent-glow-strong: var(--color-amber-glow-strong);
-  --color-accent-soft: rgba(230, 197, 148, 0.08);
+  /* 鲜活草木绿 (主强调色 / 自然生机) */
+  --color-forest: #3E6B48;
+  --color-forest-light: #54875F;
+  --color-forest-dark: #2B4E33;
+  --color-forest-glow: rgba(62, 107, 72, 0.18);
+  --color-forest-glow-strong: rgba(62, 107, 72, 0.35);
+  --color-accent: var(--color-forest);
+  --color-accent-light: var(--color-forest-light);
+  --color-accent-dark: var(--color-forest-dark);
+  --color-accent-glow: var(--color-forest-glow);
+  --color-accent-glow-strong: var(--color-forest-glow-strong);
+  --color-accent-soft: rgba(62, 107, 72, 0.08);
 
-  /* 冷泉玉绿 (声学波形 / 活跃信号) */
-  --color-celadon: #4E8773;
-  --color-celadon-light: #64A38C;
-  --color-celadon-dark: #356353;
-  --color-celadon-glow: rgba(78, 135, 115, 0.3);
-  --color-glaze-celadon: var(--color-celadon);
-  --color-glaze-celadon-light: var(--color-celadon-light);
-  --color-glaze-celadon-dark: var(--color-celadon-dark);
+  /* 暖日光斑与晨光琥珀 (暖色辅助 / 趣味细节) */
+  --color-sunlit: #D99B4B;
+  --color-sunlit-light: #F4C47F;
+  --color-sunlit-dark: #B87E32;
+  --color-sunlit-glow: rgba(217, 155, 75, 0.25);
+  --color-amber: var(--color-sunlit);
+  --color-amber-light: var(--color-sunlit-light);
+  --color-amber-dark: var(--color-sunlit-dark);
 
-  /* 陶土赭红 (红便帽 / 警示活力) */
-  --color-terracotta: #C25B34;
-  --color-warm: var(--color-amber);
-  --color-warm-light: var(--color-amber-light);
+  /* 浆果珊瑚红 (标志性红便帽点缀) */
+  --color-coral: #C85A48;
+  --color-terracotta: var(--color-coral);
 
-  /* 深色兼容变量 */
-  --color-bg-dark: #080B0A;
-  --color-bg-dark-alt: #101413;
-  --color-slate-surface: #161D19;
-  --color-slate-border: rgba(255, 255, 255, 0.08);
-  --color-text-inv: #F5F2EB;
-  --color-text-inv-light: rgba(245, 242, 235, 0.65);
+  /* 深色场景兼容变量 (用于小木屋与局部暗调视窗) */
+  --color-bg-dark: #1A261E;        /* 与小木屋森林背景无缝统一 */
+  --color-bg-dark-alt: #141F18;
+  --color-slate-surface: #223228;
+  --color-slate-border: rgba(255, 255, 255, 0.1);
+  --color-text-inv: #F8F7F2;
+  --color-text-inv-light: rgba(248, 247, 242, 0.7);
 
-  /* 物理浮台质感 (Plinth & Chiseled Groove) */
-  --tile-bg: #151B18;
-  --tile-border: rgba(255, 255, 255, 0.08);
-  --tile-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px rgba(0, 0, 0, 0.4);
-  --tile-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(230, 197, 148, 0.28);
+  /* 自然卵石微浮台质感 */
+  --tile-bg: #FFFFFF;
+  --tile-border: rgba(45, 65, 52, 0.08);
+  --tile-shadow: 0 4px 20px -2px rgba(45, 65, 52, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02);
+  --tile-shadow-hover: 0 12px 32px -4px rgba(45, 65, 52, 0.12), 0 0 0 1px rgba(62, 107, 72, 0.25);
 
   /* 兼容 glass-card */
-  --glass-bg: rgba(21, 27, 24, 0.85);
-  --glass-bg-hover: rgba(28, 36, 32, 0.95);
-  --glass-bg-dark: #151B18;
-  --glass-bg-dark-hover: #1C2420;
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-dark: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-bg-hover: rgba(255, 255, 255, 0.95);
+  --glass-bg-dark: #223228;
+  --glass-bg-dark-hover: #2B3D32;
+  --glass-border: rgba(45, 65, 52, 0.08);
+  --glass-border-dark: rgba(255, 255, 255, 0.1);
   --glass-shadow: var(--tile-shadow);
   --glass-shadow-hover: var(--tile-shadow-hover);
 
-  /* 几何圆角 */
-  --radius-lg: 16px;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --radius-xs: 4px;
+  /* 圆角 */
+  --radius-lg: 20px;
+  --radius: 14px;
+  --radius-sm: 9px;
+  --radius-xs: 5px;
   --radius-full: 9999px;
 
   /* 字体族系 */
   --font-serif: 'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'STSong', serif;
-  --font-sans: 'Noto Sans SC', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
 
   /* 边框与间距 */
-  --border-light: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.14);
+  --border-light: rgba(45, 65, 52, 0.08);
+  --border-medium: rgba(45, 65, 52, 0.15);
   --shadow-card: var(--tile-shadow);
-  --card-border: rgba(255, 255, 255, 0.08);
+  --card-border: rgba(45, 65, 52, 0.08);
 
   /* 动效缓冲 */
   --ease: cubic-bezier(0.25, 1, 0.5, 1);
@@ -103,7 +102,7 @@
   --transition-spring: 0.36s var(--ease-spring);
 
   /* 页面尺度 */
-  --section-padding: 110px 0;
+  --section-padding: 100px 0;
   --container-width: 1120px;
   --nav-height: 68px;
 }
@@ -121,7 +120,7 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 button, a, input, select, textarea {
@@ -134,7 +133,7 @@ body {
   font-weight: 400;
   color: var(--color-text);
   background-color: var(--color-bg);
-  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(45, 65, 52, 0.04) 1px, transparent 1px);
   background-size: 28px 28px;
   line-height: 1.7;
   overflow-x: hidden;
@@ -258,25 +257,25 @@ ul, ol {
   border-color: var(--color-border-hover);
 }
 
-/* 标本微芯片/标签 */
+/* 自然风小标签 */
 .tile-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 11px;
+  padding: 4px 12px;
   font-size: 0.8rem;
   font-weight: 500;
-  border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--border-light);
   color: var(--color-text-light);
 }
 
 /* ── 滚动渐入动画 ── */
 .reveal {
   opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+  transform: translateY(24px);
+  transition: opacity 0.75s var(--ease), transform 0.75s var(--ease);
 }
 
 .reveal.revealed {
@@ -286,8 +285,8 @@ ul, ol {
 
 .reveal-left {
   opacity: 0;
-  transform: translateX(-36px);
-  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+  transform: translateX(-32px);
+  transition: opacity 0.75s var(--ease), transform 0.75s var(--ease);
 }
 
 .reveal-left.revealed {
@@ -297,8 +296,8 @@ ul, ol {
 
 .reveal-right {
   opacity: 0;
-  transform: translateX(36px);
-  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+  transform: translateX(32px);
+  transition: opacity 0.75s var(--ease), transform 0.75s var(--ease);
 }
 
 .reveal-right.revealed {
@@ -308,8 +307,8 @@ ul, ol {
 
 .reveal-scale {
   opacity: 0;
-  transform: scale(0.92);
-  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+  transform: scale(0.94);
+  transition: opacity 0.75s var(--ease), transform 0.75s var(--ease);
 }
 
 .reveal-scale.revealed {
@@ -325,7 +324,7 @@ ul, ol {
 .delay-5 { transition-delay: 0.4s; }
 .delay-6 { transition-delay: 0.48s; }
 
-/* ── 艺术主按键 (Amber Gold Button) ── */
+/* ── 自然森林主按键 (Fresh Forest Button) ── */
 .tile-btn-primary,
 .glow-btn {
   display: inline-flex;
@@ -335,36 +334,36 @@ ul, ol {
   padding: 12px 26px;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #101412;
-  background: var(--color-amber);
-  border: 1px solid var(--color-amber-light);
-  border-radius: var(--radius-sm);
+  color: #FFFFFF;
+  background: var(--color-forest);
+  border: 1px solid var(--color-forest-light);
+  border-radius: var(--radius-full);
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 4px 16px rgba(230, 197, 148, 0.25);
+  box-shadow: 0 4px 14px var(--color-forest-glow);
   transition: background-color var(--transition), transform var(--transition), box-shadow var(--transition), border-color var(--transition);
   letter-spacing: 0.02em;
 }
 
 .tile-btn-primary:focus-visible,
 .glow-btn:focus-visible {
-  outline: 2px solid var(--color-amber);
+  outline: 2px solid var(--color-forest);
   outline-offset: 3px;
 }
 
 .tile-btn-primary:hover,
 .glow-btn:hover {
-  background: var(--color-amber-light);
+  background: var(--color-forest-light);
   transform: translateY(-2px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 8px 24px rgba(230, 197, 148, 0.38);
+  box-shadow: 0 8px 24px var(--color-forest-glow-strong);
 }
 
 .tile-btn-primary:active,
 .glow-btn:active {
   transform: translateY(0);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* 次级浮石按键 */
+/* 次级日光暖白按键 */
 .tile-btn-secondary {
   display: inline-flex;
   align-items: center;
@@ -374,28 +373,28 @@ ul, ol {
   font-size: 0.95rem;
   font-weight: 500;
   color: var(--color-ink);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-sm);
+  background: #FFFFFF;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: 0 2px 8px rgba(45, 65, 52, 0.05);
   transition: background-color var(--transition), transform var(--transition), box-shadow var(--transition), border-color var(--transition), color var(--transition);
 }
 
 .tile-btn-secondary:focus-visible {
-  outline: 2px solid var(--color-amber);
+  outline: 2px solid var(--color-forest);
   outline-offset: 3px;
 }
 
 .tile-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(230, 197, 148, 0.4);
-  color: var(--color-amber);
+  background: #FFFFFF;
+  border-color: var(--color-forest);
+  color: var(--color-forest);
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 18px rgba(45, 65, 52, 0.1);
 }
 
-/* ── 艺术雕纹输入框 (Inset Stone Inputs) ── */
+/* ── 自然圆润输入框 (Sunlit Soft Inputs) ── */
 .glow-input,
 .tile-input {
   width: 100%;
@@ -403,28 +402,28 @@ ul, ol {
   font-size: 0.95rem;
   font-family: var(--font-sans);
   color: var(--color-text);
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #FFFFFF;
+  border: 1px solid var(--border-medium);
   border-radius: var(--radius-sm);
   outline: none;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 3px rgba(45, 65, 52, 0.04);
   transition: border-color var(--transition), background-color var(--transition), box-shadow var(--transition);
 }
 
 .glow-input::placeholder,
 .tile-input::placeholder {
-  color: rgba(245, 242, 235, 0.3);
+  color: var(--color-text-lighter);
 }
 
 .glow-input:focus,
 .tile-input:focus,
 .glow-input:focus-visible,
 .tile-input:focus-visible {
-  border-color: var(--color-amber);
-  background: rgba(0, 0, 0, 0.4);
+  border-color: var(--color-forest);
+  background: #FFFFFF;
   box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.35),
-    0 0 0 3px rgba(230, 197, 148, 0.22);
+    inset 0 1px 3px rgba(45, 65, 52, 0.04),
+    0 0 0 3px var(--color-forest-glow);
 }
 
 

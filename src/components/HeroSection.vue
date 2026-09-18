@@ -9,9 +9,10 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 const { init: initParticles } = useParticles()
 
 const mottos = [
-  '以代码编织创意，用设计诠释自然',
-  '探索技术与艺术的交汇之处',
-  '化繁为简，在静谧中聆听秩序',
+  '在阳光与微风里，写下有温度的代码',
+  '保持好奇心，把日常灵感变成有趣的作品',
+  '化繁为简，享受随性自由的造物时光',
+  '放轻松，听首歌，漫步在自然与代码之间',
 ]
 
 const { displayText, start: startTypewriter } = useTypewriter(mottos, 90, 45, 2800)
@@ -95,8 +96,8 @@ function scrollToSection(selector: string) {
     <div class="hero-content" :style="contentStyle">
       <!-- 身份微章 -->
       <div class="hero-chip">
-        <span class="chip-sparkle">✦</span>
-        <span class="chip-text">数字手艺人 · 声音与交互工坊</span>
+        <span class="chip-sparkle">🌿</span>
+        <span class="chip-text">独立开发 · 创意交互 · 随风造物</span>
       </div>
 
       <!-- 签名大字 (交互解码与流体拉伸) -->
@@ -108,28 +109,29 @@ function scrollToSection(selector: string) {
         title="点击触发字形重构"
       >{{ scrambledName || 'var' }}</h1>
 
-      <p class="hero-tagline">以手艺人心态雕琢代码，在秩序与混沌之间构筑有生命力的数字实体</p>
+      <p class="hero-tagline">写写代码，做做设计，喜欢捣鼓自然温润、有生命力的数字小玩意</p>
 
-      <!-- 工坊雕石台箴言 (Artisan's Manifesto Plinth) -->
-      <div class="hero-manifesto-plinth tile-card tilt-shine">
-        <div class="plinth-header">
-          <div class="plinth-brand">
-            <span class="plinth-dot"></span>
-            <span class="plinth-label">造物箴言 · MANIFESTO</span>
+      <!-- 日光随想笺 (Sunlit Note Card) -->
+      <div class="hero-sunlit-note tile-card tilt-shine">
+        <div class="note-header">
+          <div class="note-pin">
+            <span class="pin-leaf">🍃</span>
+            <span class="note-label">晨光便签</span>
           </div>
-          <span class="plinth-sign">var@atelier</span>
+          <span class="note-tag">today's thought</span>
         </div>
-        <div class="plinth-body">
-          <span class="plinth-prompt">§</span>
-          <span class="plinth-text">{{ displayText }}</span>
-          <span class="plinth-cursor">▌</span>
+        <div class="note-body">
+          <span class="note-quote-mark">“</span>
+          <span class="note-text">{{ displayText }}</span>
+          <span class="note-cursor">▌</span>
+          <span class="note-quote-mark">”</span>
         </div>
       </div>
 
       <!-- 行动按键行与声学胶囊 -->
       <div class="hero-actions">
         <button class="tile-btn-primary" @click="scrollToSection('#now')">
-          <span>此时此刻 · 近况</span>
+          <span>看看近况 ☕</span>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
@@ -141,11 +143,11 @@ function scrollToSection(selector: string) {
           class="hero-audio-pill"
           :class="{ active: isAudioPlaying }"
           @click="handleAudioQuickToggle"
-          :aria-label="isAudioPlaying ? '暂停背景音乐' : '开启沉浸背景音乐'"
-          :title="isAudioPlaying ? '暂停背景音乐' : '开启沉浸背景音乐'"
+          :aria-label="isAudioPlaying ? '暂停背景音乐' : '放首歌听'"
+          :title="isAudioPlaying ? '暂停背景音乐' : '放首歌听'"
         >
           <span class="audio-pill-icon">{{ isAudioPlaying ? '🎵' : '🎧' }}</span>
-          <span class="audio-pill-text">{{ isAudioPlaying ? '心流律动中' : '沉浸心流' }}</span>
+          <span class="audio-pill-text">{{ isAudioPlaying ? '旋律流淌中' : '放首歌听' }}</span>
           <span class="audio-wave-mini" :class="{ playing: isAudioPlaying }">
             <i></i><i></i><i></i>
           </span>
@@ -173,7 +175,7 @@ function scrollToSection(selector: string) {
   align-items: center;
   justify-content: center;
   background-color: var(--color-base);
-  background-image: radial-gradient(rgba(230, 197, 148, 0.04) 1.2px, transparent 1.2px);
+  background-image: radial-gradient(rgba(45, 65, 52, 0.04) 1.2px, transparent 1.2px);
   background-size: 32px 32px;
   overflow: hidden;
   border-bottom: 1px solid var(--color-border);
@@ -195,7 +197,7 @@ function scrollToSection(selector: string) {
   transform: translate(-50%, -50%);
   width: 680px;
   height: 420px;
-  background: radial-gradient(circle, rgba(230, 197, 148, 0.08) 0%, rgba(78, 135, 115, 0.04) 45%, transparent 70%);
+  background: radial-gradient(circle, rgba(217, 155, 75, 0.12) 0%, rgba(62, 107, 72, 0.08) 50%, transparent 75%);
   pointer-events: none;
   z-index: 2;
   filter: blur(50px);
@@ -216,40 +218,33 @@ function scrollToSection(selector: string) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(230, 197, 148, 0.2);
-  border-radius: var(--radius-xs);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 6px 16px;
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
+  box-shadow: 0 2px 8px rgba(45, 65, 52, 0.04);
   margin-bottom: 1.6rem;
   opacity: 0;
   animation: fadeInDown 0.7s var(--ease) 0.15s forwards;
 }
 
 .chip-sparkle {
-  color: var(--color-amber);
-  font-size: 0.82rem;
-  animation: pulse-dot 2.5s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.3); opacity: 0.6; }
+  font-size: 0.95rem;
 }
 
 .chip-text {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 500;
   color: var(--color-text-light);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
 /* 签名大字 */
 .hero-name {
-  font-family: var(--font-serif);
-  font-size: clamp(4.2rem, 12vw, 8.2rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: var(--font-sans);
+  font-size: clamp(4.2rem, 12vw, 8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
   line-height: 1;
   margin-bottom: 1.2rem;
   color: var(--color-ink);
@@ -261,9 +256,9 @@ function scrollToSection(selector: string) {
 }
 
 .hero-name:hover {
-  color: var(--color-amber);
+  color: var(--color-forest);
   transform: scale(1.03);
-  text-shadow: 0 0 36px rgba(230, 197, 148, 0.35);
+  text-shadow: 0 0 32px rgba(62, 107, 72, 0.2);
 }
 
 .hero-name:active {
@@ -283,10 +278,10 @@ function scrollToSection(selector: string) {
   animation: fadeInUp 0.8s var(--ease) 0.45s forwards;
 }
 
-/* 工坊雕石台箴言 (Artisan's Manifesto Plinth) */
-.hero-manifesto-plinth {
-  background: var(--tile-bg);
-  border: 1px solid var(--color-border);
+/* 日光随想笺 (Sunlit Note Card) */
+.hero-sunlit-note {
+  background: #FFFFFF;
+  border: 1px solid var(--border-light);
   border-radius: var(--radius);
   box-shadow: var(--tile-shadow);
   max-width: 580px;
@@ -298,73 +293,69 @@ function scrollToSection(selector: string) {
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
 }
 
-.hero-manifesto-plinth:hover {
+.hero-sunlit-note:hover {
   transform: translateY(-2px);
   box-shadow: var(--tile-shadow-hover);
   border-color: var(--color-border-hover);
 }
 
-.plinth-header {
+.note-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px 18px;
+  background: #FAFBF9;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.plinth-brand {
+.note-pin {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 
-.plinth-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-amber);
-  box-shadow: 0 0 6px var(--color-amber);
+.pin-leaf {
+  font-size: 0.95rem;
 }
 
-.plinth-label {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--color-amber);
-  letter-spacing: 0.08em;
+.note-label {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  color: var(--color-forest);
   font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
-.plinth-sign {
+.note-tag {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--color-text-lighter);
 }
 
-.plinth-body {
+.note-body {
   padding: 16px 20px;
-  font-family: var(--font-mono);
-  font-size: 0.98rem;
+  font-family: var(--font-serif);
+  font-size: 1.02rem;
   color: var(--color-ink);
   display: flex;
   align-items: center;
   min-height: 56px;
 }
 
-.plinth-prompt {
-  color: var(--color-amber);
+.note-quote-mark {
+  color: var(--color-forest);
   font-weight: 700;
-  margin-right: 12px;
-  font-size: 1.1rem;
+  margin: 0 4px;
+  font-size: 1.15rem;
 }
 
-.plinth-text {
+.note-text {
   flex: 1;
   letter-spacing: 0.02em;
 }
 
-.plinth-cursor {
-  color: var(--color-amber);
+.note-cursor {
+  color: var(--color-forest);
   animation: blink 1s step-end infinite;
   margin-left: 2px;
 }
@@ -389,33 +380,35 @@ function scrollToSection(selector: string) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
+  padding: 12px 22px;
   font-size: 0.92rem;
   font-weight: 500;
   color: var(--color-ink);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-sm);
+  background: #FFFFFF;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
   cursor: pointer;
-  transition: transform var(--transition), border-color var(--transition), background-color var(--transition), color var(--transition);
+  box-shadow: 0 2px 8px rgba(45, 65, 52, 0.05);
+  transition: transform var(--transition), border-color var(--transition), background-color var(--transition), color var(--transition), box-shadow var(--transition);
 }
 
 .hero-audio-pill:focus-visible {
-  outline: 2px solid var(--color-amber);
+  outline: 2px solid var(--color-forest);
   outline-offset: 3px;
 }
 
 .hero-audio-pill:hover {
-  border-color: rgba(230, 197, 148, 0.4);
-  color: var(--color-amber);
+  border-color: var(--color-forest);
+  color: var(--color-forest);
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 18px rgba(45, 65, 52, 0.1);
 }
 
 .hero-audio-pill.active {
-  border-color: var(--color-amber);
-  background: rgba(230, 197, 148, 0.08);
-  color: var(--color-amber);
+  border-color: var(--color-forest);
+  background: rgba(62, 107, 72, 0.08);
+  color: var(--color-forest);
+  font-weight: 600;
 }
 
 .audio-wave-mini {

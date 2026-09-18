@@ -33,19 +33,19 @@ export function useParticles() {
   const CONNECTION_DISTANCE = 120
   const MOUSE_RADIUS = 150
 
-  // 暗调琥珀与星尘微粒调色盘 (契合暗调玄曜石背景)
+  // 林间微风与日光花粉孢子调色盘 (契合温润米白日光背景)
   const COLORS = [
-    'rgba(230, 197, 148, VAR)', // 暖金琥珀
-    'rgba(243, 223, 192, VAR)', // 浅金香槟
-    'rgba(78, 135, 115, VAR)',  // 冷泉玉绿
-    'rgba(194, 91, 52, VAR)',   // 陶土铜红
-    'rgba(245, 242, 235, VAR)', // 象牙星尘
+    'rgba(62, 107, 72, VAR)',   // 森林树影绿
+    'rgba(217, 155, 75, VAR)',  // 晨光暖金
+    'rgba(120, 163, 132, VAR)', // 嫩芽薄荷
+    'rgba(200, 90, 72, VAR)',   // 浆果珊瑚
+    'rgba(155, 185, 165, VAR)', // 晨雾苍翠
   ]
 
   function createParticle(width: number, height: number): Particle {
-    const baseOpacity = 0.15 + Math.random() * 0.45
+    const baseOpacity = 0.25 + Math.random() * 0.45
     const colorTemplate = COLORS[Math.floor(Math.random() * COLORS.length)]
-    const radius = 1 + Math.random() * 2.5
+    const radius = 1.2 + Math.random() * 2.8
 
     return {
       x: Math.random() * width,
@@ -104,11 +104,11 @@ export function useParticles() {
         const dist = Math.sqrt(dx * dx + dy * dy)
 
         if (dist < CONNECTION_DISTANCE) {
-          const opacity = (1 - dist / CONNECTION_DISTANCE) * 0.08
+          const opacity = (1 - dist / CONNECTION_DISTANCE) * 0.1
           ctx.beginPath()
           ctx.moveTo(particles[i].x, particles[i].y)
           ctx.lineTo(particles[j].x, particles[j].y)
-          ctx.strokeStyle = `rgba(230, 197, 148, ${opacity * 1.2})`
+          ctx.strokeStyle = `rgba(62, 107, 72, ${opacity})`
           ctx.lineWidth = 0.5
           ctx.stroke()
         }

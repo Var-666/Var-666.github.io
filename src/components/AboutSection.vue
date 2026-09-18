@@ -9,7 +9,7 @@ const statsRef = ref<HTMLElement | null>(null)
 const { observeAll } = useScrollReveal()
 const { bind: bindTilt } = useTilt({ max: 8, scale: 1.02, speed: 400 })
 
-// 造物三大柱石
+// 我在意的小事
 interface CraftPillar {
   icon: string
   title: string
@@ -19,22 +19,22 @@ interface CraftPillar {
 
 const pillars: CraftPillar[] = [
   {
-    icon: '🏛️',
-    title: '代码的骨骼秩序',
-    subtitle: 'Architecture & Purity',
-    desc: '从状态流转到组件管线，追求清晰严密的类型与自洽秩序，如同稳固的建筑梁柱。',
+    icon: '🌿',
+    title: '呼吸感与留白',
+    subtitle: 'Breathing Space & Harmony',
+    desc: '拒绝紧绷与过度装饰，让文字、间距与色彩像自然树影一样舒展，阅读与浏览都毫不费力。',
   },
   {
-    icon: '✨',
-    title: '温润自然的交互触感',
-    subtitle: 'Haptics & Spring Dynamics',
-    desc: '赋予每个按键、滑块与视差微动效以真实物理阻尼，消除冰冷机械感，回应每一次触碰。',
+    icon: '🎈',
+    title: '生动轻盈的微动效',
+    subtitle: 'Playful Motion & Delight',
+    desc: '轻微弹跳、物理阻尼与平滑过渡，让每次点击和滑动都充满像真实触碰小物件一般的乐趣。',
   },
   {
-    icon: '🎻',
-    title: '声学与视觉的通感',
-    subtitle: 'Acoustic Synesthesia',
-    desc: '借助 Web Audio API 捕捉频域脉冲，让光影与波形随旋律起伏，唤醒沉浸感官共鸣。',
+    icon: '☕',
+    title: '温度与人情味',
+    subtitle: 'Warmth & Human Touch',
+    desc: '技术代码虽然冷静，但用心做出的产品能够传递善意与陪伴，让人感到放松和被尊重。',
   },
 ]
 
@@ -49,9 +49,9 @@ interface StatItem {
 }
 
 const stats = ref<StatItem[]>([
-  { end: 3, suffix: '+', label: '年代码修行', current: '0+' },
-  { end: 365, suffix: '+', label: '持续探索天数', current: '0+' },
-  { end: 100, suffix: '%', label: '造物与美学热情', current: '0%' },
+  { end: 3, suffix: '+', label: '年写代码与设计', current: '0+' },
+  { end: 365, suffix: '+', label: '天保持日常探索', current: '0+' },
+  { end: 100, suffix: '%', label: '对好玩事物的热爱', current: '0%' },
 ])
 
 let countersStarted = false
@@ -111,8 +111,8 @@ onMounted(async () => {
   <section id="about" class="section" ref="sectionRef">
     <div class="container">
       <div class="section-header reveal">
-        <h2 class="section-title">关于与手艺</h2>
-        <p class="section-subtitle">在代码与设计的十字路口，以手艺人心态雕琢温润而有分量的数字实体</p>
+        <h2 class="section-title">关于我与日常</h2>
+        <p class="section-subtitle">写写代码，看看世界，用平和好奇的心态做出让自己和别人都感到舒服的体验</p>
       </div>
 
       <div class="about-grid">
@@ -122,10 +122,10 @@ onMounted(async () => {
             <div class="niche-ambient-halo" aria-hidden="true"></div>
             <div class="avatar-portrait-wrap">
               <svg viewBox="0 0 48 48" width="100%" height="100%" class="avatar-svg">
-                <circle cx="24" cy="24" r="24" fill="#1C2621" />
-                <path d="M10 44 C10 35, 17 33, 24 33 C31 33, 38 35, 38 44 Z" fill="#131B17" />
-                <path d="M14 44 C14 36, 18 34, 24 34 C30 34, 34 36, 34 44 Z" fill="#2E4237" />
-                <path d="M22 34 L24 37 L26 34 Z" fill="#E6C594" />
+                <circle cx="24" cy="24" r="24" fill="#4A7356" />
+                <path d="M10 44 C10 35, 17 33, 24 33 C31 33, 38 35, 38 44 Z" fill="#2D4634" />
+                <path d="M14 44 C14 36, 18 34, 24 34 C30 34, 34 36, 34 44 Z" fill="#588157" />
+                <path d="M22 34 L24 37 L26 34 Z" fill="#FFFFFF" />
                 <circle cx="24" cy="24" r="10.5" fill="#ffd3b6" />
                 <path d="M15 21 Q19 25 24 20 Q29 25 33 21 Q30 14 24 14 Q18 14 15 21 Z" fill="#2E1C14" />
                 <circle cx="20.5" cy="23.5" r="1.5" fill="#131716" />
@@ -134,14 +134,14 @@ onMounted(async () => {
                 <ellipse cx="29.5" cy="26.5" rx="2.2" ry="1.2" fill="#ff7979" opacity="0.65" />
                 <path d="M22 26.5 Q24 28.5 26 26.5" stroke="#b33939" stroke-width="1.2" stroke-linecap="round" fill="none" />
                 <!-- 标志性深红便帽 (Red Beanie) -->
-                <path d="M12 18 C12 8, 36 8, 36 18 Z" fill="#C25B34" />
-                <rect x="11" y="16" width="26" height="4.5" rx="2.2" fill="#9E4322" />
+                <path d="M12 18 C12 8, 36 8, 36 18 Z" fill="#C85A48" />
+                <rect x="11" y="16" width="26" height="4.5" rx="2.2" fill="#A84434" />
               </svg>
             </div>
 
             <div class="avatar-foot-badge">
               <span class="foot-dot"></span>
-              <span class="foot-text">数字手艺人 · 驻足杭州</span>
+              <span class="foot-text">生活在杭州 · 喜欢晴天与音乐</span>
             </div>
           </div>
         </div>
@@ -150,15 +150,15 @@ onMounted(async () => {
         <div class="about-info-col reveal-right">
           <div ref="cardRef" class="tile-card about-card tilt-shine">
             <div class="about-card-header">
-              <span class="card-kicker">造物手记 · ATELIER NOTE</span>
+              <span class="card-kicker">🌱 关于 · ABOUT ME</span>
               <h3 class="about-heading">你好，我是 var</h3>
             </div>
 
             <p class="about-bio">
-              一名深耕于全栈架构、交互美学与声音可视化的独立创造者。我相信优秀的数字造物应当如同打磨的器物一般——拥有清晰自洽的骨骼结构、温润自然的交互触感与诚实的生命力。
+              一名热爱前端交互与创意的开发者。比起严肃沉闷的教条和繁琐架构，我更喜欢把日常里的灵感写成充满自然呼吸感的小玩意——干净的代码、舒服的配色与顺手好用的微交互。
             </p>
 
-            <!-- 三大造物柱石交互微视窗 -->
+            <!-- 三大关注点交互微视窗 -->
             <div class="craft-pillars-wrap">
               <div class="pillars-nav" role="tablist">
                 <button
@@ -216,8 +216,8 @@ onMounted(async () => {
 }
 
 .avatar-ceramic-niche {
-  background: var(--tile-bg);
-  border: 1px solid var(--color-border);
+  background: #FFFFFF;
+  border: 1px solid var(--border-light);
   border-radius: 140px 140px var(--radius) var(--radius);
   box-shadow: var(--tile-shadow);
   padding: 38px 24px 28px;
@@ -244,7 +244,7 @@ onMounted(async () => {
   transform: translate(-50%, -50%);
   width: 220px;
   height: 220px;
-  background: radial-gradient(circle, rgba(230, 197, 148, 0.16) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(62, 107, 72, 0.12) 0%, transparent 70%);
   filter: blur(30px);
   pointer-events: none;
 }
@@ -254,8 +254,8 @@ onMounted(async () => {
   height: 170px;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4), 0 8px 28px rgba(0, 0, 0, 0.5);
-  border: 3px solid rgba(230, 197, 148, 0.25);
+  box-shadow: 0 8px 24px rgba(45, 65, 52, 0.12);
+  border: 3px solid rgba(62, 107, 72, 0.2);
   margin-bottom: 1.5rem;
   position: relative;
   z-index: 2;
@@ -264,17 +264,17 @@ onMounted(async () => {
 
 .avatar-ceramic-niche:hover .avatar-portrait-wrap {
   transform: scale(1.04);
-  border-color: var(--color-amber);
+  border-color: var(--color-forest);
 }
 
 .avatar-foot-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-xs);
+  padding: 6px 16px;
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
   font-size: 0.78rem;
   color: var(--color-text-light);
   font-weight: 500;
@@ -285,9 +285,9 @@ onMounted(async () => {
 .foot-dot {
   width: 6px;
   height: 6px;
-  background: var(--color-amber);
+  background: var(--color-forest);
   border-radius: 50%;
-  box-shadow: 0 0 6px var(--color-amber);
+  box-shadow: 0 0 6px var(--color-forest);
 }
 
 /* 右侧信息瓷砖卡片 */
@@ -301,6 +301,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  background: #FFFFFF;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--tile-shadow);
 }
 
 .about-card-header {
@@ -309,18 +312,18 @@ onMounted(async () => {
 
 .card-kicker {
   display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
   font-weight: 600;
-  color: var(--color-amber);
-  letter-spacing: 0.08em;
+  color: var(--color-forest);
+  letter-spacing: 0.04em;
   margin-bottom: 0.4rem;
 }
 
 .about-heading {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 1.85rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-ink);
   letter-spacing: -0.01em;
 }
@@ -333,7 +336,7 @@ onMounted(async () => {
   font-weight: 400;
 }
 
-/* 三大造物柱石交互微视窗 */
+/* 三大关注点交互微视窗 */
 .craft-pillars-wrap {
   margin: 1.2rem 0 1.5rem;
 }
@@ -349,32 +352,33 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 9px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
   color: var(--color-text-light);
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 500;
   transition: border-color var(--transition), background-color var(--transition), color var(--transition), transform var(--transition);
 }
 
 .pillar-tab:focus-visible {
-  outline: 2px solid var(--color-amber);
+  outline: 2px solid var(--color-forest);
   outline-offset: 2px;
 }
 
 .pillar-tab:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-ink);
+  background: #FFFFFF;
+  border-color: var(--color-forest);
+  color: var(--color-forest);
 }
 
 .pillar-tab.active {
-  border-color: var(--color-amber);
-  background: rgba(230, 197, 148, 0.1);
-  color: var(--color-amber);
-  box-shadow: inset 0 1px 0 rgba(230, 197, 148, 0.2);
+  border-color: var(--color-forest);
+  background: var(--color-forest);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px var(--color-forest-glow);
 }
 
 .pillar-tab-icon {
@@ -382,20 +386,21 @@ onMounted(async () => {
 }
 
 .pillar-detail-box {
-  padding: 16px 20px;
-  background: rgba(0, 0, 0, 0.32);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 18px 22px;
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 3px rgba(45, 65, 52, 0.04);
 }
 
 .pillar-subtitle {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--color-amber);
-  letter-spacing: 0.06em;
+  font-size: 0.74rem;
+  color: var(--color-forest);
+  letter-spacing: 0.04em;
   margin-bottom: 4px;
   display: block;
+  font-weight: 600;
 }
 
 .pillar-desc {
@@ -411,12 +416,12 @@ onMounted(async () => {
   gap: 16px;
   margin-top: 1.6rem;
   padding-top: 1.6rem;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--border-light);
 }
 
 .stat-tile {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 16px 14px;
   display: flex;
@@ -424,28 +429,28 @@ onMounted(async () => {
   align-items: center;
   text-align: center;
   gap: 4px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   transition: transform var(--transition), border-color var(--transition), background-color var(--transition);
 }
 
 .stat-tile:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--color-border-hover);
+  background: #FFFFFF;
+  border-color: var(--color-forest);
+  box-shadow: 0 6px 16px rgba(45, 65, 52, 0.06);
 }
 
 .stat-number {
   font-family: var(--font-mono);
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--color-amber);
+  color: var(--color-forest);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
   transition: color var(--transition);
 }
 
 .stat-tile:hover .stat-number {
-  color: var(--color-amber-light);
+  color: var(--color-forest-light);
 }
 
 .stat-label {
