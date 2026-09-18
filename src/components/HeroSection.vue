@@ -83,6 +83,10 @@ onUnmounted(() => {
 function scrollToAbout() {
   document.querySelector('#about')?.scrollIntoView({ behavior: 'smooth' })
 }
+
+function scrollToSection(selector: string) {
+  document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth' })
+}
 </script>
 
 <template>
@@ -90,61 +94,59 @@ function scrollToAbout() {
     <!-- 粒子画布 -->
     <canvas ref="canvasRef" class="hero-canvas"></canvas>
 
-    <!-- 渐变叠加层 -->
-    <div class="hero-overlay"></div>
-
-    <!-- 视差浮动装饰元素 -->
-    <div class="hero-floats">
-      <div class="float-el float-1" :style="float1Style"></div>
-      <div class="float-el float-2" :style="float2Style"></div>
-      <div class="float-el float-3" :style="float3Style"></div>
-      <div class="float-el float-4" :style="float4Style"></div>
-      <div class="float-el float-5" :style="float1Style"></div>
-    </div>
-
-    <!-- 装饰同心圆 (视差层) -->
-    <div class="hero-ornament" :style="ornamentStyle">
-      <svg width="70" height="70" viewBox="0 0 70 70" fill="none">
-        <circle cx="35" cy="35" r="33" stroke="rgba(154,171,139,0.25)" stroke-width="0.8" stroke-dasharray="4 6" />
-        <circle cx="35" cy="35" r="22" stroke="rgba(154,171,139,0.4)" stroke-width="0.8" />
-        <circle cx="35" cy="35" r="4" fill="rgba(154,171,139,0.7)" />
-      </svg>
-    </div>
-
-    <!-- 主要内容 (视差层) -->
+    <!-- 主要内容 (微视差层) -->
     <div class="hero-content" :style="contentStyle">
-      <div class="hero-tag">
-        <span class="tag-dot"></span>
-        <span>Full-Stack Developer</span>
+      <!-- 身份徽章 -->
+      <div class="hero-chip">
+        <span class="chip-dot"></span>
+        <span class="chip-text">全栈创造者与数字手艺人</span>
       </div>
 
+      <!-- 签名大字 (交互解码) -->
       <h1
         class="hero-name"
         @mouseenter="onNameEnter"
         @mouseleave="onNameLeave"
       >{{ scrambledName || 'var' }}</h1>
 
-      <p class="hero-title">创意开发者 · 设计师</p>
+      <p class="hero-tagline">以手艺人心态雕琢代码，构建沉静而富有生命力的实体数字体验</p>
 
-      <div class="hero-typewriter">
-        <span class="typewriter-prefix">~ </span>
-        <span class="typewriter-text">{{ displayText }}</span>
-        <span class="typewriter-cursor">▌</span>
+      <!-- 瓷砖终端打字机 -->
+      <div class="hero-terminal-tile">
+        <div class="terminal-bar">
+          <div class="terminal-dots">
+            <span class="dot dot-close"></span>
+            <span class="dot dot-min"></span>
+            <span class="dot dot-expand"></span>
+          </div>
+          <span class="terminal-title">var@craft-studio ~ motto</span>
+        </div>
+        <div class="terminal-body">
+          <span class="terminal-prompt">&gt;_</span>
+          <span class="terminal-text">{{ displayText }}</span>
+          <span class="terminal-cursor">▌</span>
+        </div>
+      </div>
+
+      <!-- 行动按键行 -->
+      <div class="hero-actions">
+        <button class="tile-btn-primary" @click="scrollToSection('#now')">
+          <span>此时此刻 · 近况</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </button>
+        <button class="tile-btn-secondary" @click="scrollToSection('#cabin')">
+          <span>漫步小木屋 🌲</span>
+        </button>
       </div>
     </div>
 
-    <!-- 波浪分隔过渡 -->
-    <div class="hero-wave">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 72" preserveAspectRatio="none">
-        <path d="M0,36 C240,72 480,0 720,36 C960,72 1200,0 1440,36 L1440,72 L0,72 Z" fill="#F5F0EB"/>
-      </svg>
-    </div>
-
-    <!-- 滚动引导 -->
-    <button class="scroll-indicator" @click="scrollToAbout" aria-label="向下滚动">
+    <!-- 底部滚动引导 -->
+    <button class="scroll-indicator" @click="scrollToAbout" aria-label="向下探索">
       <span class="scroll-text">向下探索</span>
       <span class="scroll-arrow">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 5v14M5 12l7 7 7-7" />
         </svg>
       </span>
@@ -159,8 +161,12 @@ function scrollToAbout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #1a1a2e 0%, #1e1e1e 40%, #2a2a2a 100%);
+  background-color: var(--color-base);
+  background-image: radial-gradient(var(--color-grout) 1.2px, transparent 1.2px);
+  background-size: 32px 32px;
   overflow: hidden;
+  border-bottom: 1px solid var(--color-grout);
+  padding: 100px 24px 80px;
 }
 
 .hero-canvas {
@@ -170,196 +176,161 @@ function scrollToAbout() {
   pointer-events: none;
 }
 
-.hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at center, transparent 0%, rgba(30, 30, 30, 0.6) 100%);
-  z-index: 2;
-  pointer-events: none;
-}
-
-.hero-floats {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.float-el {
-  position: absolute;
-  border-radius: 50%;
-  right: 12%;
-  width: 80px;
-  height: 80px;
-  border: 1px solid rgba(154, 171, 139, 0.08);
-}
-
-.float-3 {
-  bottom: 32%;
-  left: 18%;
-  width: 45px;
-  height: 45px;
-  border: 1px solid rgba(196, 168, 130, 0.1);
-}
-
-.float-4 {
-  bottom: 18%;
-  right: 22%;
-  width: 5px;
-  height: 5px;
-  background: rgba(196, 168, 130, 0.5);
-  box-shadow: 0 0 10px rgba(196, 168, 130, 0.3);
-}
-
-.float-5 {
-  top: 55%;
-  left: 75%;
-  width: 100px;
-  height: 100px;
-  border: 1px solid rgba(124, 140, 110, 0.05);
-  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-  animation: morph 15s ease-in-out infinite;
-}
-
-@keyframes morph {
-  0%, 100% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }
-  25% { border-radius: 58% 42% 75% 25% / 76% 46% 54% 24%; }
-  50% { border-radius: 50% 50% 33% 67% / 55% 27% 73% 45%; }
-  75% { border-radius: 33% 67% 58% 42% / 63% 68% 32% 37%; }
-}
-
-/* 装饰同心圆 */
-.hero-ornament {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  margin-left: -35px;
-  margin-top: -180px;
-  z-index: 3;
-  opacity: 0;
-  animation: fadeInDown 1s ease 0.3s forwards;
-  transition: transform 0.4s ease-out;
-}
-
-.hero-ornament svg {
-  animation: slowSpin 25s linear infinite;
-}
-
-@keyframes slowSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* 内容 */
+/* 内容主区域 */
 .hero-content {
   position: relative;
   z-index: 3;
   text-align: center;
-  color: var(--color-text-inv);
+  max-width: 780px;
+  margin: 0 auto;
   transition: transform 0.4s ease-out;
 }
 
-/* 开发者标签 */
-.hero-tag {
+/* 身份徽章 */
+.hero-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 18px;
-  background: rgba(124, 140, 110, 0.12);
-  border: 1px solid rgba(124, 140, 110, 0.2);
-  border-radius: var(--radius-full);
-  font-size: 0.8rem;
-  color: var(--color-accent-light);
-  letter-spacing: 0.1em;
-  margin-bottom: 2rem;
+  padding: 5px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-grout);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--tile-shadow);
+  margin-bottom: 1.5rem;
   opacity: 0;
-  animation: fadeInDown 0.8s ease 0.2s forwards;
+  animation: fadeInDown 0.7s var(--ease) 0.15s forwards;
 }
 
-.tag-dot {
-  width: 6px;
-  height: 6px;
-  background: #4ade80;
+.chip-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--color-glaze-celadon);
   border-radius: 50%;
-  animation: pulse-dot 2s ease-in-out infinite;
+  animation: pulse-dot 2.5s ease-in-out infinite;
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); }
-  50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
 }
 
-/* 名字 — 悬浮时触发文字解码 */
+.chip-text {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text-light);
+  letter-spacing: 0.04em;
+}
+
+/* 签名大字 */
 .hero-name {
-  font-family: 'Courier New', monospace;
-  font-size: clamp(4rem, 14vw, 11rem);
+  font-family: var(--font-serif);
+  font-size: clamp(3.8rem, 11vw, 7.8rem);
   font-weight: 700;
-  letter-spacing: 0.12em;
-  margin-right: -0.12em;
-  margin-bottom: 0.6rem;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 1.2rem;
+  color: var(--color-ink);
   opacity: 0;
-  background: linear-gradient(135deg, #F5F0EB 0%, #D4C4A8 40%, #9AAB8B 70%, #F5F0EB 100%);
-  background-size: 300% 300%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: fadeInUp 1s ease 0.5s forwards, shimmer 8s ease infinite 1.5s;
-  transition: filter 0.3s ease, transform 0.3s ease;
+  animation: fadeInUp 0.8s var(--ease) 0.3s forwards;
+  transition: transform 0.25s var(--ease), color 0.25s var(--ease);
+  cursor: pointer;
   user-select: none;
 }
 
 .hero-name:hover {
-  filter: drop-shadow(0 0 30px rgba(124, 140, 110, 0.5))
-          drop-shadow(0 0 60px rgba(124, 140, 110, 0.2));
-  transform: scale(1.04);
+  color: var(--color-glaze-celadon);
+  transform: scale(1.02);
 }
 
-@keyframes shimmer {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-/* 头衔 */
-.hero-title {
-  font-size: 0.9rem;
-  font-weight: 300;
-  color: rgba(245, 240, 235, 0.45);
-  letter-spacing: 0.3em;
-  margin-right: -0.3em;
-  text-transform: uppercase;
-  margin-bottom: 2.5rem;
-  opacity: 0;
-  animation: fadeInUp 1s ease 0.7s forwards;
-}
-
-/* 打字机 — 终端风格 */
-.hero-typewriter {
-  font-size: 1.1rem;
-  font-weight: 300;
-  color: var(--color-accent-light);
-  min-height: 2em;
-  opacity: 0;
-  animation: fadeInUp 1s ease 0.9s forwards;
-  font-family: 'Courier New', var(--font-sans);
-}
-
-.typewriter-prefix {
-  color: var(--color-accent);
-  opacity: 0.6;
-}
-
-.typewriter-text {
-  letter-spacing: 0.03em;
-}
-
-.typewriter-cursor {
-  display: inline-block;
-  margin-left: 1px;
-  color: var(--color-accent);
-  animation: blink 1s step-end infinite;
+/* 标语副标题 */
+.hero-tagline {
+  font-size: clamp(1rem, 2.2vw, 1.18rem);
   font-weight: 400;
-  font-size: 1rem;
+  color: var(--color-text-light);
+  line-height: 1.6;
+  max-width: 580px;
+  margin: 0 auto 2.2rem;
+  text-wrap: balance;
+  opacity: 0;
+  animation: fadeInUp 0.8s var(--ease) 0.45s forwards;
+}
+
+/* 瓷砖终端框 (Ceramic Terminal Tile) */
+.hero-terminal-tile {
+  background: var(--color-surface);
+  border: 1px solid var(--color-grout);
+  border-radius: var(--radius);
+  box-shadow: var(--tile-shadow);
+  max-width: 560px;
+  margin: 0 auto 2.5rem;
+  overflow: hidden;
+  text-align: left;
+  opacity: 0;
+  animation: fadeInUp 0.8s var(--ease) 0.6s forwards;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.hero-terminal-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--tile-shadow-hover);
+}
+
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  background: var(--color-bg-alt);
+  border-bottom: 1px solid var(--color-grout);
+}
+
+.terminal-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-close { background: #E06C75; }
+.dot-min { background: #E5C07B; }
+.dot-expand { background: #98C379; }
+
+.terminal-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-lighter);
+}
+
+.terminal-body {
+  padding: 14px 18px;
+  font-family: var(--font-mono);
+  font-size: 0.96rem;
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+}
+
+.terminal-prompt {
+  color: var(--color-glaze-celadon);
+  font-weight: 700;
+  margin-right: 10px;
+}
+
+.terminal-text {
+  flex: 1;
+  letter-spacing: 0.02em;
+}
+
+.terminal-cursor {
+  color: var(--color-terracotta);
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
 }
 
 @keyframes blink {
@@ -367,80 +338,91 @@ function scrollToAbout() {
   50% { opacity: 0; }
 }
 
-/* 滚动引导 */
+/* 操作按键组 */
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  opacity: 0;
+  animation: fadeInUp 0.8s var(--ease) 0.75s forwards;
+}
+
+/* 底部滚动引导 */
 .scroll-indicator {
   position: absolute;
-  bottom: 40px;
+  bottom: 24px;
   left: 50%;
-  transform: translate(-50%, 0);
+  transform: translateX(-50%);
   z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  color: rgba(245, 240, 235, 0.4);
-  font-size: 0.8rem;
-  transition: color var(--transition), transform 0.3s;
+  gap: 6px;
+  color: var(--color-text-lighter);
+  font-size: 0.78rem;
+  transition: color var(--transition), transform 0.24s;
   opacity: 0;
-  animation: fadeInUpCenter 1s ease 1.2s forwards;
+  animation: fadeInUpCenter 0.8s var(--ease) 0.9s forwards;
 }
 
 .scroll-indicator:hover {
-  color: var(--color-accent-light);
-  transform: translate(-50%, -4px);
+  color: var(--color-glaze-celadon);
+  transform: translate(-50%, -3px);
 }
 
 .scroll-text {
-  font-weight: 300;
-  letter-spacing: 0.15em;
-  margin-right: -0.15em;
+  font-weight: 500;
+  letter-spacing: 0.06em;
 }
 
 .scroll-arrow {
-  animation: bounce 2s ease-in-out infinite;
+  animation: subtleBounce 2s ease-in-out infinite;
 }
 
-@keyframes bounce {
+@keyframes subtleBounce {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(8px); }
+  50% { transform: translateY(5px); }
 }
 
-/* 入场动画 */
+/* 入场过渡 */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(25px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeInUpCenter {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 25px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 @keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-15px); }
+  from { opacity: 0; transform: translateY(-12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 /* 响应式 */
 @media (max-width: 768px) {
-  .hero-name {
-    font-size: 4rem;
-    letter-spacing: 0.1em;
+  .hero {
+    padding: 85px 16px 60px;
+    min-height: 90vh;
   }
-  .hero-title { font-size: 1rem; letter-spacing: 0.15em; }
-  .hero-typewriter { font-size: 0.95rem; padding: 0 20px; }
-  .hero-floats { display: none; }
-}
-
-@media (max-width: 480px) {
-  .hero-name { font-size: clamp(2.5rem, 12vw, 3rem); }
-  .hero-title { font-size: 0.9rem; }
-  .scroll-indicator { bottom: max(24px, env(safe-area-inset-bottom, 16px)); }
+  .hero-name {
+    font-size: clamp(3rem, 15vw, 4.8rem);
+  }
+  .hero-tagline {
+    font-size: 0.95rem;
+    margin-bottom: 1.8rem;
+  }
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .hero-actions .tile-btn-primary,
+  .hero-actions .tile-btn-secondary {
+    width: 100%;
+  }
 }
 </style>

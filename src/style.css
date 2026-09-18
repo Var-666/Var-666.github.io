@@ -1,68 +1,93 @@
 /* ======================================================
-   全局样式 — 侘寂美学 · 大地色系设计系统
+   全局样式 — 工坊瓷砖与建筑陶构 (Architectural Ceramic Tile)
+   遵循 frontend-design 设计规范
    ====================================================== */
 
 /* ── CSS 自定义属性 ── */
 :root {
-  /* 色彩 — 大地色系 */
-  --color-bg: #F5F0EB;
-  --color-bg-alt: #EDE8E2;
-  --color-bg-dark: #1E1E1E;
-  --color-bg-dark-alt: #2A2A2A;
-  --color-text: #2D2D2D;
-  --color-text-light: #6B6B6B;
-  --color-text-lighter: #7A7A7A;
-  --color-text-inv: #F5F0EB;
-  --color-text-inv-light: rgba(245, 240, 235, 0.6);
-  --color-accent: #7C8C6E;
-  --color-accent-light: #9AAB8B;
-  --color-accent-dark: #5F6D53;
-  --color-accent-glow: rgba(124, 140, 110, 0.4);
-  --color-accent-glow-strong: rgba(124, 140, 110, 0.65);
-  --color-warm: #C4A882;
-  --color-warm-light: #D4C4A8;
+  /* 核心色彩 — 陶构与釉色系统 (5 核心色系 + 窑变深色) */
+  --color-base: #F7F6F2;           /* 素陶米白底色 */
+  --color-bg: var(--color-base);
+  --color-bg-alt: #F0EEE8;       /* 浅素陶副底色 */
+  --color-surface: #FFFFFF;        /* 釉面白瓷砖面 */
 
-  /* 毛玻璃 */
-  --glass-bg: rgba(255, 255, 255, 0.42);
-  --glass-bg-hover: rgba(255, 255, 255, 0.58);
-  --glass-bg-dark: rgba(255, 255, 255, 0.06);
-  --glass-bg-dark-hover: rgba(255, 255, 255, 0.10);
-  --glass-border: rgba(255, 255, 255, 0.55);
-  --glass-border-dark: rgba(255, 255, 255, 0.12);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
-  --glass-shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.10);
+  --color-grout: #E5E2DA;          /* 嵌缝砂质线 */
+  --color-grout-subtle: #ECEAE4;   /* 微细嵌缝线 */
+  --color-grout-dark: #323A36;     /* 深色段嵌缝线 */
 
-  /* 圆角 */
-  --radius-lg: 24px;
-  --radius: 16px;
-  --radius-sm: 10px;
-  --radius-xs: 6px;
+  --color-ink: #181B19;            /* 窑烧黑墨，高清晰度主文本 */
+  --color-text: var(--color-ink);
+  --color-text-light: #525753;     /* 次级说明文本 */
+  --color-text-lighter: #828A84;   /* 辅助弱化文本 */
+
+  --color-glaze-celadon: #2D5A43;  /* 青松釉绿，主强调色 */
+  --color-glaze-celadon-light: #3E7358;
+  --color-glaze-celadon-dark: #1E3E2E;
+  --color-accent: var(--color-glaze-celadon);
+  --color-accent-light: var(--color-glaze-celadon-light);
+  --color-accent-dark: var(--color-glaze-celadon-dark);
+  --color-accent-glow: rgba(45, 90, 67, 0.22);
+  --color-accent-glow-strong: rgba(45, 90, 67, 0.40);
+  --color-accent-soft: rgba(45, 90, 67, 0.08);
+
+  --color-terracotta: #C25B34;     /* 陶土赭红，实时活力与状态标记 */
+  --color-warm: var(--color-terracotta);
+  --color-warm-light: #DE7E5A;
+
+  /* 深色窑变背景 (夜间小木屋与联系页) */
+  --color-bg-dark: #131716;        /* 曜石窑黑 */
+  --color-bg-dark-alt: #1A201E;
+  --color-slate-surface: #1E2522;  /* 曜石深色瓷砖面 */
+  --color-slate-border: rgba(255, 255, 255, 0.08);
+  --color-text-inv: #F7F6F2;
+  --color-text-inv-light: rgba(247, 246, 242, 0.65);
+
+  /* 物理瓷砖质感层 (取代虚浮毛玻璃) */
+  --tile-bg: #FFFFFF;
+  --tile-border: var(--color-grout);
+  --tile-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 2px 8px rgba(24, 27, 25, 0.04);
+  --tile-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 1), 0 10px 28px rgba(24, 27, 25, 0.08);
+
+  /* 兼容历史 glass-card 变量 */
+  --glass-bg: rgba(255, 255, 255, 0.92);
+  --glass-bg-hover: #FFFFFF;
+  --glass-bg-dark: #1E2522;
+  --glass-bg-dark-hover: #242D29;
+  --glass-border: var(--color-grout);
+  --glass-border-dark: rgba(255, 255, 255, 0.09);
+  --glass-shadow: var(--tile-shadow);
+  --glass-shadow-hover: var(--tile-shadow-hover);
+
+  /* 几何圆角 — 严谨实体工坊尺寸 */
+  --radius-lg: 16px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 4px;
   --radius-full: 9999px;
 
-  /* 字体 */
-  --font-serif: 'Noto Serif SC', 'STSong', 'SimSun', serif;
+  /* 字体族系 */
+  --font-serif: 'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'STSong', serif;
   --font-sans: 'Noto Sans SC', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
 
-  /* 边框与阴影 */
-  --border-light: rgba(0, 0, 0, 0.06);
-  --border-medium: rgba(0, 0, 0, 0.1);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.05);
-  --color-accent-soft: rgba(124, 140, 110, 0.1);
-  --card-border: rgba(0, 0, 0, 0.08);
+  /* 边框与间距 */
+  --border-light: var(--color-grout);
+  --border-medium: #D8D4C8;
+  --shadow-card: var(--tile-shadow);
+  --card-border: var(--color-grout);
 
-  /* 过渡 */
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* 动效缓冲 */
+  --ease: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --transition: 0.3s var(--ease);
-  --transition-slow: 0.6s var(--ease);
-  --transition-spring: 0.4s var(--ease-spring);
+  --transition: 0.24s var(--ease);
+  --transition-slow: 0.5s var(--ease);
+  --transition-spring: 0.36s var(--ease-spring);
 
-  /* 布局 */
-  --section-padding: 120px 0;
-  --container-width: 1100px;
-  --nav-height: 72px;
+  /* 页面尺度 */
+  --section-padding: 110px 0;
+  --container-width: 1120px;
+  --nav-height: 68px;
 }
 
 /* ── 全局重置 ── */
@@ -133,74 +158,92 @@ ul, ol {
   background-color: var(--color-bg-alt);
 }
 
-/* ── 排版 ── */
+/* ── 板块标题排版 (遵循 frontend-design：无杠杠无大写打散眉批) ── */
 .section-header {
   text-align: center;
-  margin-bottom: 4.5rem;
+  margin-bottom: 3.5rem;
 }
 
 .section-title {
   font-family: var(--font-serif);
-  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  font-size: clamp(2.1rem, 3.8vw, 3rem);
   font-weight: 600;
-  margin-bottom: 1.2rem;
-  letter-spacing: 0.02em;
-  position: relative;
-  display: inline-block;
+  color: var(--color-ink);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  text-wrap: balance;
+  margin-bottom: 0.75rem;
 }
 
+.section-dark .section-title {
+  color: var(--color-text-inv);
+}
+
+/* 坚决移除此前 AI 模版化 36px 装饰条 */
 .section-title::after {
-  content: '';
-  display: block;
-  width: 36px;
-  height: 2px;
-  background: var(--color-accent);
-  margin: 1rem auto 0;
-  border-radius: var(--radius-full);
+  display: none !important;
 }
 
 .section-subtitle {
-  font-size: 0.88rem;
-  color: var(--color-text-lighter);
+  font-size: 0.95rem;
+  color: var(--color-text-light);
   font-weight: 400;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
 }
 
 .section-dark .section-subtitle {
-  color: rgba(245, 240, 235, 0.4);
+  color: rgba(247, 246, 242, 0.6);
 }
 
-
-/* ── 毛玻璃卡片 ── */
+/* ── 实体瓷砖卡片系统 (Ceramic Tile Mosaic) ── */
+.tile-card,
 .glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
   border-radius: var(--radius);
-  box-shadow: var(--glass-shadow);
-  transition: all var(--transition);
+  box-shadow: var(--tile-shadow);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+  position: relative;
 }
 
+.tile-card:hover,
 .glass-card:hover {
-  background: var(--glass-bg-hover);
-  box-shadow: var(--glass-shadow-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--tile-shadow-hover);
+  border-color: #D4D0C5;
 }
 
+.tile-card-dark,
 .glass-card-dark {
-  background: var(--glass-bg-dark);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border-dark);
+  background: var(--color-slate-surface);
+  border: 1px solid var(--color-slate-border);
   border-radius: var(--radius);
-  box-shadow: var(--glass-shadow);
-  transition: all var(--transition);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 18px rgba(0, 0, 0, 0.25);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
 }
 
+.tile-card-dark:hover,
 .glass-card-dark:hover {
-  background: var(--glass-bg-dark-hover);
-  box-shadow: var(--glass-shadow-hover);
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 10px 28px rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* 瓷砖徽章/微标签 */
+.tile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-grout);
+  color: var(--color-text-light);
 }
 
 /* ── 滚动渐入动画 ── */
@@ -256,89 +299,92 @@ ul, ol {
 .delay-5 { transition-delay: 0.5s; }
 .delay-6 { transition-delay: 0.6s; }
 
-/* ── 发光按钮 (Uiverse.io 风格) ── */
+/* ── 工坊瓷砖主按键 (Ceramic Tile Buttons) ── */
+.tile-btn-primary,
 .glow-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 14px 32px;
-  font-size: 1rem;
+  padding: 12px 26px;
+  font-size: 0.95rem;
   font-weight: 500;
-  color: var(--color-text-inv);
-  background: var(--color-accent);
-  border: none;
-  border-radius: var(--radius-full);
+  color: #FFFFFF;
+  background: var(--color-glaze-celadon);
+  border: 1px solid var(--color-glaze-celadon-dark);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  position: relative;
-  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 8px rgba(45, 90, 67, 0.25);
   transition: all var(--transition);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
 }
 
-.glow-btn::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    var(--color-accent-light),
-    var(--color-accent),
-    var(--color-accent-dark),
-    var(--color-accent-light)
-  );
-  background-size: 300% 300%;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity var(--transition);
-  animation: glow-rotate 4s linear infinite;
-}
-
+.tile-btn-primary:hover,
 .glow-btn:hover {
+  background: var(--color-glaze-celadon-light);
   transform: translateY(-2px);
-  box-shadow:
-    0 4px 20px var(--color-accent-glow),
-    0 0 40px var(--color-accent-glow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 18px rgba(45, 90, 67, 0.35);
 }
 
-.glow-btn:hover::before {
-  opacity: 1;
-}
-
+.tile-btn-primary:active,
 .glow-btn:active {
   transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-@keyframes glow-rotate {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* ── 发光输入框 (Uiverse.io 风格) ── */
-.glow-input {
-  width: 100%;
-  padding: 14px 20px;
-  font-size: 1rem;
-  font-family: var(--font-sans);
-  color: var(--color-text-inv);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+/* 次级素陶按键 */
+.tile-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 1px solid var(--color-grout);
   border-radius: var(--radius-sm);
-  outline: none;
+  cursor: pointer;
+  box-shadow: var(--tile-shadow);
   transition: all var(--transition);
 }
 
-.glow-input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+.tile-btn-secondary:hover {
+  background: var(--color-bg-alt);
+  border-color: #D2CEC2;
+  transform: translateY(-2px);
+  box-shadow: var(--tile-shadow-hover);
 }
 
-.glow-input:focus {
-  border-color: var(--color-accent);
+/* ── 瓷砖输入框 (Tile Inset Inputs) ── */
+.glow-input,
+.tile-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  font-family: var(--font-sans);
+  color: var(--color-text-inv);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-slate-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: all var(--transition);
+}
+
+.glow-input::placeholder,
+.tile-input::placeholder {
+  color: rgba(247, 246, 242, 0.35);
+}
+
+.glow-input:focus,
+.tile-input:focus {
+  border-color: var(--color-glaze-celadon-light);
   background: rgba(255, 255, 255, 0.08);
   box-shadow:
-    0 0 0 3px var(--color-accent-glow),
-    0 0 20px rgba(124, 140, 110, 0.15);
+    inset 0 1px 3px rgba(0, 0, 0, 0.2),
+    0 0 0 3px rgba(45, 90, 67, 0.35);
 }
 
 

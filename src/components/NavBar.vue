@@ -149,27 +149,29 @@ onUnmounted(() => {
   height: var(--nav-height);
   display: flex;
   align-items: center;
+  background: rgba(247, 246, 242, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--color-grout);
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-              height 0.3s var(--ease),
-              background 0.3s var(--ease),
-              box-shadow 0.3s var(--ease),
-              border-color 0.3s var(--ease);
+              height 0.24s var(--ease),
+              background 0.24s var(--ease),
+              box-shadow 0.24s var(--ease),
+              border-color 0.24s var(--ease);
   will-change: transform, height;
 }
 
-/* 向下滚动自动滑出视口 (Hide on Scroll Down) */
+/* 向下滚动自动滑出视口 */
 .navbar.hidden {
   transform: translateY(-100%);
 }
 
-/* 滚动缩小态 (Compact Shrink State) */
+/* 滚动紧凑态 */
 .navbar.scrolled {
   height: 56px;
-  background: rgba(245, 240, 235, 0.84);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
-  box-shadow: 0 4px 20px -2px rgba(44, 38, 33, 0.08);
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid #D6D2C5;
+  box-shadow: 0 4px 20px -2px rgba(24, 27, 25, 0.05);
 }
 
 .navbar.scrolled .logo-icon {
@@ -184,7 +186,7 @@ onUnmounted(() => {
 
 .navbar.scrolled .nav-link {
   padding: 5px 12px;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
 }
 
 .navbar.scrolled .nav-live-pill {
@@ -207,98 +209,79 @@ onUnmounted(() => {
   font-family: var(--font-serif);
   font-weight: 600;
   font-size: 1.2rem;
-  color: var(--color-text-inv);
+  color: var(--color-ink);
   transition: color var(--transition);
   z-index: 10;
 }
 
-.navbar.scrolled .nav-logo {
-  color: var(--color-text);
-}
-
 .logo-icon {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-accent);
-  color: white;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  font-family: 'Courier New', monospace;
+  background: var(--color-glaze-celadon);
+  color: #FFFFFF;
+  border-radius: var(--radius-xs);
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(45, 90, 67, 0.25);
   transition: all var(--transition-spring);
 }
 
 .nav-logo:hover .logo-icon {
-  transform: rotate(-8deg) scale(1.1);
-  box-shadow: 0 4px 16px var(--color-accent-glow-strong);
-  border-radius: var(--radius);
+  transform: rotate(-6deg) scale(1.06);
+  background: var(--color-glaze-celadon-light);
 }
 
 .logo-text {
-  letter-spacing: 0.08em;
-  font-family: 'Courier New', monospace;
-  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--color-ink);
 }
 
 /* Desktop Links */
 .nav-links {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
 }
 
 .nav-link {
-  padding: 8px 18px;
-  font-size: 0.92rem;
+  padding: 6px 14px;
+  font-size: 0.9rem;
   font-weight: 400;
-  color: rgba(245, 240, 235, 0.65);
-  border-radius: var(--radius-full);
+  color: var(--color-text-light);
+  border-radius: var(--radius-xs);
   transition: all var(--transition);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
   position: relative;
 }
 
-.navbar.scrolled .nav-link {
-  color: var(--color-text-light);
-}
-
 .nav-link:hover {
-  color: var(--color-text-inv);
-  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-ink);
+  background: var(--color-grout-subtle);
 }
 
-.navbar.scrolled .nav-link:hover {
-  color: var(--color-accent);
-  background: rgba(124, 140, 110, 0.08);
-}
-
-/* 活跃链接指示器 */
+/* 活跃链接指示 */
 .nav-link.active {
-  color: var(--color-accent-light);
-}
-
-.navbar.scrolled .nav-link.active {
-  color: var(--color-accent);
+  color: var(--color-glaze-celadon);
+  font-weight: 500;
+  background: rgba(45, 90, 67, 0.06);
 }
 
 .nav-link.active::after {
   content: '';
   position: absolute;
-  bottom: 2px;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 16px;
+  width: 14px;
   height: 2px;
-  background: var(--color-accent);
+  background: var(--color-glaze-celadon);
   border-radius: var(--radius-full);
-  animation: indicator-in 0.3s var(--ease-spring);
-}
-
-@keyframes indicator-in {
-  from { width: 0; opacity: 0; }
-  to { width: 16px; opacity: 1; }
 }
 
 /* 滚动进度条 */
@@ -313,10 +296,8 @@ onUnmounted(() => {
 
 .scroll-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-light), var(--color-warm));
-  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: var(--color-glaze-celadon);
   transition: width 0.08s linear;
-  box-shadow: 0 0 8px var(--color-accent-glow);
 }
 
 /* Mobile Toggle */
@@ -332,13 +313,9 @@ onUnmounted(() => {
   display: block;
   width: 22px;
   height: 2px;
-  background: var(--color-text-inv);
+  background: var(--color-ink);
   border-radius: var(--radius-full);
   transition: all var(--transition);
-}
-
-.navbar.scrolled .mobile-toggle span {
-  background: var(--color-text);
 }
 
 .mobile-toggle.active span:nth-child(1) {
@@ -353,46 +330,27 @@ onUnmounted(() => {
   transform: rotate(-45deg) translate(5px, -5px);
 }
 
-/* ── 实时状态微胶囊 ── */
+/* ── 实时状态微胶囊 (实体瓷片质感) ── */
 .nav-live-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   padding: 5px 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-full);
-  color: var(--color-text-inv);
+  background: var(--color-surface);
+  border: 1px solid var(--color-grout);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--tile-shadow);
+  color: var(--color-ink);
   font-size: 0.78rem;
   font-family: var(--font-mono);
   cursor: pointer;
   transition: all var(--transition);
-  backdrop-filter: blur(8px);
 }
 
 .nav-live-pill:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: var(--color-accent-light);
+  border-color: var(--color-glaze-celadon);
   transform: translateY(-1px);
-}
-
-.navbar.scrolled .nav-live-pill {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: var(--color-text);
-}
-
-.navbar.scrolled .live-clock {
-  color: var(--color-text);
-}
-
-.navbar.scrolled .live-city {
-  color: var(--color-text-light);
-}
-
-.navbar.scrolled .nav-live-pill:hover {
-  background: rgba(124, 140, 110, 0.08);
-  border-color: var(--color-accent);
+  box-shadow: var(--tile-shadow-hover);
 }
 
 .live-pulse-dot {
@@ -406,19 +364,20 @@ onUnmounted(() => {
 
 @keyframes pulse-ring {
   0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
-  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  70% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
   100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
 .live-clock {
-  color: var(--color-text-inv);
+  color: var(--color-ink);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .live-city {
   font-family: var(--font-sans);
-  color: var(--color-text-inv-light);
-  font-size: 0.72rem;
+  color: var(--color-text-light);
+  font-size: 0.74rem;
 }
 
 @media (max-width: 900px) {
@@ -432,13 +391,13 @@ onUnmounted(() => {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(30, 30, 30, 0.95);
+  background: rgba(247, 246, 242, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 18px;
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--transition);
@@ -451,17 +410,16 @@ onUnmounted(() => {
 
 .mobile-link {
   font-family: var(--font-serif);
-  font-size: 1.5rem;
-  color: var(--color-text-inv);
-  padding: 12px 24px;
+  font-size: 1.4rem;
+  color: var(--color-ink);
+  padding: 10px 24px;
   border-radius: var(--radius-sm);
   transition: all var(--transition);
-  letter-spacing: 0.05em;
 }
 
 .mobile-link:hover {
-  color: var(--color-accent-light);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-glaze-celadon);
+  background: var(--color-grout-subtle);
 }
 
 @media (max-width: 768px) {
@@ -477,12 +435,8 @@ onUnmounted(() => {
     display: flex;
   }
 
-  .navbar.menu-open .mobile-toggle span {
-    background: var(--color-text-inv);
-  }
-
   .navbar.scrolled {
-    height: 50px;
+    height: 52px;
   }
 }
 </style>

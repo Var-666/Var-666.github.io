@@ -65,34 +65,30 @@ onUnmounted(() => {
   bottom: 32px;
   right: 32px;
   z-index: 900;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  border-radius: 50%;
-  color: var(--color-accent);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  box-shadow: var(--tile-shadow);
   cursor: pointer;
-  transition: all 0.3s var(--ease);
+  transition: transform var(--transition), background var(--transition), color var(--transition), box-shadow var(--transition);
 }
 
 .back-to-top:hover {
-  background: var(--color-accent);
-  color: white;
-  border-color: var(--color-accent);
-  transform: translateY(-3px);
-  box-shadow:
-    0 8px 24px var(--color-accent-glow-strong),
-    0 0 40px var(--color-accent-glow);
+  background: var(--color-glaze-celadon);
+  color: #FFFFFF;
+  border-color: var(--color-glaze-celadon-dark);
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 18px rgba(45, 90, 67, 0.3);
 }
 
-.btt-enter-active { transition: all 0.4s var(--ease-spring); }
-.btt-leave-active { transition: all 0.3s var(--ease); }
-.btt-enter-from { opacity: 0; transform: translateY(16px) scale(0.8); }
+.btt-enter-active { transition: all 0.3s var(--ease-spring); }
+.btt-leave-active { transition: all 0.2s var(--ease); }
+.btt-enter-from { opacity: 0; transform: translateY(12px) scale(0.9); }
 .btt-leave-to { opacity: 0; transform: translateY(8px) scale(0.9); }
 </style>

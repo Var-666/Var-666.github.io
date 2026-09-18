@@ -33,13 +33,13 @@ export function useParticles() {
   const CONNECTION_DISTANCE = 120
   const MOUSE_RADIUS = 150
 
-  // 大地色系 + 自然色粒子颜色
+  // 工坊陶构与矿物釉色粒子调色盘 (契合素陶明亮底色)
   const COLORS = [
-    'rgba(245, 240, 235, VAR)',   // 米白
-    'rgba(154, 171, 139, VAR)',   // 橄榄绿浅
-    'rgba(124, 140, 110, VAR)',   // 橄榄绿
-    'rgba(196, 168, 130, VAR)',   // 暖棕
-    'rgba(212, 196, 168, VAR)',   // 暖米
+    'rgba(45, 90, 67, VAR)',    // 青松釉绿
+    'rgba(70, 125, 95, VAR)',   // 浅青瓷绿
+    'rgba(194, 91, 52, VAR)',   // 陶土赭红
+    'rgba(24, 27, 25, VAR)',    // 窑烧墨点
+    'rgba(180, 165, 145, VAR)', // 陶土砂粒
   ]
 
   function createParticle(width: number, height: number): Particle {

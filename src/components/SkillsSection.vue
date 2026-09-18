@@ -45,41 +45,43 @@ onMounted(() => {
     <div class="container">
       <div class="section-header reveal">
         <h2 class="section-title">技能与工具</h2>
-        <p class="section-subtitle">不评分，只分层</p>
+        <p class="section-subtitle">不评分、只分层。记录在数字工坊中历练的核心技术与探索前沿</p>
       </div>
 
-      <div class="skill-groups">
+      <div class="skills-cabinet">
         <div
           v-for="(group, gi) in skillGroups"
           :key="group.tier"
-          class="skill-group reveal"
+          class="skill-tier-card tile-card reveal"
           :class="[`tier-${group.tier}`, `delay-${gi + 1}`]"
         >
-          <div class="group-header">
-            <div class="group-label-wrap">
-              <span class="group-dot"></span>
-              <h3 class="group-label">{{ group.label }}</h3>
+          <div class="tier-header">
+            <div class="tier-title-row">
+              <span class="tier-index">0{{ gi + 1 }}</span>
+              <h3 class="tier-label">{{ group.label }}</h3>
+              <span class="tier-badge">{{ group.tier === 'primary' ? '核心驱动' : (group.tier === 'secondary' ? '日常构建' : '前沿探索') }}</span>
             </div>
-            <span class="group-sublabel">{{ group.sublabel }}</span>
+            <p class="tier-sublabel">{{ group.sublabel }}</p>
           </div>
 
-          <div class="skill-tags">
+          <div class="skill-chips">
             <span
               v-for="skill in group.skills"
               :key="skill"
-              class="skill-tag"
+              class="skill-chip"
             >
-              {{ skill }}
+              <span class="chip-point"></span>
+              <span class="chip-name">{{ skill }}</span>
             </span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 波浪过渡至林中小屋夜幕 -->
+    <!-- 转换至小木屋夜幕 (曜石墨黑) -->
     <div class="skills-wave">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 72" preserveAspectRatio="none">
-        <path d="M0,36 C240,72 480,0 720,36 C960,72 1200,0 1440,36 L1440,72 L0,72 Z" fill="#19211e"/>
+        <path d="M0,36 C240,72 480,0 720,36 C960,72 1200,0 1440,36 L1440,72 L0,72 Z" fill="#131716"/>
       </svg>
     </div>
   </section>
@@ -87,12 +89,12 @@ onMounted(() => {
 
 <style scoped>
 #skills {
-  background-color: var(--color-bg);
+  background-color: var(--color-base);
   position: relative;
-  padding-bottom: calc(var(--section-padding) + 36px);
+  padding-bottom: calc(var(--section-padding) + 48px);
 }
 
-/* 波浪过渡 */
+/* 波浪过渡到小木屋夜景 */
 .skills-wave {
   position: absolute;
   bottom: -1px;
@@ -109,167 +111,146 @@ onMounted(() => {
   display: block;
 }
 
-.skill-groups {
+/* 标本抽屉瓷砖列 */
+.skills-cabinet {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 1.5rem;
 }
 
-/* 每一组的容器 */
-.skill-group {
-  padding: 2.8rem 0;
-  border-bottom: 1px solid var(--border-light);
+.skill-tier-card {
+  padding: 2.2rem 2.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.4rem;
 }
 
-.skill-group:last-child {
-  border-bottom: none;
-}
-
-/* 组标题行 */
-.group-header {
+.tier-header {
   display: flex;
-  align-items: baseline;
-  gap: 1.5rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.group-label-wrap {
+.tier-title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.group-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: transform 0.3s var(--ease-spring);
+.tier-index {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-glaze-celadon);
+  background: var(--color-bg-alt);
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-grout);
 }
 
-.skill-group:hover .group-dot {
-  transform: scale(1.4);
-}
-
-.group-label {
+.tier-label {
   font-family: var(--font-serif);
+  font-size: 1.35rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
+  color: var(--color-ink);
 }
 
-.group-sublabel {
-  font-size: 0.82rem;
+.tier-badge {
+  font-size: 0.72rem;
+  padding: 2px 9px;
+  border-radius: var(--radius-xs);
+  font-weight: 500;
+  border: 1px solid var(--color-grout);
+  background: var(--color-bg-alt);
+  color: var(--color-text-light);
+}
+
+.tier-primary .tier-badge {
+  background: rgba(45, 90, 67, 0.08);
+  color: var(--color-glaze-celadon);
+  border-color: rgba(45, 90, 67, 0.2);
+}
+
+.tier-sublabel {
+  font-size: 0.84rem;
   color: var(--color-text-lighter);
-  font-weight: 300;
-  letter-spacing: 0.04em;
+  line-height: 1.6;
 }
 
-/* 标签云 */
-.skill-tags {
+/* 技能瓷片 */
+.skill-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-.skill-tag {
-  border-radius: var(--radius-full);
+.skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-grout);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 3px rgba(0, 0, 0, 0.02);
+  color: var(--color-ink);
+  font-size: 0.92rem;
   font-weight: 500;
-  letter-spacing: 0.04em;
-  transition: all 0.25s var(--ease);
   cursor: default;
+  transition: transform var(--transition), background var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
 
-/* ── 主力工具 Tier ── */
-.tier-primary .group-dot {
-  background: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
-}
-
-.tier-primary .group-label {
-  font-size: 1.5rem;
-  color: var(--color-text);
-}
-
-.tier-primary .skill-tag {
-  padding: 9px 22px;
-  font-size: 0.95rem;
-  background: var(--color-accent);
-  color: #fff;
-  box-shadow: 0 2px 12px var(--color-accent-glow);
-}
-
-.tier-primary .skill-tag:hover {
-  background: var(--color-accent-dark);
+.skill-chip:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px var(--color-accent-glow-strong);
+  background: #FFFFFF;
+  border-color: #D4D0C5;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), 0 6px 14px rgba(0, 0, 0, 0.05);
 }
 
-/* ── 熟悉使用 Tier ── */
-.tier-secondary .group-dot {
-  background: transparent;
-  border: 2px solid var(--color-warm);
+.chip-point {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-glaze-celadon);
 }
 
-.tier-secondary .group-label {
-  font-size: 1.2rem;
-  color: var(--color-text);
+/* 主力工具高亮样式 */
+.tier-primary .skill-chip {
+  background: #FFFFFF;
+  border-color: #DCD8CC;
 }
 
-.tier-secondary .skill-tag {
-  padding: 7px 18px;
-  font-size: 0.88rem;
-  background: transparent;
+.tier-primary .skill-chip:hover {
+  border-color: var(--color-glaze-celadon);
+  color: var(--color-glaze-celadon-dark);
+}
+
+.tier-primary .chip-point {
+  background: var(--color-glaze-celadon);
+  box-shadow: 0 0 4px rgba(45, 90, 67, 0.4);
+}
+
+/* 正在探索虚线 */
+.tier-exploring .skill-chip {
+  border-style: dashed;
   color: var(--color-text-light);
-  border: 1px solid var(--border-medium);
 }
 
-.tier-secondary .skill-tag:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
-  transform: translateY(-1px);
-}
-
-/* ── 正在探索 Tier ── */
-.tier-exploring .group-dot {
-  background: transparent;
-  border: 1.5px dashed var(--color-text-lighter);
-}
-
-.tier-exploring .group-label {
-  font-size: 1rem;
-  color: var(--color-text-lighter);
-}
-
-.tier-exploring .group-sublabel {
-  font-style: italic;
-}
-
-.tier-exploring .skill-tag {
-  padding: 5px 14px;
-  font-size: 0.8rem;
-  background: transparent;
-  color: var(--color-text-lighter);
-  border: 1px dashed var(--color-text-lighter);
-  font-weight: 400;
-}
-
-.tier-exploring .skill-tag:hover {
-  border-color: var(--color-accent-light);
-  color: var(--color-accent);
-  border-style: solid;
+.tier-exploring .chip-point {
+  background: var(--color-terracotta);
 }
 
 @media (max-width: 768px) {
-  .skill-group { padding: 2rem 0; }
-  .group-header { flex-direction: column; gap: 0.4rem; }
-  .tier-primary .group-label { font-size: 1.2rem; }
-  .tier-secondary .group-label { font-size: 1rem; }
-  .tier-primary .skill-tag { padding: 7px 16px; font-size: 0.88rem; }
+  .skill-tier-card {
+    padding: 1.6rem 1.4rem;
+  }
+  .tier-title-row {
+    gap: 8px;
+  }
+  .skill-chip {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
 }
 </style>
