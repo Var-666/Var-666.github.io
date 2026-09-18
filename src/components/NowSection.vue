@@ -20,11 +20,26 @@ function handleMusicCardClick() {
   }
 }
 
+function handlePlayBtnClick(e: Event) {
+  e.stopPropagation()
+  if (!isAudioPlaying.value) {
+    selectTrack(0, true)
+  } else {
+    toggleAudioPlay()
+  }
+}
+
+function handleExpandPlayerClick(e: Event) {
+  e.stopPropagation()
+  setExpand(true)
+}
+
 interface TimelineItem {
   date: string
   tag: string
   title: string
   detail: string
+  highlight?: string
 }
 
 const changelog: TimelineItem[] = [
@@ -33,33 +48,36 @@ const changelog: TimelineItem[] = [
     tag: '造物',
     title: '个人主页上线 GitHub Pages',
     detail: '重构了全站动效系统与 3D 景深交互，融入大地色系与自制 Canvas 粒子。',
+    highlight: 'Vue 3 + TypeScript 严格工程化落地',
   },
   {
     date: '2026.08',
     tag: '实验',
     title: '探索 Web Audio API 声学水纹',
     detail: '调用实时傅里叶频域变换，将声音涟漪化为动态水波，完成「清泉流响」原型。',
+    highlight: '频域 FFT 实时可视化管线',
   },
   {
     date: '2026.07',
     tag: '构思',
     title: '启动「知行笔记」本地优先架构',
     detail: '调研 CRDT 与客户端 IndexedDB 瞬时存储，解决现代笔记软件臃肿延迟痛点。',
+    highlight: 'Local-First 本地优先数据同步',
   },
   {
     date: '2026.05',
     tag: '沉淀',
     title: '归整全套 TypeScript 严格工程规范',
     detail: '梳理通用 Composable 状态库与设计系统组件，提升全栈模块复用率。',
+    highlight: '单例状态模式与严格类型安全',
   },
 ]
 
-const cardAccents = [
-  'var(--color-accent)',
-  'var(--color-warm)',
-  'rgba(154, 171, 139, 0.7)',
-  'var(--color-accent-light)',
-]
+const expandedTimelineIdx = ref<number | null>(0)
+
+function toggleTimeline(idx: number) {
+  expandedTimelineIdx.value = expandedTimelineIdx.value === idx ? null : idx
+}
 
 onMounted(async () => {
   if (sectionRef.value) {
@@ -85,7 +103,7 @@ onMounted(async () => {
         </p>
       </div>
 
-      <!-- 实时生命体征控制台 (Live Status Console) -->
+      <!-- 实时生命体征控制台 (Live Telemetry Console) -->
       <div class="live-console-card tile-card tilt-shine reveal">
         <div class="console-grid">
           <!-- 实时时间与时区 -->
@@ -134,9 +152,10 @@ onMounted(async () => {
               <span class="now-card-icon">📖</span>
               <span>正在阅读</span>
             </div>
+            <span class="book-edition-tag">原研哉 · 著</span>
           </div>
           <h3 class="now-card-title">《设计中的设计》</h3>
-          <p class="now-card-author">原研哉 · 著</p>
+          <p class="now-card-author">日本平面设计大师与无印良品艺术总监理念集</p>
           <div class="book-progress-bar">
             <div class="progress-fill" style="width: 74%"></div>
           </div>
@@ -145,7 +164,7 @@ onMounted(async () => {
           </p>
         </div>
 
-        <!-- 2. 本周单曲循环 -->
+        <!-- 2. 本周单曲循环 (实体黑胶互动视听卡) -->
         <div
           :ref="(el) => { if (el) cardRefs[1] = el as HTMLElement }"
           class="now-card tile-card tilt-shine reveal-scale delay-2 interactive-music-card"
@@ -167,16 +186,43 @@ onMounted(async () => {
               <span class="wave-bar w-2"></span>
               <span class="wave-bar w-3"></span>
               <span class="wave-bar w-4"></span>
+              <span class="wave-bar w-5"></span>
             </div>
           </div>
-          <h3 class="now-card-title">andata</h3>
-          <p class="now-card-author">坂本龙一 · 《async》 / Ambient 纯音</p>
-          <p class="now-card-desc">
-            写代码时最喜欢的背景律动。钢琴与环境噪音交织，平静、专注而深邃，能让人迅速进入无杂质的心流状态。
-          </p>
-          <div class="music-card-hint">
-            <span class="hint-icon">{{ isAudioPlaying ? '❚❚ 正在播放 · 点击展开唱机' : '▶ 点击试听 · 开启心流' }}</span>
+
+          <!-- 实体黑胶微展台 -->
+          <div class="vinyl-mini-stage">
+            <div class="mini-vinyl-disc" :class="{ spinning: isAudioPlaying }">
+              <div class="mini-vinyl-grooves"></div>
+              <div class="mini-vinyl-center">
+                <span class="vinyl-center-dot"></span>
+              </div>
+            </div>
+            <div class="vinyl-meta-info">
+              <h3 class="now-card-title">andata</h3>
+              <p class="now-card-author">坂本龙一 · 《async》 / Ambient 纯音</p>
+              <div class="mini-vinyl-actions">
+                <button
+                  class="mini-vinyl-btn primary"
+                  @click.stop="handlePlayBtnClick"
+                  :aria-label="isAudioPlaying ? '暂停' : '播放'"
+                >
+                  <span>{{ isAudioPlaying ? '❚❚ 暂停' : '▶ 试听' }}</span>
+                </button>
+                <button
+                  class="mini-vinyl-btn secondary"
+                  @click.stop="handleExpandPlayerClick"
+                  aria-label="展开完整唱机面板"
+                >
+                  <span>展开唱机 ↗</span>
+                </button>
+              </div>
+            </div>
           </div>
+
+          <p class="now-card-desc">
+            写代码时最喜欢的背景律动。钢琴与环境噪音交织，平静、专注而深邃，让人迅速进入无杂质的心流状态。
+          </p>
         </div>
 
         <!-- 3. 技术试验田 -->
@@ -216,11 +262,11 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- 近期足迹时间流 (Footprints Ledger) -->
+      <!-- 近期足迹时间流 (Interactive Footprints Ledger) -->
       <div class="timeline-wrap tile-card reveal">
         <div class="timeline-header">
           <h3 class="timeline-title">近期足迹与更迭</h3>
-          <span class="timeline-sub">真实的时间刻度，记录每一步探索的痕迹</span>
+          <span class="timeline-sub">真实的时间刻度，记录每一步探索的痕迹（点击查看详情）</span>
         </div>
 
         <div class="timeline-list">
@@ -228,6 +274,12 @@ onMounted(async () => {
             v-for="(item, idx) in changelog"
             :key="idx"
             class="timeline-item"
+            :class="{ expanded: expandedTimelineIdx === idx }"
+            @click="toggleTimeline(idx)"
+            role="button"
+            tabindex="0"
+            @keydown.enter="toggleTimeline(idx)"
+            @keydown.space.prevent="toggleTimeline(idx)"
           >
             <div class="timeline-point">
               <span class="point-core"></span>
@@ -236,6 +288,7 @@ onMounted(async () => {
               <div class="item-meta">
                 <span class="item-date">{{ item.date }}</span>
                 <span class="item-tag">{{ item.tag }}</span>
+                <span v-if="item.highlight" class="item-highlight-tag">{{ item.highlight }}</span>
               </div>
               <h4 class="item-title">{{ item.title }}</h4>
               <p class="item-detail">{{ item.detail }}</p>
@@ -249,13 +302,13 @@ onMounted(async () => {
 
 <style scoped>
 .section-now {
-  background: var(--color-bg-alt);
+  background: var(--color-bg);
   position: relative;
-  border-top: 1px solid var(--color-grout);
-  border-bottom: 1px solid var(--color-grout);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
-/* 实时监控瓷砖 */
+/* 实时监控控制台 */
 .live-console-card {
   padding: 2.2rem 2.8rem;
   margin-bottom: 3rem;
@@ -275,10 +328,11 @@ onMounted(async () => {
 }
 
 .console-label {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--color-text-lighter);
-  letter-spacing: 0.04em;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-amber);
+  letter-spacing: 0.08em;
 }
 
 .console-label-row {
@@ -292,9 +346,9 @@ onMounted(async () => {
   font-size: 0.68rem;
   padding: 1px 7px;
   border-radius: var(--radius-xs);
-  background: rgba(45, 90, 67, 0.08);
-  color: var(--color-glaze-celadon);
-  border: 1px solid rgba(45, 90, 67, 0.2);
+  background: rgba(230, 197, 148, 0.1);
+  color: var(--color-amber);
+  border: 1px solid rgba(230, 197, 148, 0.25);
   font-weight: 500;
 }
 
@@ -339,8 +393,8 @@ onMounted(async () => {
 .console-tag {
   font-size: 0.78rem;
   padding: 3px 10px;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--color-grout);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   color: var(--color-text-light);
 }
@@ -368,7 +422,7 @@ onMounted(async () => {
   font-size: 1.1rem;
 }
 
-/* 四大近况 Bento 瓷砖 */
+/* 四大近况 Bento 视窗 */
 .now-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -395,6 +449,12 @@ onMounted(async () => {
   font-size: 1.05rem;
 }
 
+.book-edition-tag {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--color-amber);
+}
+
 .now-card-title {
   font-family: var(--font-serif);
   font-size: 1.35rem;
@@ -405,7 +465,7 @@ onMounted(async () => {
 }
 
 .now-card:hover .now-card-title {
-  color: var(--color-glaze-celadon);
+  color: var(--color-amber);
 }
 
 .now-card-author {
@@ -417,7 +477,7 @@ onMounted(async () => {
 .book-progress-bar {
   width: 100%;
   height: 5px;
-  background: var(--color-bg-alt);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-full);
   margin-bottom: 1.2rem;
   overflow: hidden;
@@ -425,7 +485,7 @@ onMounted(async () => {
 
 .progress-fill {
   height: 100%;
-  background: var(--color-glaze-celadon);
+  background: var(--color-amber);
   border-radius: var(--radius-full);
   transition: width 1.2s var(--ease);
 }
@@ -434,16 +494,131 @@ onMounted(async () => {
   font-family: var(--font-serif);
   font-size: 0.94rem;
   line-height: 1.85;
-  color: var(--color-text-light);
+  color: var(--color-ink);
   padding-left: 14px;
-  border-left: 2px solid var(--color-terracotta);
+  border-left: 2px solid var(--color-amber);
 }
 
 .now-card-desc {
-  font-size: 0.95rem;
-  line-height: 1.85;
+  font-size: 0.92rem;
+  line-height: 1.8;
   color: var(--color-text-light);
   font-weight: 400;
+}
+
+/* 实体黑胶交互微展台 */
+.vinyl-mini-stage {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 1.2rem 0;
+  padding: 14px 16px;
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+}
+
+.mini-vinyl-disc {
+  width: 68px;
+  height: 68px;
+  min-width: 68px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #252826 0%, #111413 60%, #080a09 100%);
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mini-vinyl-disc.spinning {
+  animation: vinyl-spin 6s linear infinite;
+}
+
+@keyframes vinyl-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.mini-vinyl-grooves {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.mini-vinyl-center {
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  background: var(--color-amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 6px rgba(230, 197, 148, 0.4);
+}
+
+.vinyl-center-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #121715;
+}
+
+.vinyl-meta-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.vinyl-meta-info .now-card-title {
+  margin-bottom: 2px;
+  font-size: 1.15rem;
+}
+
+.vinyl-meta-info .now-card-author {
+  margin-bottom: 8px;
+  font-size: 0.78rem;
+}
+
+.mini-vinyl-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mini-vinyl-btn {
+  padding: 5px 12px;
+  font-size: 0.76rem;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform var(--transition), background-color var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.mini-vinyl-btn.primary {
+  background: var(--color-amber);
+  color: #101412;
+  font-weight: 600;
+  border: 1px solid var(--color-amber-light);
+}
+
+.mini-vinyl-btn.primary:hover {
+  background: var(--color-amber-light);
+  transform: translateY(-1px);
+}
+
+.mini-vinyl-btn.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text-light);
+}
+
+.mini-vinyl-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--color-ink);
+  border-color: rgba(230, 197, 148, 0.3);
+  transform: translateY(-1px);
 }
 
 /* 音频波形跳动动画 */
@@ -456,9 +631,9 @@ onMounted(async () => {
 
 .wave-bar {
   width: 2.5px;
-  background: var(--color-glaze-celadon);
+  background: var(--color-amber);
   border-radius: 1px;
-  height: 6px;
+  height: 5px;
   transition: height 0.3s var(--ease), opacity 0.3s var(--ease);
 }
 
@@ -470,6 +645,7 @@ onMounted(async () => {
 .w-2 { height: 14px; animation-delay: 0.3s; }
 .w-3 { height: 9px; animation-delay: 0.2s; }
 .w-4 { height: 16px; animation-delay: 0.4s; }
+.w-5 { height: 10px; animation-delay: 0.15s; }
 
 @keyframes wave-jump {
   0% { transform: scaleY(0.3); }
@@ -481,28 +657,12 @@ onMounted(async () => {
 }
 
 .interactive-music-card:focus-visible {
-  outline: 2px solid var(--color-glaze-celadon);
+  outline: 2px solid var(--color-amber);
   outline-offset: 3px;
 }
 
 .interactive-music-card:hover {
-  border-color: var(--color-glaze-celadon);
-}
-
-.music-card-hint {
-  margin-top: auto;
-  padding-top: 1.2rem;
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
-  color: var(--color-glaze-celadon);
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  transition: transform 0.25s var(--ease-spring);
-}
-
-.interactive-music-card:hover .music-card-hint {
-  transform: translateX(4px);
+  border-color: var(--color-amber);
 }
 
 /* 足迹时间流 */
@@ -513,7 +673,7 @@ onMounted(async () => {
 .timeline-header {
   margin-bottom: 2rem;
   padding-bottom: 1.2rem;
-  border-bottom: 1px solid var(--color-grout);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .timeline-title {
@@ -532,7 +692,7 @@ onMounted(async () => {
 .timeline-list {
   display: flex;
   flex-direction: column;
-  gap: 1.8rem;
+  gap: 1.4rem;
   position: relative;
   padding-left: 1.8rem;
 }
@@ -544,42 +704,55 @@ onMounted(async () => {
   bottom: 6px;
   left: 6px;
   width: 1.5px;
-  background: var(--color-grout);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .timeline-item {
   position: relative;
-  transition: transform 0.24s var(--ease);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.24s var(--ease), background-color 0.24s var(--ease), border-color 0.24s var(--ease);
 }
 
 .timeline-item:hover {
   transform: translateX(4px);
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.timeline-item.expanded {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(230, 197, 148, 0.25);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
 }
 
 .timeline-point {
   position: absolute;
   left: -1.8rem;
-  top: 6px;
+  top: 18px;
   width: 13px;
   height: 13px;
   border-radius: 50%;
   background: var(--color-surface);
-  border: 2px solid var(--color-glaze-celadon);
+  border: 2px solid var(--color-amber);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease-spring), border-color 0.25s var(--ease-spring);
 }
 
-.timeline-item:hover .timeline-point {
-  box-shadow: 0 0 0 4px var(--color-accent-glow);
+.timeline-item:hover .timeline-point,
+.timeline-item.expanded .timeline-point {
+  box-shadow: 0 0 0 4px var(--color-amber-glow);
   transform: scale(1.2);
 }
 
 .point-core {
   width: 3px;
   height: 3px;
-  background: var(--color-glaze-celadon);
+  background: var(--color-amber);
   border-radius: 50%;
 }
 
@@ -588,22 +761,33 @@ onMounted(async () => {
   align-items: center;
   gap: 10px;
   margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 
 .item-date {
   font-family: var(--font-mono);
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--color-terracotta);
+  color: var(--color-amber);
 }
 
 .item-tag {
   font-size: 0.72rem;
   padding: 1px 8px;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--color-grout);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   color: var(--color-text-light);
+}
+
+.item-highlight-tag {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 1px 8px;
+  background: rgba(230, 197, 148, 0.08);
+  color: var(--color-amber);
+  border-radius: var(--radius-xs);
+  border: 1px solid rgba(230, 197, 148, 0.2);
 }
 
 .item-title {
@@ -615,8 +799,9 @@ onMounted(async () => {
   transition: color var(--transition);
 }
 
-.timeline-item:hover .item-title {
-  color: var(--color-glaze-celadon);
+.timeline-item:hover .item-title,
+.timeline-item.expanded .item-title {
+  color: var(--color-amber);
 }
 
 .item-detail {
@@ -632,5 +817,6 @@ onMounted(async () => {
   .live-console-card { padding: 1.8rem 1.4rem; }
   .now-card { padding: 1.8rem 1.4rem; }
   .timeline-wrap { padding: 1.8rem 1.4rem; }
+  .vinyl-mini-stage { flex-direction: column; align-items: flex-start; }
 }
 </style>

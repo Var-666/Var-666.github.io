@@ -1013,14 +1013,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   padding: 8px 14px 8px 10px;
-  background: linear-gradient(135deg, #FFFFFF 0%, #FAF6F0 60%, #EFE8DE 100%);
-  border: 1px solid rgba(255, 255, 255, 0.95);
+  background: linear-gradient(135deg, #1C2420 0%, #151B18 60%, #0F1412 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
   box-shadow:
-    inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.95),
-    inset -1.5px -1.5px 3px rgba(44, 38, 33, 0.08),
-    0 18px 40px -6px rgba(44, 38, 33, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.04);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 18px 40px -6px rgba(0, 0, 0, 0.6),
+    0 4px 12px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), border-color 0.3s var(--ease-spring);
   user-select: none;
@@ -1040,7 +1039,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 50%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
   pointer-events: none;
   border-radius: 24px 24px 0 0;
 }
@@ -1048,11 +1047,10 @@ onUnmounted(() => {
 .ceramic-capsule-domino:hover {
   transform: translateY(-3px) scale(1.02);
   box-shadow:
-    inset 1.5px 1.5px 2px #FFFFFF,
-    inset -1.5px -1.5px 3px rgba(44, 38, 33, 0.06),
-    0 24px 48px -6px rgba(44, 38, 33, 0.25),
-    0 6px 16px rgba(0, 0, 0, 0.06);
-  border-color: rgba(124, 140, 110, 0.4);
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 24px 48px -6px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(230, 197, 148, 0.3);
+  border-color: rgba(230, 197, 148, 0.4);
 }
 
 .capsule-sleeve {
@@ -1110,8 +1108,8 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #C4A882;
-  border: 1px solid #FAF7F2;
+  background: #E6C594;
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 .capsule-text-col {
@@ -1147,13 +1145,13 @@ onUnmounted(() => {
 }
 
 .capsule-tag.full {
-  background: rgba(124, 140, 110, 0.15);
-  color: var(--color-accent-dark);
+  background: rgba(78, 135, 115, 0.25);
+  color: #64A38C;
 }
 
 .capsule-tag.trial {
-  background: rgba(196, 168, 130, 0.2);
-  color: #9C723E;
+  background: rgba(230, 197, 148, 0.2);
+  color: #E6C594;
 }
 
 .capsule-artist {
@@ -1198,7 +1196,7 @@ onUnmounted(() => {
   height: 28px;
   border-radius: 50%;
   background: var(--color-accent);
-  color: #FFFFFF;
+  color: #12100E;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1232,7 +1230,7 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: rgba(36, 32, 28, 0.65);
+  background: rgba(8, 11, 10, 0.82);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   display: flex;
@@ -1249,37 +1247,36 @@ onUnmounted(() => {
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   margin: auto;
-  background: #ECE5DC;
-  border: 1px solid rgba(214, 203, 191, 0.85);
+  background: #111614;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 26px;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   box-shadow:
-    0 34px 84px -10px rgba(28, 22, 18, 0.45),
-    0 8px 24px rgba(0, 0, 0, 0.08),
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.7);
+    0 34px 84px -10px rgba(0, 0, 0, 0.8),
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
   position: relative;
   user-select: none;
 }
 
-/* 釉面陶瓷基础类 (Universal Glazed Ceramic Tile) */
+/* 曜岩石板嵌面基础类 (Universal Obsidian Plinth Tile) */
 .ceramic-tile {
-  background: linear-gradient(145deg, #FFFFFF 0%, #FAF6F0 55%, #F2ECE1 100%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: linear-gradient(145deg, #1A221E 0%, #151B18 55%, #101513 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
   box-shadow:
-    inset 1px 1px 2px 0px rgba(255, 255, 255, 0.95),
-    inset -1px -1px 2px 0px rgba(44, 38, 33, 0.07),
-    0 3px 12px -2px rgba(44, 38, 33, 0.07),
-    0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.35);
   position: relative;
   overflow: hidden;
   transition: box-shadow 0.28s var(--ease), border-color 0.28s var(--ease), transform 0.28s var(--ease);
 }
 
-/* 釉面高光漫反射层 (微透倒角光泽，绝不遮挡视窗文字) */
+/* 曜石微光漫反射层 */
 .ceramic-tile::before {
   content: '';
   position: absolute;
@@ -1289,8 +1286,8 @@ onUnmounted(() => {
   height: 26px;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.65) 0%,
-    rgba(255, 255, 255, 0.06) 65%,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 65%,
     transparent 100%
   );
   pointer-events: none;
@@ -1298,7 +1295,7 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-/* 在各内容视窗与长文本视口中禁用侵入式高光白膜 */
+/* 在各内容视窗与长文本视口中禁用侵入式高光膜 */
 .view-lyrics-deck::before,
 .view-search-deck::before,
 .view-queue-deck::before,
@@ -1309,11 +1306,10 @@ onUnmounted(() => {
 .ceramic-tile:hover {
   transform: translateY(-2px);
   box-shadow:
-    inset 1px 1px 2px 0px #FFFFFF,
-    inset -1px -1px 2px 0px rgba(44, 38, 33, 0.05),
-    0 8px 20px -3px rgba(44, 38, 33, 0.12),
-    0 2px 5px 0 rgba(0, 0, 0, 0.04);
-  border-color: rgba(124, 140, 110, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 8px 24px -3px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(230, 197, 148, 0.2);
+  border-color: rgba(230, 197, 148, 0.3);
 }
 
 /* ── 瓷砖 01: 顶栏电台与导航瓷片 (Header Tile) ── */
@@ -1337,8 +1333,8 @@ onUnmounted(() => {
   cursor: pointer;
   padding: 4px 12px 4px 4px;
   border-radius: var(--radius-full);
-  background: rgba(237, 230, 220, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   transition: background-color 0.25s var(--ease), border-color 0.25s var(--ease), transform 0.25s var(--ease);
 }
 
@@ -1348,7 +1344,7 @@ onUnmounted(() => {
 }
 
 .station-capsule-chip:hover {
-  background: #FFFFFF;
+  background: rgba(255, 255, 255, 0.1);
   border-color: var(--color-accent);
   transform: translateY(-1px);
 }
@@ -1373,8 +1369,8 @@ onUnmounted(() => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #9CA3AF;
-  border: 1.5px solid #FAF7F2;
+  background: #68746E;
+  border: 1.5px solid #161D19;
 }
 
 .chip-pulse.active {
@@ -1405,7 +1401,8 @@ onUnmounted(() => {
   padding: 1px 6px;
   border-radius: var(--radius-full);
   background: var(--color-accent);
-  color: #FFFFFF;
+  color: #12100E;
+  font-weight: 600;
 }
 
 .chip-text-wrap .sub {
@@ -1417,8 +1414,8 @@ onUnmounted(() => {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: rgba(237, 230, 220, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--color-text-lighter);
   display: flex;
   align-items: center;
@@ -1433,8 +1430,8 @@ onUnmounted(() => {
 }
 
 .ceramic-close-btn:hover {
-  background: #FFFFFF;
-  color: var(--color-text);
+  background: rgba(230, 197, 148, 0.2);
+  color: var(--color-accent);
   transform: rotate(90deg);
 }
 
@@ -1443,10 +1440,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #E5DED4;
+  background: rgba(0, 0, 0, 0.35);
   padding: 3px;
   border-radius: var(--radius-full);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .ceramic-tab {
@@ -1472,12 +1469,12 @@ onUnmounted(() => {
 }
 
 .ceramic-tab.active {
-  background: #FFFFFF;
-  color: var(--color-text);
+  background: #1F2823;
+  color: var(--color-accent);
   font-weight: 600;
   box-shadow:
-    0 2px 6px rgba(45, 40, 35, 0.1),
-    inset 0 1px 1px #FFFFFF;
+    0 2px 6px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .ceramic-tab.highlight {
@@ -1749,10 +1746,10 @@ onUnmounted(() => {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: #C4A882;
-  border: 2px solid #FAF7F2;
+  background: #E6C594;
+  border: 2px solid rgba(255, 255, 255, 0.4);
   position: relative;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1762,8 +1759,8 @@ onUnmounted(() => {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #252220;
-  border: 1px solid #FAF7F2;
+  background: #12100E;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* 歌曲标题与艺术家 */
@@ -1830,8 +1827,9 @@ onUnmounted(() => {
   top: -22px;
   transform: translateX(-50%);
   padding: 1px 5px;
-  background: var(--color-text);
-  color: #FAF7F2;
+  background: var(--color-accent);
+  color: #12100E;
+  font-weight: 600;
   border-radius: var(--radius-xs);
   font-family: var(--font-mono);
   font-size: 0.65rem;
@@ -1842,7 +1840,7 @@ onUnmounted(() => {
 .progress-track-bg {
   width: 100%;
   height: 4px;
-  background: #E5DDD3;
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 2px;
 }
 
@@ -1862,9 +1860,9 @@ onUnmounted(() => {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #FFFFFF;
-  border: 2px solid var(--color-accent);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  background: #E6C594;
+  border: 2px solid #161D19;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
   transition: transform 0.2s var(--ease);
 }
 
@@ -1886,7 +1884,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  background: linear-gradient(145deg, #FAF7F2 0%, #F5EFE6 100%);
+  background: linear-gradient(145deg, #18201C 0%, #121714 100%);
   transition: transform 0.25s var(--ease), border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
 }
 
@@ -1897,8 +1895,8 @@ onUnmounted(() => {
 
 .tile-lyric-glance:hover {
   transform: translateY(-2px);
-  border-color: rgba(124, 140, 110, 0.35);
-  box-shadow: 0 6px 16px rgba(124, 140, 110, 0.12);
+  border-color: rgba(230, 197, 148, 0.35);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
 .glance-left-col {
@@ -1913,7 +1911,7 @@ onUnmounted(() => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #B4ACA2;
+  background: #68746E;
 }
 
 .glance-pulse-dot.pulsing {
@@ -1953,8 +1951,8 @@ onUnmounted(() => {
 
 .glance-jump-pill {
   font-size: 0.7rem;
-  color: var(--color-accent-dark);
-  background: rgba(124, 140, 110, 0.12);
+  color: var(--color-accent);
+  background: rgba(230, 197, 148, 0.12);
   padding: 3px 10px;
   border-radius: var(--radius-full);
   font-weight: 500;
@@ -1963,7 +1961,7 @@ onUnmounted(() => {
 
 .tile-lyric-glance:hover .glance-jump-pill {
   background: var(--color-accent);
-  color: #FFFFFF;
+  color: #12100E;
 }
 
 /* ── 视角 02: 陶瓷诗板歌词全屏视窗 (Porcelain Poetry Tablet) ── */
@@ -2145,8 +2143,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #F4EFEB;
-  border: 1px solid var(--border-medium);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   z-index: 2;
   transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
@@ -2171,7 +2169,8 @@ onUnmounted(() => {
 .search-submit-btn {
   padding: 4px 12px;
   background: var(--color-accent);
-  color: #FFFFFF;
+  color: #12100E;
+  font-weight: 600;
   border-radius: var(--radius-full);
   font-size: 0.76rem;
   cursor: pointer;
@@ -2198,13 +2197,19 @@ onUnmounted(() => {
 
 .hot-style-chip {
   padding: 2px 9px;
-  background: rgba(237, 230, 220, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-full);
   font-size: 0.7rem;
   color: var(--color-text-light);
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.hot-style-chip:hover {
+  background: rgba(230, 197, 148, 0.15);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .hot-style-chip:focus-visible {
@@ -2262,8 +2267,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   padding: 7px 10px;
-  background: #F4EFEB;
-  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
@@ -2274,7 +2279,10 @@ onUnmounted(() => {
   outline-offset: 2px;
 }
 
-.search-song-card:hover { background: #ECE5DC; }
+.search-song-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(230, 197, 148, 0.3);
+}
 
 .song-card-thumb {
   width: 32px;
@@ -2311,7 +2319,8 @@ onUnmounted(() => {
   padding: 3px 9px;
   border-radius: var(--radius-full);
   background: var(--color-accent);
-  color: #FFFFFF;
+  color: #12100E;
+  font-weight: 600;
   font-size: 0.7rem;
   cursor: pointer;
 }
@@ -2349,8 +2358,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   padding: 7px 10px;
-  background: #F4EFEB;
-  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
@@ -2361,11 +2370,11 @@ onUnmounted(() => {
   outline-offset: 2px;
 }
 
-.queue-card-row:hover { background: #ECE5DC; }
+.queue-card-row:hover { background: rgba(255, 255, 255, 0.08); }
 
 .queue-card-row.active {
-  background: rgba(124, 140, 110, 0.12);
-  border: 1px solid rgba(124, 140, 110, 0.3);
+  background: rgba(230, 197, 148, 0.12);
+  border: 1px solid rgba(230, 197, 148, 0.35);
 }
 
 .queue-ordinal {
@@ -2458,9 +2467,9 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: #F4EFEB;
+  background: rgba(255, 255, 255, 0.04);
   border-radius: var(--radius);
-  border: 1px solid var(--border-light);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
@@ -2471,7 +2480,7 @@ onUnmounted(() => {
 }
 
 .playlist-banner-card:hover {
-  background: #ECE5DC;
+  background: rgba(255, 255, 255, 0.08);
   border-color: var(--color-accent);
 }
 
@@ -2526,7 +2535,8 @@ onUnmounted(() => {
   padding: 4px 12px;
   border-radius: var(--radius-full);
   background: var(--color-accent);
-  color: #FFFFFF;
+  color: #12100E;
+  font-weight: 600;
   font-size: 0.72rem;
   border: none;
   cursor: pointer;
@@ -2555,17 +2565,16 @@ onUnmounted(() => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #FFFFFF 0%, #FAF6F0 100%);
-  border: 1px solid rgba(255, 255, 255, 0.95);
+  background: linear-gradient(145deg, #222C26 0%, #171E1A 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--color-text);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow:
-    inset 1px 1px 1.5px #FFFFFF,
-    inset -1px -1px 2px rgba(44, 38, 33, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.05);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 4px 10px rgba(0, 0, 0, 0.4);
   transition: background-color 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
   flex-shrink: 0;
   z-index: 2;
@@ -2577,36 +2586,36 @@ onUnmounted(() => {
 }
 
 .ceramic-btn:hover {
-  background: #FFFFFF;
+  background: #2A3630;
   color: var(--color-accent);
-  border-color: var(--color-accent);
+  border-color: rgba(230, 197, 148, 0.4);
   transform: translateY(-1px);
   box-shadow:
-    inset 1px 1px 1.5px #FFFFFF,
-    0 4px 10px rgba(0, 0, 0, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 6px 14px rgba(0, 0, 0, 0.5);
 }
 
 .ceramic-btn:active {
   transform: scale(0.92) translateY(1px);
 }
 
-/* 主播放/暂停 (莫兰迪绿釉面水滴凸起大按键) */
+/* 主播放/暂停 (琥珀金水滴凸起大按键) */
 .ceramic-play-master {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #8FA080 0%, #7C8C6E 60%, #68775B 100%);
-  border: 1.5px solid rgba(255, 255, 255, 0.6);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #E6C594 0%, #C4A370 60%, #A38250 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  color: #12100E;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow:
-    inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.6),
-    inset -1.5px -1.5px 3px rgba(0, 0, 0, 0.2),
-    0 8px 24px var(--color-accent-glow),
-    0 2px 6px rgba(0, 0, 0, 0.08);
+    inset 1px 1px 2px rgba(255, 255, 255, 0.6),
+    inset -1px -1px 3px rgba(0, 0, 0, 0.3),
+    0 8px 24px rgba(230, 197, 148, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.4);
   transition: transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease-spring);
   flex-shrink: 0;
   z-index: 2;
@@ -2626,15 +2635,15 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 50%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, transparent 100%);
   border-radius: 50px 50px 0 0;
   pointer-events: none;
 }
 
 .ceramic-play-master:hover {
-  background: linear-gradient(135deg, #99AA8A 0%, #728264 100%);
+  background: linear-gradient(135deg, #F3DFC0 0%, #D4B380 100%);
   transform: scale(1.06);
-  box-shadow: 0 12px 28px var(--color-accent-glow-strong);
+  box-shadow: 0 12px 28px rgba(230, 197, 148, 0.5);
 }
 
 .ceramic-play-master:active {
@@ -2644,8 +2653,8 @@ onUnmounted(() => {
 .master-spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #FFFFFF;
+  border: 2px solid rgba(18, 16, 14, 0.35);
+  border-top-color: #12100E;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -2657,10 +2666,11 @@ onUnmounted(() => {
   gap: 5px;
   flex: 1;
   max-width: 110px;
-  background: #E5DDD3;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 3px 8px 3px 4px;
   border-radius: var(--radius-full);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
   z-index: 2;
 }
 
@@ -2689,7 +2699,7 @@ onUnmounted(() => {
   flex: 1;
   height: 3.5px;
   -webkit-appearance: none;
-  background: #D4C9BC;
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
   outline: none;
 }
@@ -2714,7 +2724,7 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   z-index: 10050;
-  background: rgba(36, 32, 28, 0.65);
+  background: rgba(8, 11, 10, 0.82);
   backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
@@ -2725,8 +2735,10 @@ onUnmounted(() => {
 .diag-porcelain-card {
   width: 100%;
   max-width: 420px;
+  background: #151B18;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
   overflow: hidden;
   overscroll-behavior: contain;
 }
@@ -2776,9 +2788,9 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  background: rgba(237, 230, 220, 0.5);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .owner-circle-avatar {
@@ -2797,9 +2809,9 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 7px;
   padding: 12px;
-  background: rgba(237, 230, 220, 0.5);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .endpoint-caption { font-size: 0.7rem; color: var(--color-text-lighter); }
@@ -2814,20 +2826,21 @@ onUnmounted(() => {
 .endpoint-status-line code {
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  color: var(--color-text);
-  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-accent);
+  background: rgba(0, 0, 0, 0.35);
   padding: 2px 6px;
   border-radius: var(--radius-xs);
 }
 
-.endpoint-badge { font-size: 0.65rem; color: #DC2626; }
-.endpoint-badge.ok { color: var(--color-accent-dark); font-weight: 500; }
+.endpoint-badge { font-size: 0.65rem; color: #EF4444; }
+.endpoint-badge.ok { color: #64A38C; font-weight: 500; }
 .endpoint-msg { font-size: 0.7rem; color: var(--color-text-lighter); margin: 0; }
 
 .endpoint-test-action {
   padding: 5px 12px;
   background: var(--color-accent);
-  color: #FFFFFF;
+  color: #12100E;
+  font-weight: 600;
   border-radius: var(--radius-full);
   font-size: 0.75rem;
   cursor: pointer;

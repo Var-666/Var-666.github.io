@@ -150,13 +150,13 @@ onUnmounted(() => {
   height: var(--nav-height);
   display: flex;
   align-items: center;
-  background: rgba(247, 246, 242, 0.88);
+  background: rgba(13, 17, 16, 0.82);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--color-grout);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
               height 0.24s var(--ease),
-              background 0.24s var(--ease),
+              background-color 0.24s var(--ease),
               box-shadow 0.24s var(--ease),
               border-color 0.24s var(--ease);
   will-change: transform, height;
@@ -170,9 +170,9 @@ onUnmounted(() => {
 /* 滚动紧凑态 */
 .navbar.scrolled {
   height: 56px;
-  background: rgba(255, 255, 255, 0.94);
-  border-bottom: 1px solid #D6D2C5;
-  box-shadow: 0 4px 20px -2px rgba(24, 27, 25, 0.05);
+  background: rgba(13, 17, 16, 0.94);
+  border-bottom: 1px solid rgba(230, 197, 148, 0.16);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
 }
 
 .navbar.scrolled .logo-icon {
@@ -221,22 +221,23 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-glaze-celadon);
-  color: #FFFFFF;
+  background: var(--color-amber);
+  color: #101412;
   border-radius: var(--radius-xs);
   font-size: 0.82rem;
   font-family: var(--font-mono);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(45, 90, 67, 0.25);
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 8px rgba(230, 197, 148, 0.3);
   transition: transform var(--transition-spring), background-color var(--transition-spring);
 }
 
 .nav-logo:hover .logo-icon {
-  transform: rotate(-6deg) scale(1.06);
-  background: var(--color-glaze-celadon-light);
+  transform: rotate(-6deg) scale(1.08);
+  background: var(--color-amber-light);
 }
 
 .nav-logo:focus-visible {
-  outline: 2px solid var(--color-glaze-celadon);
+  outline: 2px solid var(--color-amber);
   outline-offset: 4px;
 }
 
@@ -267,20 +268,20 @@ onUnmounted(() => {
 }
 
 .nav-link:focus-visible {
-  outline: 2px solid var(--color-glaze-celadon);
+  outline: 2px solid var(--color-amber);
   outline-offset: 2px;
 }
 
 .nav-link:hover {
   color: var(--color-ink);
-  background: var(--color-grout-subtle);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 /* 活跃链接指示 */
 .nav-link.active {
-  color: var(--color-glaze-celadon);
+  color: var(--color-amber);
   font-weight: 500;
-  background: rgba(45, 90, 67, 0.06);
+  background: rgba(230, 197, 148, 0.08);
 }
 
 .nav-link.active::after {
@@ -291,7 +292,7 @@ onUnmounted(() => {
   transform: translateX(-50%);
   width: 14px;
   height: 2px;
-  background: var(--color-glaze-celadon);
+  background: var(--color-amber);
   border-radius: var(--radius-full);
 }
 
@@ -307,7 +308,7 @@ onUnmounted(() => {
 
 .scroll-progress-bar {
   height: 100%;
-  background: var(--color-glaze-celadon);
+  background: var(--color-amber);
   transition: width 0.08s linear;
 }
 
@@ -324,7 +325,7 @@ onUnmounted(() => {
 }
 
 .mobile-toggle:focus-visible {
-  outline: 2px solid var(--color-glaze-celadon);
+  outline: 2px solid var(--color-amber);
   outline-offset: 2px;
 }
 
@@ -349,16 +350,16 @@ onUnmounted(() => {
   transform: rotate(-45deg) translate(5px, -5px);
 }
 
-/* ── 实时状态微胶囊 (实体瓷片质感) ── */
+/* ── 实时状态微胶囊 ── */
 .nav-live-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 5px 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-grout);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-sm);
-  box-shadow: var(--tile-shadow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   color: var(--color-ink);
   font-size: 0.78rem;
   font-family: var(--font-mono);
@@ -367,14 +368,15 @@ onUnmounted(() => {
 }
 
 .nav-live-pill:focus-visible {
-  outline: 2px solid var(--color-glaze-celadon);
+  outline: 2px solid var(--color-amber);
   outline-offset: 2px;
 }
 
 .nav-live-pill:hover {
-  border-color: var(--color-glaze-celadon);
+  border-color: rgba(230, 197, 148, 0.4);
+  background: rgba(230, 197, 148, 0.08);
   transform: translateY(-1px);
-  box-shadow: var(--tile-shadow-hover);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 .live-pulse-dot {
@@ -415,7 +417,7 @@ onUnmounted(() => {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(247, 246, 242, 0.98);
+  background: rgba(13, 17, 16, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   flex-direction: column;
@@ -443,13 +445,13 @@ onUnmounted(() => {
 }
 
 .mobile-link:focus-visible {
-  outline: 2px solid var(--color-glaze-celadon);
+  outline: 2px solid var(--color-amber);
   outline-offset: 2px;
 }
 
 .mobile-link:hover {
-  color: var(--color-glaze-celadon);
-  background: var(--color-grout-subtle);
+  color: var(--color-amber);
+  background: rgba(230, 197, 148, 0.08);
 }
 
 @media (max-width: 768px) {

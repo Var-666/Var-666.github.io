@@ -80,16 +80,16 @@ onUnmounted(() => {
 }
 
 .back-to-top:focus-visible {
-  outline: 2px solid var(--color-glaze-celadon);
-  outline-offset: 2px;
+  outline: 2px solid var(--color-amber);
+  outline-offset: 3px;
 }
 
 .back-to-top:hover {
-  background: var(--color-glaze-celadon);
-  color: #FFFFFF;
-  border-color: var(--color-glaze-celadon-dark);
+  background: var(--color-amber);
+  color: #101412;
+  border-color: var(--color-amber-light);
   transform: translateY(-2px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 18px rgba(45, 90, 67, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px rgba(230, 197, 148, 0.35);
 }
 
 .btt-enter-active { transition: opacity 0.3s var(--ease-spring), transform 0.3s var(--ease-spring); }

@@ -9,29 +9,35 @@ interface SkillGroup {
   label: string
   sublabel: string
   tier: 'primary' | 'secondary' | 'exploring'
+  symbol: string
   skills: string[]
 }
 
 const skillGroups: SkillGroup[] = [
   {
-    label: '主力工具',
-    sublabel: 'Primary Stack · 日常驱动创作的核心技术',
+    label: '主力核心器物',
+    sublabel: 'Core Stack · 日常驱动架构与交互的核心手艺',
     tier: 'primary',
-    skills: ['Vue.js', 'TypeScript', 'CSS / 动画', 'Node.js', 'Vite'],
+    symbol: '✦',
+    skills: ['Vue.js', 'TypeScript', 'CSS / 动效体系', 'Node.js', 'Vite'],
   },
   {
-    label: '熟悉使用',
-    sublabel: 'Comfortable With · 能进能出的工具层',
+    label: '趁手工具箱',
+    sublabel: 'Fluent Tools · 能进能出、得心应手的工程利器',
     tier: 'secondary',
+    symbol: '◈',
     skills: ['React', 'Python', 'Git', 'Docker', 'Figma', 'Nuxt.js'],
   },
   {
-    label: '正在探索',
-    sublabel: 'Exploring · 对未知的好奇',
+    label: '前沿探针',
+    sublabel: 'Frontier Probes · 对声音、3D 空间与系统底层的求知欲',
     tier: 'exploring',
+    symbol: '✧',
     skills: ['Web Audio API', 'WebGL / Three.js', 'Rust', 'Edge Functions'],
   },
 ]
+
+const activeHoveredSkill = ref<string | null>(null)
 
 onMounted(() => {
   if (sectionRef.value) {
@@ -44,8 +50,8 @@ onMounted(() => {
   <section id="skills" class="section" ref="sectionRef">
     <div class="container">
       <div class="section-header reveal">
-        <h2 class="section-title">技能与工具</h2>
-        <p class="section-subtitle">不评分、只分层。记录在数字工坊中历练的核心技术与探索前沿</p>
+        <h2 class="section-title">技能与器物</h2>
+        <p class="section-subtitle">不打标签评分，只按器物分层。记录在数字工坊中千锤百炼的手艺与前沿探索</p>
       </div>
 
       <div class="skills-cabinet">
@@ -57,9 +63,9 @@ onMounted(() => {
         >
           <div class="tier-header">
             <div class="tier-title-row">
-              <span class="tier-index">0{{ gi + 1 }}</span>
+              <span class="tier-symbol">{{ group.symbol }}</span>
               <h3 class="tier-label">{{ group.label }}</h3>
-              <span class="tier-badge">{{ group.tier === 'primary' ? '核心驱动' : (group.tier === 'secondary' ? '日常构建' : '前沿探索') }}</span>
+              <span class="tier-badge">{{ group.tier === 'primary' ? '核心驱动' : (group.tier === 'secondary' ? '趁手工具' : '前沿探索') }}</span>
             </div>
             <p class="tier-sublabel">{{ group.sublabel }}</p>
           </div>
@@ -69,6 +75,9 @@ onMounted(() => {
               v-for="skill in group.skills"
               :key="skill"
               class="skill-chip"
+              :class="{ 'is-hovered': activeHoveredSkill === skill }"
+              @mouseenter="activeHoveredSkill = skill"
+              @mouseleave="activeHoveredSkill = null"
             >
               <span class="chip-point"></span>
               <span class="chip-name">{{ skill }}</span>
@@ -78,12 +87,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 转换至小木屋夜幕 (曜石墨黑) -->
-    <div class="skills-wave">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 72" preserveAspectRatio="none">
-        <path d="M0,36 C240,72 480,0 720,36 C960,72 1200,0 1440,36 L1440,72 L0,72 Z" fill="#131716"/>
-      </svg>
-    </div>
+    <!-- 转换至小木屋夜幕的暮色天幕过渡 -->
+    <div class="skills-dusk-transition" aria-hidden="true"></div>
   </section>
 </template>
 
@@ -91,27 +96,22 @@ onMounted(() => {
 #skills {
   background-color: var(--color-base);
   position: relative;
-  padding-bottom: calc(var(--section-padding) + 48px);
+  padding-bottom: calc(var(--section-padding) + 30px);
 }
 
-/* 波浪过渡到小木屋夜景 */
-.skills-wave {
+/* 暮色天幕自然过渡至 3D 小木屋夜空 */
+.skills-dusk-transition {
   position: absolute;
-  bottom: -1px;
+  bottom: 0;
   left: 0;
   right: 0;
-  z-index: 4;
+  height: 90px;
+  background: linear-gradient(180deg, transparent 0%, rgba(19, 23, 22, 0.65) 50%, #131716 100%);
   pointer-events: none;
-  line-height: 0;
+  z-index: 2;
 }
 
-.skills-wave svg {
-  width: 100%;
-  height: 72px;
-  display: block;
-}
-
-/* 标本抽屉瓷砖列 */
+/* 标本抽屉卡片列 */
 .skills-cabinet {
   display: flex;
   flex-direction: column;
@@ -138,15 +138,17 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.tier-index {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--color-glaze-celadon);
-  background: var(--color-bg-alt);
-  padding: 2px 8px;
+.tier-symbol {
+  font-size: 1rem;
+  color: var(--color-amber);
+  background: rgba(230, 197, 148, 0.08);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--color-grout);
+  border: 1px solid rgba(230, 197, 148, 0.2);
 }
 
 .tier-label {
@@ -158,18 +160,18 @@ onMounted(() => {
 
 .tier-badge {
   font-size: 0.72rem;
-  padding: 2px 9px;
+  padding: 2px 10px;
   border-radius: var(--radius-xs);
   font-weight: 500;
-  border: 1px solid var(--color-grout);
-  background: var(--color-bg-alt);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--color-text-light);
 }
 
 .tier-primary .tier-badge {
-  background: rgba(45, 90, 67, 0.08);
-  color: var(--color-glaze-celadon);
-  border-color: rgba(45, 90, 67, 0.2);
+  background: rgba(230, 197, 148, 0.1);
+  color: var(--color-amber);
+  border-color: rgba(230, 197, 148, 0.25);
 }
 
 .tier-sublabel {
@@ -189,46 +191,48 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--color-grout);
+  padding: 9px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-sm);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 3px rgba(0, 0, 0, 0.02);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   color: var(--color-ink);
   font-size: 0.92rem;
   font-weight: 500;
   cursor: default;
-  transition: transform var(--transition), background var(--transition), border-color var(--transition), box-shadow var(--transition);
+  transition: transform var(--transition), background-color var(--transition), border-color var(--transition), box-shadow var(--transition), color var(--transition);
 }
 
 .skill-chip:hover {
   transform: translateY(-2px);
-  background: #FFFFFF;
-  border-color: #D4D0C5;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), 0 6px 14px rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(230, 197, 148, 0.4);
+  color: var(--color-amber);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 .chip-point {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--color-glaze-celadon);
+  background: var(--color-amber);
+  box-shadow: 0 0 6px var(--color-amber);
+  transition: transform var(--transition);
+}
+
+.skill-chip:hover .chip-point {
+  transform: scale(1.4);
 }
 
 /* 主力工具高亮样式 */
 .tier-primary .skill-chip {
-  background: #FFFFFF;
-  border-color: #DCD8CC;
+  background: rgba(230, 197, 148, 0.04);
+  border-color: rgba(230, 197, 148, 0.16);
 }
 
 .tier-primary .skill-chip:hover {
-  border-color: var(--color-glaze-celadon);
-  color: var(--color-glaze-celadon-dark);
-}
-
-.tier-primary .chip-point {
-  background: var(--color-glaze-celadon);
-  box-shadow: 0 0 4px rgba(45, 90, 67, 0.4);
+  border-color: var(--color-amber);
+  background: rgba(230, 197, 148, 0.1);
 }
 
 /* 正在探索虚线 */
@@ -238,7 +242,8 @@ onMounted(() => {
 }
 
 .tier-exploring .chip-point {
-  background: var(--color-terracotta);
+  background: var(--color-celadon);
+  box-shadow: 0 0 6px var(--color-celadon);
 }
 
 @media (max-width: 768px) {
@@ -249,7 +254,7 @@ onMounted(() => {
     gap: 8px;
   }
   .skill-chip {
-    padding: 6px 12px;
+    padding: 7px 14px;
     font-size: 0.85rem;
   }
 }

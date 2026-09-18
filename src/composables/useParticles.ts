@@ -33,13 +33,13 @@ export function useParticles() {
   const CONNECTION_DISTANCE = 120
   const MOUSE_RADIUS = 150
 
-  // 工坊陶构与矿物釉色粒子调色盘 (契合素陶明亮底色)
+  // 暗调琥珀与星尘微粒调色盘 (契合暗调玄曜石背景)
   const COLORS = [
-    'rgba(45, 90, 67, VAR)',    // 青松釉绿
-    'rgba(70, 125, 95, VAR)',   // 浅青瓷绿
-    'rgba(194, 91, 52, VAR)',   // 陶土赭红
-    'rgba(24, 27, 25, VAR)',    // 窑烧墨点
-    'rgba(180, 165, 145, VAR)', // 陶土砂粒
+    'rgba(230, 197, 148, VAR)', // 暖金琥珀
+    'rgba(243, 223, 192, VAR)', // 浅金香槟
+    'rgba(78, 135, 115, VAR)',  // 冷泉玉绿
+    'rgba(194, 91, 52, VAR)',   // 陶土铜红
+    'rgba(245, 242, 235, VAR)', // 象牙星尘
   ]
 
   function createParticle(width: number, height: number): Particle {
@@ -108,7 +108,7 @@ export function useParticles() {
           ctx.beginPath()
           ctx.moveTo(particles[i].x, particles[i].y)
           ctx.lineTo(particles[j].x, particles[j].y)
-          ctx.strokeStyle = `rgba(154, 171, 139, ${opacity})`
+          ctx.strokeStyle = `rgba(230, 197, 148, ${opacity * 1.2})`
           ctx.lineWidth = 0.5
           ctx.stroke()
         }

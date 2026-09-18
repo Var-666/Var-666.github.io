@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useParticles } from '@/composables/useParticles'
 import { useTypewriter } from '@/composables/useTypewriter'
 import { useTextScramble } from '@/composables/useTextScramble'
+import { useAudioPlayer } from '@/composables/useAudioPlayer'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const { init: initParticles } = useParticles()
@@ -10,11 +11,20 @@ const { init: initParticles } = useParticles()
 const mottos = [
   '以代码编织创意，用设计诠释自然',
   '探索技术与艺术的交汇之处',
-  '化繁为简，回归本真',
+  '化繁为简，在静谧中聆听秩序',
 ]
 
 const { displayText, start: startTypewriter } = useTypewriter(mottos, 90, 45, 2800)
 const { output: scrambledName, scramble } = useTextScramble()
+const { isPlaying: isAudioPlaying, selectTrack, togglePlay: toggleAudioPlay } = useAudioPlayer()
+
+function handleAudioQuickToggle() {
+  if (!isAudioPlaying.value) {
+    selectTrack(0, true)
+  } else {
+    toggleAudioPlay()
+  }
+}
 
 // 鼠标视差 — 多层元素以不同速度移动产生景深
 const mouseX = ref(0)
@@ -22,26 +32,6 @@ const mouseY = ref(0)
 
 const contentStyle = computed(() => ({
   transform: `translate(${mouseX.value * -15}px, ${mouseY.value * -10}px)`,
-}))
-
-const ornamentStyle = computed(() => ({
-  transform: `translate(${mouseX.value * -25}px, ${mouseY.value * -20}px)`,
-}))
-
-const float1Style = computed(() => ({
-  transform: `translate(${mouseX.value * 20}px, ${mouseY.value * 12}px)`,
-}))
-
-const float2Style = computed(() => ({
-  transform: `translate(${mouseX.value * -30}px, ${mouseY.value * -25}px)`,
-}))
-
-const float3Style = computed(() => ({
-  transform: `translate(${mouseX.value * 12}px, ${mouseY.value * -18}px)`,
-}))
-
-const float4Style = computed(() => ({
-  transform: `translate(${mouseX.value * -18}px, ${mouseY.value * 28}px)`,
 }))
 
 function handleMouseMove(e: MouseEvent) {
@@ -61,6 +51,10 @@ function onNameLeave() {
   nameHoverTimeout = setTimeout(() => {
     scramble('var', 400)
   }, 100)
+}
+
+function onNameClick() {
+  scramble('var', 800)
 }
 
 onMounted(() => {
@@ -94,41 +88,45 @@ function scrollToSection(selector: string) {
     <!-- 粒子画布 -->
     <canvas ref="canvasRef" class="hero-canvas"></canvas>
 
+    <!-- 舞台环境光斑 -->
+    <div class="hero-ambient-glow" aria-hidden="true"></div>
+
     <!-- 主要内容 (微视差层) -->
     <div class="hero-content" :style="contentStyle">
-      <!-- 身份徽章 -->
+      <!-- 身份微章 -->
       <div class="hero-chip">
-        <span class="chip-dot"></span>
-        <span class="chip-text">全栈创造者与数字手艺人</span>
+        <span class="chip-sparkle">✦</span>
+        <span class="chip-text">数字手艺人 · 声音与交互工坊</span>
       </div>
 
-      <!-- 签名大字 (交互解码) -->
+      <!-- 签名大字 (交互解码与流体拉伸) -->
       <h1
         class="hero-name"
+        @click="onNameClick"
         @mouseenter="onNameEnter"
         @mouseleave="onNameLeave"
+        title="点击触发字形重构"
       >{{ scrambledName || 'var' }}</h1>
 
-      <p class="hero-tagline">以手艺人心态雕琢代码，构建沉静而富有生命力的实体数字体验</p>
+      <p class="hero-tagline">以手艺人心态雕琢代码，在秩序与混沌之间构筑有生命力的数字实体</p>
 
-      <!-- 瓷砖终端打字机 -->
-      <div class="hero-terminal-tile">
-        <div class="terminal-bar">
-          <div class="terminal-dots">
-            <span class="dot dot-close"></span>
-            <span class="dot dot-min"></span>
-            <span class="dot dot-expand"></span>
+      <!-- 工坊雕石台箴言 (Artisan's Manifesto Plinth) -->
+      <div class="hero-manifesto-plinth tile-card tilt-shine">
+        <div class="plinth-header">
+          <div class="plinth-brand">
+            <span class="plinth-dot"></span>
+            <span class="plinth-label">造物箴言 · MANIFESTO</span>
           </div>
-          <span class="terminal-title">var@craft-studio ~ motto</span>
+          <span class="plinth-sign">var@atelier</span>
         </div>
-        <div class="terminal-body">
-          <span class="terminal-prompt">&gt;_</span>
-          <span class="terminal-text">{{ displayText }}</span>
-          <span class="terminal-cursor">▌</span>
+        <div class="plinth-body">
+          <span class="plinth-prompt">§</span>
+          <span class="plinth-text">{{ displayText }}</span>
+          <span class="plinth-cursor">▌</span>
         </div>
       </div>
 
-      <!-- 行动按键行 -->
+      <!-- 行动按键行与声学胶囊 -->
       <div class="hero-actions">
         <button class="tile-btn-primary" @click="scrollToSection('#now')">
           <span>此时此刻 · 近况</span>
@@ -138,6 +136,19 @@ function scrollToSection(selector: string) {
         </button>
         <button class="tile-btn-secondary" @click="scrollToSection('#cabin')">
           <span>漫步小木屋 🌲</span>
+        </button>
+        <button
+          class="hero-audio-pill"
+          :class="{ active: isAudioPlaying }"
+          @click="handleAudioQuickToggle"
+          :aria-label="isAudioPlaying ? '暂停背景音乐' : '开启沉浸背景音乐'"
+          :title="isAudioPlaying ? '暂停背景音乐' : '开启沉浸背景音乐'"
+        >
+          <span class="audio-pill-icon">{{ isAudioPlaying ? '🎵' : '🎧' }}</span>
+          <span class="audio-pill-text">{{ isAudioPlaying ? '心流律动中' : '沉浸心流' }}</span>
+          <span class="audio-wave-mini" :class="{ playing: isAudioPlaying }">
+            <i></i><i></i><i></i>
+          </span>
         </button>
       </div>
     </div>
@@ -162,11 +173,11 @@ function scrollToSection(selector: string) {
   align-items: center;
   justify-content: center;
   background-color: var(--color-base);
-  background-image: radial-gradient(var(--color-grout) 1.2px, transparent 1.2px);
+  background-image: radial-gradient(rgba(230, 197, 148, 0.04) 1.2px, transparent 1.2px);
   background-size: 32px 32px;
   overflow: hidden;
-  border-bottom: 1px solid var(--color-grout);
-  padding: 100px 24px 80px;
+  border-bottom: 1px solid var(--color-border);
+  padding: 110px 24px 85px;
 }
 
 .hero-canvas {
@@ -176,36 +187,48 @@ function scrollToSection(selector: string) {
   pointer-events: none;
 }
 
+/* 舞台环境光斑 */
+.hero-ambient-glow {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 680px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(230, 197, 148, 0.08) 0%, rgba(78, 135, 115, 0.04) 45%, transparent 70%);
+  pointer-events: none;
+  z-index: 2;
+  filter: blur(50px);
+}
+
 /* 内容主区域 */
 .hero-content {
   position: relative;
   z-index: 3;
   text-align: center;
-  max-width: 780px;
+  max-width: 820px;
   margin: 0 auto;
   transition: transform 0.4s ease-out;
 }
 
-/* 身份徽章 */
+/* 身份微章 */
 .hero-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 5px 14px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-grout);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(230, 197, 148, 0.2);
   border-radius: var(--radius-xs);
-  box-shadow: var(--tile-shadow);
-  margin-bottom: 1.5rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  margin-bottom: 1.6rem;
   opacity: 0;
   animation: fadeInDown 0.7s var(--ease) 0.15s forwards;
 }
 
-.chip-dot {
-  width: 7px;
-  height: 7px;
-  background: var(--color-glaze-celadon);
-  border-radius: 50%;
+.chip-sparkle {
+  color: var(--color-amber);
+  font-size: 0.82rem;
   animation: pulse-dot 2.5s ease-in-out infinite;
 }
 
@@ -224,7 +247,7 @@ function scrollToSection(selector: string) {
 /* 签名大字 */
 .hero-name {
   font-family: var(--font-serif);
-  font-size: clamp(3.8rem, 11vw, 7.8rem);
+  font-size: clamp(4.2rem, 12vw, 8.2rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1;
@@ -232,14 +255,19 @@ function scrollToSection(selector: string) {
   color: var(--color-ink);
   opacity: 0;
   animation: fadeInUp 0.8s var(--ease) 0.3s forwards;
-  transition: transform 0.25s var(--ease), color 0.25s var(--ease);
+  transition: transform 0.28s var(--ease-spring), color 0.28s var(--ease), text-shadow 0.28s var(--ease);
   cursor: pointer;
   user-select: none;
 }
 
 .hero-name:hover {
-  color: var(--color-glaze-celadon);
-  transform: scale(1.02);
+  color: var(--color-amber);
+  transform: scale(1.03);
+  text-shadow: 0 0 36px rgba(230, 197, 148, 0.35);
+}
+
+.hero-name:active {
+  transform: scale(0.98);
 }
 
 /* 标语副标题 */
@@ -247,88 +275,96 @@ function scrollToSection(selector: string) {
   font-size: clamp(1rem, 2.2vw, 1.18rem);
   font-weight: 400;
   color: var(--color-text-light);
-  line-height: 1.6;
-  max-width: 580px;
-  margin: 0 auto 2.2rem;
+  line-height: 1.65;
+  max-width: 600px;
+  margin: 0 auto 2.4rem;
   text-wrap: balance;
   opacity: 0;
   animation: fadeInUp 0.8s var(--ease) 0.45s forwards;
 }
 
-/* 瓷砖终端框 (Ceramic Terminal Tile) */
-.hero-terminal-tile {
-  background: var(--color-surface);
-  border: 1px solid var(--color-grout);
+/* 工坊雕石台箴言 (Artisan's Manifesto Plinth) */
+.hero-manifesto-plinth {
+  background: var(--tile-bg);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius);
   box-shadow: var(--tile-shadow);
-  max-width: 560px;
+  max-width: 580px;
   margin: 0 auto 2.5rem;
   overflow: hidden;
   text-align: left;
   opacity: 0;
   animation: fadeInUp 0.8s var(--ease) 0.6s forwards;
-  transition: transform var(--transition), box-shadow var(--transition);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
 }
 
-.hero-terminal-tile:hover {
+.hero-manifesto-plinth:hover {
   transform: translateY(-2px);
   box-shadow: var(--tile-shadow-hover);
+  border-color: var(--color-border-hover);
 }
 
-.terminal-bar {
+.plinth-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 9px 14px;
-  background: var(--color-bg-alt);
-  border-bottom: 1px solid var(--color-grout);
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.terminal-dots {
+.plinth-brand {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
 }
 
-.dot {
-  width: 9px;
-  height: 9px;
+.plinth-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  display: inline-block;
+  background: var(--color-amber);
+  box-shadow: 0 0 6px var(--color-amber);
 }
 
-.dot-close { background: #E06C75; }
-.dot-min { background: #E5C07B; }
-.dot-expand { background: #98C379; }
-
-.terminal-title {
+.plinth-label {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
+  color: var(--color-amber);
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.plinth-sign {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   color: var(--color-text-lighter);
 }
 
-.terminal-body {
-  padding: 14px 18px;
+.plinth-body {
+  padding: 16px 20px;
   font-family: var(--font-mono);
-  font-size: 0.96rem;
+  font-size: 0.98rem;
   color: var(--color-ink);
   display: flex;
   align-items: center;
-  min-height: 52px;
+  min-height: 56px;
 }
 
-.terminal-prompt {
-  color: var(--color-glaze-celadon);
+.plinth-prompt {
+  color: var(--color-amber);
   font-weight: 700;
-  margin-right: 10px;
+  margin-right: 12px;
+  font-size: 1.1rem;
 }
 
-.terminal-text {
+.plinth-text {
   flex: 1;
   letter-spacing: 0.02em;
 }
 
-.terminal-cursor {
-  color: var(--color-terracotta);
+.plinth-cursor {
+  color: var(--color-amber);
   animation: blink 1s step-end infinite;
   margin-left: 2px;
 }
@@ -338,14 +374,73 @@ function scrollToSection(selector: string) {
   50% { opacity: 0; }
 }
 
-/* 操作按键组 */
+/* 操作按键组与声学胶囊 */
 .hero-actions {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 14px;
+  flex-wrap: wrap;
   opacity: 0;
   animation: fadeInUp 0.8s var(--ease) 0.75s forwards;
+}
+
+.hero-audio-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: transform var(--transition), border-color var(--transition), background-color var(--transition), color var(--transition);
+}
+
+.hero-audio-pill:focus-visible {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 3px;
+}
+
+.hero-audio-pill:hover {
+  border-color: rgba(230, 197, 148, 0.4);
+  color: var(--color-amber);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.hero-audio-pill.active {
+  border-color: var(--color-amber);
+  background: rgba(230, 197, 148, 0.08);
+  color: var(--color-amber);
+}
+
+.audio-wave-mini {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.audio-wave-mini i {
+  width: 2px;
+  height: 4px;
+  background: currentColor;
+  border-radius: 1px;
+  display: block;
+  transition: height 0.2s;
+}
+
+.audio-wave-mini.playing i:nth-child(1) { animation: wave-jump 0.8s ease-in-out infinite alternate; }
+.audio-wave-mini.playing i:nth-child(2) { animation: wave-jump 0.8s ease-in-out 0.25s infinite alternate; }
+.audio-wave-mini.playing i:nth-child(3) { animation: wave-jump 0.8s ease-in-out 0.5s infinite alternate; }
+
+@keyframes wave-jump {
+  0% { height: 3px; }
+  100% { height: 12px; }
 }
 
 /* 底部滚动引导 */
@@ -367,7 +462,7 @@ function scrollToSection(selector: string) {
 }
 
 .scroll-indicator:hover {
-  color: var(--color-glaze-celadon);
+  color: var(--color-amber);
   transform: translate(-50%, -3px);
 }
 
@@ -408,7 +503,7 @@ function scrollToSection(selector: string) {
     min-height: 90vh;
   }
   .hero-name {
-    font-size: clamp(3rem, 15vw, 4.8rem);
+    font-size: clamp(3.2rem, 15vw, 5.2rem);
   }
   .hero-tagline {
     font-size: 0.95rem;
@@ -421,8 +516,10 @@ function scrollToSection(selector: string) {
     margin: 0 auto;
   }
   .hero-actions .tile-btn-primary,
-  .hero-actions .tile-btn-secondary {
+  .hero-actions .tile-btn-secondary,
+  .hero-actions .hero-audio-pill {
     width: 100%;
+    justify-content: center;
   }
 }
 </style>

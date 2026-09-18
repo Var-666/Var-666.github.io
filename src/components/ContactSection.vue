@@ -161,7 +161,7 @@ onMounted(async () => {
               :class="{ submitting: isSubmitting }"
               :disabled="isSubmitting"
             >
-              <span class="btn-text">{{ isSubmitting ? '正在投递…' : '发送投递' }}</span>
+              <span class="btn-text">{{ isSubmitting ? '正在投递信件…' : '投递信件 · 寄往工坊' }}</span>
               <svg v-if="!isSubmitting" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -172,7 +172,7 @@ onMounted(async () => {
 
           <Transition name="toast">
             <div v-if="showToast" class="toast-notification" role="status" aria-live="polite">
-              <span class="toast-icon">✅</span>
+              <span class="toast-icon">✉️</span>
               <span class="toast-text">已收到你的信件，{{ toastName }}！我会尽快回复。</span>
             </div>
           </Transition>
@@ -182,8 +182,8 @@ onMounted(async () => {
       <!-- 页脚 -->
       <footer class="footer">
         <div class="footer-divider"></div>
-        <p class="footer-text">© {{ currentYear }} var · 以代码为凿，构筑数字实体</p>
-        <p class="footer-sub">Crafted with Vue 3, TypeScript &amp; Architectural Ceramic System</p>
+        <p class="footer-text">© {{ currentYear }} var · 以代码为凿，在静谧中构筑数字实体</p>
+        <p class="footer-sub">Crafted with Vue 3, TypeScript &amp; Atelier Gallery System</p>
       </footer>
     </div>
   </section>
@@ -191,8 +191,9 @@ onMounted(async () => {
 
 <style scoped>
 #contact.section-dark {
-  background: linear-gradient(180deg, #19211e 0%, #221d19 28%, #2C2621 70%);
+  background: linear-gradient(180deg, #131716 0%, #0E1311 40%, #080A09 100%);
   position: relative;
+  border-top: 1px solid var(--color-border);
 }
 
 .contact-grid {
@@ -224,11 +225,13 @@ onMounted(async () => {
   gap: 14px;
   padding: 14px 18px;
   text-decoration: none;
-  transition: transform var(--transition), border-color var(--transition);
+  transition: transform var(--transition), border-color var(--transition), background-color var(--transition);
 }
 
 .detail-tile:hover {
   transform: translateX(4px);
+  border-color: var(--color-border-hover);
+  background: rgba(230, 197, 148, 0.04);
 }
 
 .detail-icon {
@@ -243,7 +246,7 @@ onMounted(async () => {
 
 .detail-sub {
   font-size: 0.72rem;
-  color: rgba(247, 246, 242, 0.45);
+  color: rgba(245, 242, 235, 0.45);
   font-weight: 400;
 }
 
@@ -254,7 +257,7 @@ onMounted(async () => {
 }
 
 .mail-tile:hover .detail-main {
-  color: var(--color-glaze-celadon-light);
+  color: var(--color-amber);
 }
 
 /* 磁吸社交瓷砖 */
@@ -269,36 +272,37 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 16px 20px;
-  min-width: 80px;
+  padding: 16px 22px;
+  min-width: 86px;
   text-decoration: none;
-  transition: border-color var(--transition), transform var(--transition);
+  transition: border-color var(--transition), transform var(--transition), background-color var(--transition);
 }
 
 .social-btn:focus-visible {
-  outline: 2px solid var(--color-glaze-celadon-light);
+  outline: 2px solid var(--color-amber);
   outline-offset: 2px;
 }
 
 .social-btn:hover {
-  border-color: var(--color-glaze-celadon-light);
+  border-color: var(--color-amber);
+  background: rgba(230, 197, 148, 0.08);
   transform: translateY(-2px);
 }
 
 .social-icon {
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--color-text-inv);
+  color: var(--color-amber);
   font-family: var(--font-mono);
 }
 
 .social-name {
-  font-size: 0.72rem;
-  color: rgba(247, 246, 242, 0.55);
+  font-size: 0.74rem;
+  color: rgba(245, 242, 235, 0.6);
 }
 
 .social-btn:hover .social-name {
-  color: var(--color-glaze-celadon-light);
+  color: var(--color-ink);
 }
 
 /* 联系表单 */
@@ -314,14 +318,14 @@ onMounted(async () => {
   display: block;
   font-size: 0.85rem;
   font-weight: 500;
-  color: rgba(247, 246, 242, 0.7);
+  color: rgba(245, 242, 235, 0.7);
   margin-bottom: 8px;
   letter-spacing: 0.02em;
   transition: color var(--transition);
 }
 
 .form-group:focus-within .form-label {
-  color: var(--color-glaze-celadon-light);
+  color: var(--color-amber);
 }
 
 .glow-textarea {
@@ -345,8 +349,8 @@ onMounted(async () => {
 .btn-spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border: 2px solid rgba(16, 20, 18, 0.3);
+  border-top-color: #101412;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
@@ -364,24 +368,24 @@ onMounted(async () => {
 .footer-divider {
   width: 48px;
   height: 1px;
-  background: var(--color-slate-border);
+  background: var(--color-border);
   margin: 0 auto 2rem;
 }
 
 .footer-text {
   font-family: var(--font-serif);
   font-size: 0.95rem;
-  color: rgba(247, 246, 242, 0.6);
+  color: rgba(245, 242, 235, 0.65);
   margin-bottom: 0.4rem;
 }
 
 .footer-sub {
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: rgba(247, 246, 242, 0.35);
+  color: rgba(245, 242, 235, 0.35);
 }
 
-/* Toast 通知 */
+/* 火漆印章风格 Toast 通知 */
 .toast-notification {
   position: fixed;
   bottom: 36px;
@@ -389,19 +393,19 @@ onMounted(async () => {
   z-index: 9000;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 22px;
-  background: var(--color-glaze-celadon);
-  border: 1px solid var(--color-glaze-celadon-light);
-  color: white;
+  gap: 12px;
+  padding: 16px 24px;
+  background: #151B18;
+  border: 1px solid var(--color-amber);
+  color: var(--color-ink);
   border-radius: var(--radius-sm);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(230, 197, 148, 0.3);
   font-size: 0.92rem;
   font-weight: 500;
 }
 
 .toast-icon {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
 }
 
 .toast-enter-active { transition: opacity 0.35s var(--ease-spring), transform 0.35s var(--ease-spring); }
