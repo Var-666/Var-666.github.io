@@ -38,6 +38,10 @@ function onLeaveDoc() { isVisible.value = false }
 function onEnterDoc() { isVisible.value = true }
 
 onMounted(() => {
+  const supportsHover = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
+  const prefersReduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!supportsHover || prefersReduced) return
+
   document.addEventListener('mousemove', onMove)
   document.addEventListener('mousedown', onDown)
   document.addEventListener('mouseup', onUp)
@@ -121,7 +125,7 @@ onUnmounted(() => {
   left: -22px;
   width: 44px;
   height: 44px;
-  border: 1.5px solid rgba(124, 140, 110, 0.45);
+  border: 1.5px solid var(--color-accent-glow);
   border-radius: 50%;
   will-change: transform;
   transition: width 0.45s var(--ease-spring),
@@ -140,7 +144,7 @@ onUnmounted(() => {
   top: -32px;
   left: -32px;
   border-color: var(--color-accent);
-  background-color: rgba(124, 140, 110, 0.06);
+  background-color: var(--color-accent-soft);
   backdrop-filter: blur(2px);
 }
 

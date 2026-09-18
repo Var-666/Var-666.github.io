@@ -103,6 +103,12 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+}
+
+button, a, input, select, textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -315,8 +321,14 @@ ul, ol {
   border-radius: var(--radius-sm);
   cursor: pointer;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 8px rgba(45, 90, 67, 0.25);
-  transition: all var(--transition);
+  transition: background-color var(--transition), transform var(--transition), box-shadow var(--transition), border-color var(--transition);
   letter-spacing: 0.02em;
+}
+
+.tile-btn-primary:focus-visible,
+.glow-btn:focus-visible {
+  outline: 2px solid var(--color-glaze-celadon);
+  outline-offset: 2px;
 }
 
 .tile-btn-primary:hover,
@@ -347,7 +359,12 @@ ul, ol {
   border-radius: var(--radius-sm);
   cursor: pointer;
   box-shadow: var(--tile-shadow);
-  transition: all var(--transition);
+  transition: background-color var(--transition), transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+
+.tile-btn-secondary:focus-visible {
+  outline: 2px solid var(--color-glaze-celadon);
+  outline-offset: 2px;
 }
 
 .tile-btn-secondary:hover {
@@ -370,7 +387,7 @@ ul, ol {
   border-radius: var(--radius-sm);
   outline: none;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: all var(--transition);
+  transition: border-color var(--transition), background-color var(--transition), box-shadow var(--transition);
 }
 
 .glow-input::placeholder,
@@ -379,7 +396,9 @@ ul, ol {
 }
 
 .glow-input:focus,
-.tile-input:focus {
+.tile-input:focus,
+.glow-input:focus-visible,
+.tile-input:focus-visible {
   border-color: var(--color-glaze-celadon-light);
   background: rgba(255, 255, 255, 0.08);
   box-shadow:

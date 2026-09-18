@@ -149,7 +149,12 @@ onMounted(async () => {
         <div
           :ref="(el) => { if (el) cardRefs[1] = el as HTMLElement }"
           class="now-card tile-card tilt-shine reveal-scale delay-2 interactive-music-card"
+          role="button"
+          tabindex="0"
+          aria-label="试听坂本龙一 andata 或展开黑胶唱机"
           @click="handleMusicCardClick"
+          @keydown.enter="handleMusicCardClick"
+          @keydown.space.prevent="handleMusicCardClick"
           title="点击试听 / 展开黑胶唱机"
         >
           <div class="now-card-top">
@@ -454,7 +459,7 @@ onMounted(async () => {
   background: var(--color-glaze-celadon);
   border-radius: 1px;
   height: 6px;
-  transition: all 0.3s;
+  transition: height 0.3s var(--ease), opacity 0.3s var(--ease);
 }
 
 .audio-waves.playing .wave-bar {
@@ -473,6 +478,11 @@ onMounted(async () => {
 
 .interactive-music-card {
   cursor: pointer;
+}
+
+.interactive-music-card:focus-visible {
+  outline: 2px solid var(--color-glaze-celadon);
+  outline-offset: 3px;
 }
 
 .interactive-music-card:hover {
@@ -558,7 +568,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s var(--ease-spring);
+  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease-spring), border-color 0.25s var(--ease-spring);
 }
 
 .timeline-item:hover .timeline-point {

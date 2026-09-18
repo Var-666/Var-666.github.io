@@ -97,7 +97,7 @@ onUnmounted(() => {
       </ul>
 
       <!-- 实时微胶囊 (Live Pulse Pill) -->
-      <button class="nav-live-pill" @click="scrollTo('#now')" title="查看当前实时近况与生活状态">
+      <button class="nav-live-pill" @click="scrollTo('#now')" aria-label="查看当前实时近况与生活状态" title="查看当前实时近况与生活状态">
         <span class="live-pulse-dot"></span>
         <span class="live-clock">{{ timeStr || '15:28' }}</span>
         <span class="live-city">{{ city }}</span>
@@ -109,6 +109,7 @@ onUnmounted(() => {
         :class="{ active: mobileMenuOpen }"
         @click="mobileMenuOpen = !mobileMenuOpen"
         aria-label="切换菜单"
+        :aria-expanded="mobileMenuOpen"
       >
         <span></span>
         <span></span>
@@ -226,12 +227,17 @@ onUnmounted(() => {
   font-size: 0.82rem;
   font-family: var(--font-mono);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(45, 90, 67, 0.25);
-  transition: all var(--transition-spring);
+  transition: transform var(--transition-spring), background-color var(--transition-spring);
 }
 
 .nav-logo:hover .logo-icon {
   transform: rotate(-6deg) scale(1.06);
   background: var(--color-glaze-celadon-light);
+}
+
+.nav-logo:focus-visible {
+  outline: 2px solid var(--color-glaze-celadon);
+  outline-offset: 4px;
 }
 
 .logo-text {
@@ -255,9 +261,14 @@ onUnmounted(() => {
   font-weight: 400;
   color: var(--color-text-light);
   border-radius: var(--radius-xs);
-  transition: all var(--transition);
+  transition: color var(--transition), background-color var(--transition);
   letter-spacing: 0.01em;
   position: relative;
+}
+
+.nav-link:focus-visible {
+  outline: 2px solid var(--color-glaze-celadon);
+  outline-offset: 2px;
 }
 
 .nav-link:hover {
@@ -300,13 +311,21 @@ onUnmounted(() => {
   transition: width 0.08s linear;
 }
 
-/* Mobile Toggle */
 .mobile-toggle {
   display: none;
   flex-direction: column;
   gap: 5px;
   padding: 8px;
   z-index: 10;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+}
+
+.mobile-toggle:focus-visible {
+  outline: 2px solid var(--color-glaze-celadon);
+  outline-offset: 2px;
 }
 
 .mobile-toggle span {
@@ -315,7 +334,7 @@ onUnmounted(() => {
   height: 2px;
   background: var(--color-ink);
   border-radius: var(--radius-full);
-  transition: all var(--transition);
+  transition: transform var(--transition), opacity var(--transition);
 }
 
 .mobile-toggle.active span:nth-child(1) {
@@ -344,7 +363,12 @@ onUnmounted(() => {
   font-size: 0.78rem;
   font-family: var(--font-mono);
   cursor: pointer;
-  transition: all var(--transition);
+  transition: border-color var(--transition), background-color var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.nav-live-pill:focus-visible {
+  outline: 2px solid var(--color-glaze-celadon);
+  outline-offset: 2px;
 }
 
 .nav-live-pill:hover {
@@ -414,7 +438,13 @@ onUnmounted(() => {
   color: var(--color-ink);
   padding: 10px 24px;
   border-radius: var(--radius-sm);
-  transition: all var(--transition);
+  text-decoration: none;
+  transition: color var(--transition), background-color var(--transition);
+}
+
+.mobile-link:focus-visible {
+  outline: 2px solid var(--color-glaze-celadon);
+  outline-offset: 2px;
 }
 
 .mobile-link:hover {

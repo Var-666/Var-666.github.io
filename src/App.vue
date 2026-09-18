@@ -79,6 +79,11 @@ onUnmounted(() => {
   transition: transform var(--transition), background var(--transition), color var(--transition), box-shadow var(--transition);
 }
 
+.back-to-top:focus-visible {
+  outline: 2px solid var(--color-glaze-celadon);
+  outline-offset: 2px;
+}
+
 .back-to-top:hover {
   background: var(--color-glaze-celadon);
   color: #FFFFFF;
@@ -87,8 +92,8 @@ onUnmounted(() => {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 18px rgba(45, 90, 67, 0.3);
 }
 
-.btt-enter-active { transition: all 0.3s var(--ease-spring); }
-.btt-leave-active { transition: all 0.2s var(--ease); }
+.btt-enter-active { transition: opacity 0.3s var(--ease-spring), transform 0.3s var(--ease-spring); }
+.btt-leave-active { transition: opacity 0.2s var(--ease), transform 0.2s var(--ease); }
 .btt-enter-from { opacity: 0; transform: translateY(12px) scale(0.9); }
 .btt-leave-to { opacity: 0; transform: translateY(8px) scale(0.9); }
 </style>

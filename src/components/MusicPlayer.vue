@@ -59,7 +59,7 @@ const {
 } = useLyrics()
 
 const currentActiveLyricText = computed(() => {
-  if (isLoadingLyrics.value) return '正在获取歌词...'
+  if (isLoadingLyrics.value) return '正在获取歌词…'
   if (isInstrumental.value) return '♪ 纯音乐 · 静心沉浸聆听'
   if (!currentLyrics.value || currentLyrics.value.length === 0) return '纯净律动 · 随音符漫步'
   const activeLine = currentLyrics.value[currentLineIndex.value]
@@ -383,12 +383,17 @@ onUnmounted(() => {
       <div
         v-if="!isExpanded"
         class="ceramic-capsule-domino"
+        role="button"
+        tabindex="0"
+        aria-label="展开陶瓷瓷砖黑胶唱机与歌词"
         @click="toggleExpand"
+        @keydown.enter="toggleExpand"
+        @keydown.space.prevent="toggleExpand"
         title="展开陶瓷瓷砖黑胶唱机与歌词"
       >
         <!-- 实体黑胶微型唱套与探出小唱片 -->
         <div class="capsule-sleeve">
-          <img :src="currentTrack.coverUrl" alt="cover" class="capsule-sleeve-cover" />
+          <img :src="currentTrack.coverUrl" :alt="currentTrack.title + ' 唱片封面'" class="capsule-sleeve-cover" />
           <div class="capsule-mini-disc" :class="{ spinning: isPlaying }">
             <div class="mini-disc-spindle"></div>
           </div>
@@ -439,11 +444,16 @@ onUnmounted(() => {
             <div class="station-meta-row">
               <div
                 class="station-capsule-chip"
+                role="button"
+                tabindex="0"
+                aria-label="查看网易云电台服务与节点状态"
                 @click="showNeteaseModal = true"
+                @keydown.enter="showNeteaseModal = true"
+                @keydown.space.prevent="showNeteaseModal = true"
                 title="查看电台服务与节点状态"
               >
                 <div class="chip-avatar-box">
-                  <img :src="stationUser.avatarUrl" alt="avatar" class="chip-avatar" />
+                  <img :src="stationUser.avatarUrl" :alt="stationUser.nickname + ' 头像'" class="chip-avatar" />
                   <span class="chip-pulse" :class="{ active: isApiConnected }"></span>
                 </div>
                 <div class="chip-text-wrap">
@@ -464,10 +474,12 @@ onUnmounted(() => {
             </div>
 
             <!-- 釉面分段选项卡 -->
-            <div class="ceramic-nav-tabs">
+            <div class="ceramic-nav-tabs" role="tablist" aria-label="播放器视图切换">
               <button
                 class="ceramic-tab"
                 :class="{ active: activeTab === 'player' }"
+                role="tab"
+                :aria-selected="activeTab === 'player'"
                 @click="activeTab = 'player'"
               >
                 唱机
@@ -475,6 +487,8 @@ onUnmounted(() => {
               <button
                 class="ceramic-tab"
                 :class="{ active: activeTab === 'lyrics' }"
+                role="tab"
+                :aria-selected="activeTab === 'lyrics'"
                 @click="activeTab = 'lyrics'"
               >
                 歌词
@@ -483,6 +497,8 @@ onUnmounted(() => {
               <button
                 class="ceramic-tab"
                 :class="{ active: activeTab === 'search' }"
+                role="tab"
+                :aria-selected="activeTab === 'search'"
                 @click="activeTab = 'search'"
               >
                 搜歌
@@ -490,6 +506,8 @@ onUnmounted(() => {
               <button
                 class="ceramic-tab"
                 :class="{ active: activeTab === 'playlist' }"
+                role="tab"
+                :aria-selected="activeTab === 'playlist'"
                 @click="activeTab = 'playlist'"
               >
                 队列 ({{ playlist.length }})
@@ -497,6 +515,8 @@ onUnmounted(() => {
               <button
                 class="ceramic-tab highlight"
                 :class="{ active: activeTab === 'user-playlists' }"
+                role="tab"
+                :aria-selected="activeTab === 'user-playlists'"
                 @click="activeTab = 'user-playlists'"
               >
                 歌单 ({{ userPlaylists.length }})
@@ -521,7 +541,12 @@ onUnmounted(() => {
                 <!-- 核心黑胶与唱套舞台 (居中舒展，绝对无裁切，点击播放/暂停) -->
                 <div
                   class="turntable-center-stage"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="isPlaying ? '暂停播放' : '开始旋转播放'"
                   @click="togglePlay"
+                  @keydown.enter="togglePlay"
+                  @keydown.space.prevent="togglePlay"
                   :title="isPlaying ? '轻触暂停' : '轻触旋转播放'"
                 >
                   <div class="turntable-deck-mount">
@@ -541,7 +566,7 @@ onUnmounted(() => {
                     </div>
 
                     <div class="artisan-album-sleeve">
-                      <img :src="currentTrack.coverUrl" alt="album cover" class="sleeve-artwork" />
+                      <img :src="currentTrack.coverUrl" :alt="currentTrack.title + ' 唱片封面'" class="sleeve-artwork" />
                       <div class="sleeve-paper-spine"></div>
                       <div class="sleeve-edge-sheen"></div>
                       <div class="sleeve-pocket-shadow"></div>
@@ -573,6 +598,12 @@ onUnmounted(() => {
                 <div class="artisan-progress-module">
                   <div
                     class="progress-touch-zone"
+                    role="slider"
+                    tabindex="0"
+                    aria-label="播放进度"
+                    :aria-valuenow="Math.round(displayCurrentTime)"
+                    aria-valuemin="0"
+                    :aria-valuemax="Math.round(duration || 180)"
                     @pointerdown="handleProgressPointerDown"
                     @mousemove="handleProgressMouseMove"
                     @mouseleave="handleProgressMouseLeave"
@@ -601,7 +632,12 @@ onUnmounted(() => {
               <!-- 随行歌词速览瓷片 (Quick Lyric Glance Tile) -->
               <div
                 class="ceramic-tile tile-lyric-glance"
+                role="button"
+                tabindex="0"
+                aria-label="展开全屏陶瓷诗板歌词"
                 @click="activeTab = 'lyrics'"
+                @keydown.enter="activeTab = 'lyrics'"
+                @keydown.space.prevent="activeTab = 'lyrics'"
                 title="点击展开全屏陶瓷诗板"
               >
                 <div class="glance-left-col">
@@ -636,7 +672,7 @@ onUnmounted(() => {
                 <!-- 加载中 -->
                 <div v-if="isLoadingLyrics" class="lyrics-zen-status">
                   <span class="artisan-spinner"></span>
-                  <p>正在拉取歌词灵感...</p>
+                  <p>正在拉取歌词灵感…</p>
                 </div>
 
                 <!-- 纯音乐或未收录 -->
@@ -662,7 +698,12 @@ onUnmounted(() => {
                       passed: idx < currentLineIndex,
                       future: idx > currentLineIndex
                     }"
+                    role="button"
+                    tabindex="0"
+                    :aria-label="`跳转至歌词：${line.text} (${formatTime(line.time)})`"
                     @click="handleLyricClick(line.time)"
+                    @keydown.enter="handleLyricClick(line.time)"
+                    @keydown.space.prevent="handleLyricClick(line.time)"
                     :title="`点击跳转至 ${formatTime(line.time)}`"
                   >
                     <p class="poetry-original">{{ line.text }}</p>
@@ -682,9 +723,13 @@ onUnmounted(() => {
                 </svg>
                 <input
                   v-model="searchKeyword"
-                  type="text"
+                  type="search"
+                  name="music-search"
                   class="search-text-input"
-                  placeholder="搜索歌曲、艺术家，或网易云单曲 ID"
+                  placeholder="搜索歌曲、艺术家，或网易云单曲 ID…"
+                  aria-label="搜索歌曲、艺术家或网易云单曲 ID"
+                  autocomplete="off"
+                  spellcheck="false"
                   @keyup.enter="handleSearch()"
                 />
                 <button class="search-submit-btn" @click="handleSearch()">搜索</button>
@@ -707,7 +752,7 @@ onUnmounted(() => {
               <div class="search-results-viewport">
                 <div v-if="isSearching" class="results-feedback-state">
                   <span class="artisan-spinner"></span>
-                  <span>全网曲库检索中...</span>
+                  <span>全网曲库检索中…</span>
                 </div>
 
                 <div v-else-if="searchError" class="results-feedback-state error">
@@ -725,14 +770,19 @@ onUnmounted(() => {
                     v-for="item in searchResults"
                     :key="item.id"
                     class="search-song-card"
+                    role="button"
+                    tabindex="0"
+                    :aria-label="`播放 ${item.title} - ${item.artist}`"
                     @click="handleSelectSearchResult(item)"
+                    @keydown.enter="handleSelectSearchResult(item)"
+                    @keydown.space.prevent="handleSelectSearchResult(item)"
                   >
-                    <img :src="item.coverUrl" alt="cover" class="song-card-thumb" />
+                    <img :src="item.coverUrl" :alt="item.title + ' 封面'" class="song-card-thumb" width="44" height="44" loading="lazy" />
                     <div class="song-card-meta">
                       <span class="song-card-title">{{ item.title }}</span>
                       <span class="song-card-artist">{{ item.artist }} · {{ item.album }}</span>
                     </div>
-                    <button class="song-play-action">播放</button>
+                    <button class="song-play-action" :aria-label="`播放 ${item.title}`">播放</button>
                   </div>
                 </div>
               </div>
@@ -751,10 +801,15 @@ onUnmounted(() => {
                   :key="item.id"
                   class="queue-card-row"
                   :class="{ active: idx === currentTrackIndex }"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="`播放第 ${idx + 1} 首：${item.title} - ${item.artist}`"
                   @click="selectTrack(idx)"
+                  @keydown.enter="selectTrack(idx)"
+                  @keydown.space.prevent="selectTrack(idx)"
                 >
                   <span class="queue-ordinal">{{ String(idx + 1).padStart(2, '0') }}</span>
-                  <img :src="item.coverUrl" alt="cover" class="queue-row-thumb" />
+                  <img :src="item.coverUrl" :alt="item.title + ' 封面'" class="queue-row-thumb" width="40" height="40" loading="lazy" />
                   <div class="queue-row-info">
                     <span class="queue-row-title">{{ item.title }}</span>
                     <span class="queue-row-artist">{{ item.artist }}</span>
@@ -778,10 +833,15 @@ onUnmounted(() => {
                   :key="pl.id"
                   class="playlist-banner-card"
                   :class="{ loading: currentLoadingPlaylistId === pl.id }"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="`载入歌单：${pl.name}`"
                   @click="handleSelectNeteasePlaylist(pl.id)"
+                  @keydown.enter="handleSelectNeteasePlaylist(pl.id)"
+                  @keydown.space.prevent="handleSelectNeteasePlaylist(pl.id)"
                 >
                   <div class="pl-banner-thumb-wrap">
-                    <img :src="pl.coverImgUrl" alt="cover" class="pl-banner-thumb" />
+                    <img :src="pl.coverImgUrl" :alt="pl.name + ' 歌单封面'" class="pl-banner-thumb" width="56" height="56" loading="lazy" />
                     <span v-if="currentLoadingPlaylistId === pl.id" class="pl-loading-glass">
                       <span class="artisan-spinner-sm"></span>
                     </span>
@@ -790,8 +850,8 @@ onUnmounted(() => {
                     <span class="pl-banner-title" :title="pl.name">{{ pl.name }}</span>
                     <span class="pl-banner-sub">{{ pl.trackCount }} 首歌曲 · 灵感电台</span>
                   </div>
-                  <button class="pl-mount-action" :disabled="currentLoadingPlaylistId === pl.id">
-                    {{ currentLoadingPlaylistId === pl.id ? '载入中...' : '载入歌单' }}
+                  <button class="pl-mount-action" :disabled="currentLoadingPlaylistId === pl.id" :aria-label="`载入歌单：${pl.name}`">
+                    {{ currentLoadingPlaylistId === pl.id ? '载入中…' : '载入歌单' }}
                   </button>
                 </div>
               </div>
@@ -804,6 +864,7 @@ onUnmounted(() => {
             <button
               class="ceramic-btn btn-mode"
               @click="togglePlayMode"
+              :aria-label="`切换播放模式，当前: ${playModeTitle}`"
               :title="`播放模式: ${playModeTitle}`"
             >
               <svg v-if="playMode === 'sequence'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -829,7 +890,7 @@ onUnmounted(() => {
             </button>
 
             <!-- 上一首 -->
-            <button class="ceramic-btn" @click="prevTrack" title="上一首">
+            <button class="ceramic-btn" @click="prevTrack" aria-label="上一首" title="上一首">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="19 20 9 12 19 4 19 20" />
                 <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2" />
@@ -849,7 +910,7 @@ onUnmounted(() => {
             </button>
 
             <!-- 下一首 -->
-            <button class="ceramic-btn" @click="nextTrack" title="下一首">
+            <button class="ceramic-btn" @click="nextTrack" aria-label="下一首" title="下一首">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 4 15 12 5 20 5 4" />
                 <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" />
@@ -858,7 +919,12 @@ onUnmounted(() => {
 
             <!-- 嵌入式陶瓷音量推子槽 -->
             <div class="ceramic-volume-groove">
-              <button class="volume-mute-toggle" @click="toggleMute" title="静音切换">
+              <button
+                class="volume-mute-toggle"
+                @click="toggleMute"
+                :aria-label="isMuted || volume === 0 ? '取消静音' : '静音'"
+                title="静音切换"
+              >
                 <svg v-if="isMuted || volume === 0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   <line x1="23" y1="9" x2="17" y2="15" />
@@ -876,6 +942,7 @@ onUnmounted(() => {
                 :value="isMuted ? 0 : volume * 100"
                 class="ceramic-slider-input"
                 @input="handleVolumeChange"
+                aria-label="音量调节"
                 title="音量调节"
               />
             </div>
@@ -895,12 +962,12 @@ onUnmounted(() => {
               <span class="diag-tea">🍵</span>
               <span class="diag-title">var 的音乐电台节点</span>
             </div>
-            <button class="diag-close-btn" @click="showNeteaseModal = false">✕</button>
+            <button class="diag-close-btn" @click="showNeteaseModal = false" aria-label="关闭节点状态弹窗">✕</button>
           </div>
 
           <div class="diag-content-body">
             <div class="station-owner-block">
-              <img :src="stationUser.avatarUrl" alt="avatar" class="owner-circle-avatar" />
+              <img :src="stationUser.avatarUrl" :alt="stationUser.nickname + ' 头像'" class="owner-circle-avatar" width="44" height="44" />
               <div class="owner-meta-col">
                 <span class="owner-name-txt">{{ stationUser.nickname }}</span>
                 <span class="owner-desc-txt">专属站长电台 · 免登录畅听精选歌单</span>
@@ -921,7 +988,7 @@ onUnmounted(() => {
                 :disabled="apiTesting"
                 @click="testCurrentApi()"
               >
-                {{ apiTesting ? '测试中...' : '测试节点延迟' }}
+                {{ apiTesting ? '测试中…' : '测试节点延迟' }}
               </button>
             </div>
           </div>
@@ -955,10 +1022,15 @@ onUnmounted(() => {
     0 18px 40px -6px rgba(44, 38, 33, 0.2),
     0 4px 12px rgba(0, 0, 0, 0.04);
   cursor: pointer;
-  transition: all 0.3s var(--ease-spring);
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), border-color 0.3s var(--ease-spring);
   user-select: none;
   position: fixed;
   overflow: hidden;
+}
+
+.ceramic-capsule-domino:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
 }
 
 .ceramic-capsule-domino::before {
@@ -1132,8 +1204,13 @@ onUnmounted(() => {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 2px 8px var(--color-accent-glow);
-  transition: all 0.2s var(--ease);
+  transition: transform 0.2s var(--ease), background-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
   flex-shrink: 0;
+}
+
+.capsule-play-action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .capsule-play-action:hover {
@@ -1150,7 +1227,6 @@ onUnmounted(() => {
   animation: spin 0.8s linear infinite;
 }
 
-/* ── 2. 展开态：釉面陶瓷嵌瓷托盘 (Ceramic Mosaic Tray) ── */
 /* ── 2. 展开态：釉面陶瓷嵌瓷托盘 (Ceramic Mosaic Tray) ── */
 .studio-scrim {
   position: fixed;
@@ -1200,7 +1276,7 @@ onUnmounted(() => {
     0 1px 2px 0 rgba(0, 0, 0, 0.03);
   position: relative;
   overflow: hidden;
-  transition: all 0.28s var(--ease);
+  transition: box-shadow 0.28s var(--ease), border-color 0.28s var(--ease), transform 0.28s var(--ease);
 }
 
 /* 釉面高光漫反射层 (微透倒角光泽，绝不遮挡视窗文字) */
@@ -1263,7 +1339,12 @@ onUnmounted(() => {
   border-radius: var(--radius-full);
   background: rgba(237, 230, 220, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.6);
-  transition: all 0.25s var(--ease);
+  transition: background-color 0.25s var(--ease), border-color 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.station-capsule-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .station-capsule-chip:hover {
@@ -1343,7 +1424,12 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.25s var(--ease);
+  transition: background-color 0.25s var(--ease), color 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.ceramic-close-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .ceramic-close-btn:hover {
@@ -1373,7 +1459,12 @@ onUnmounted(() => {
   border-radius: var(--radius-full);
   cursor: pointer;
   text-align: center;
-  transition: all 0.22s var(--ease);
+  transition: color 0.22s var(--ease), background-color 0.22s var(--ease), box-shadow 0.22s var(--ease);
+}
+
+.ceramic-tab:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .ceramic-tab:hover {
@@ -1559,7 +1650,7 @@ onUnmounted(() => {
   justify-content: center;
   opacity: 0;
   transform: scale(0.85);
-  transition: all 0.25s var(--ease-spring);
+  transition: opacity 0.25s var(--ease-spring), transform 0.25s var(--ease-spring);
   border: 1px solid rgba(255, 255, 255, 0.4);
   pointer-events: none;
 }
@@ -1789,7 +1880,6 @@ onUnmounted(() => {
   color: var(--color-text-lighter);
 }
 
-/* 随行歌词速览瓷片 (Quick Lyric Glance Tile) */
 .tile-lyric-glance {
   padding: 10px 16px;
   display: flex;
@@ -1797,7 +1887,12 @@ onUnmounted(() => {
   gap: 12px;
   cursor: pointer;
   background: linear-gradient(145deg, #FAF7F2 0%, #F5EFE6 100%);
-  transition: all 0.25s var(--ease);
+  transition: transform 0.25s var(--ease), border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.tile-lyric-glance:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .tile-lyric-glance:hover {
@@ -1863,7 +1958,7 @@ onUnmounted(() => {
   padding: 3px 10px;
   border-radius: var(--radius-full);
   font-weight: 500;
-  transition: all 0.2s;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .tile-lyric-glance:hover .glance-jump-pill {
@@ -1921,6 +2016,7 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 0 20px;
   scrollbar-width: none;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 16%, black 84%, transparent 100%);
@@ -1945,8 +2041,13 @@ onUnmounted(() => {
   padding: 5px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.28s var(--ease);
+  transition: transform 0.28s var(--ease), background-color 0.28s var(--ease);
   user-select: none;
+}
+
+.poetry-line-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .poetry-original {
@@ -1954,7 +2055,7 @@ onUnmounted(() => {
   font-size: 0.96rem;
   line-height: 1.5;
   color: #8C8880;
-  transition: all 0.25s var(--ease);
+  transition: font-size 0.25s var(--ease), color 0.25s var(--ease);
   margin: 0;
 }
 
@@ -1963,7 +2064,7 @@ onUnmounted(() => {
   line-height: 1.4;
   color: #A39F97;
   margin: 3px 0 0;
-  transition: all 0.25s var(--ease);
+  transition: color 0.25s var(--ease);
 }
 
 .poetry-line-item.active {
@@ -2048,6 +2149,12 @@ onUnmounted(() => {
   border: 1px solid var(--border-medium);
   border-radius: var(--radius);
   z-index: 2;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.search-input-capsule:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
 .search-lens-svg { color: var(--color-text-lighter); }
@@ -2068,7 +2175,13 @@ onUnmounted(() => {
   border-radius: var(--radius-full);
   font-size: 0.76rem;
   cursor: pointer;
-  transition: all 0.2s;
+  border: none;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.search-submit-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .search-submit-btn:hover { background: var(--color-accent-dark); }
@@ -2091,7 +2204,12 @@ onUnmounted(() => {
   font-size: 0.7rem;
   color: var(--color-text-light);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.hot-style-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .hot-style-chip:hover {
@@ -2103,6 +2221,7 @@ onUnmounted(() => {
 .search-results-viewport {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 2;
 }
 
@@ -2144,9 +2263,15 @@ onUnmounted(() => {
   gap: 10px;
   padding: 7px 10px;
   background: #F4EFEB;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.search-song-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .search-song-card:hover { background: #ECE5DC; }
@@ -2212,6 +2337,7 @@ onUnmounted(() => {
 .queue-items-viewport {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2224,9 +2350,15 @@ onUnmounted(() => {
   gap: 10px;
   padding: 7px 10px;
   background: #F4EFEB;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.queue-card-row:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .queue-card-row:hover { background: #ECE5DC; }
@@ -2314,6 +2446,7 @@ onUnmounted(() => {
 .playlists-cards-viewport {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -2329,7 +2462,12 @@ onUnmounted(() => {
   border-radius: var(--radius);
   border: 1px solid var(--border-light);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.playlist-banner-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .playlist-banner-card:hover {
@@ -2390,8 +2528,14 @@ onUnmounted(() => {
   background: var(--color-accent);
   color: #FFFFFF;
   font-size: 0.72rem;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s ease;
+}
+
+.pl-mount-action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .pl-mount-action:hover:not(:disabled) {
@@ -2422,9 +2566,14 @@ onUnmounted(() => {
     inset 1px 1px 1.5px #FFFFFF,
     inset -1px -1px 2px rgba(44, 38, 33, 0.08),
     0 2px 6px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s var(--ease);
+  transition: background-color 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
   flex-shrink: 0;
   z-index: 2;
+}
+
+.ceramic-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .ceramic-btn:hover {
@@ -2458,11 +2607,16 @@ onUnmounted(() => {
     inset -1.5px -1.5px 3px rgba(0, 0, 0, 0.2),
     0 8px 24px var(--color-accent-glow),
     0 2px 6px rgba(0, 0, 0, 0.08);
-  transition: all 0.25s var(--ease-spring);
+  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease-spring);
   flex-shrink: 0;
   z-index: 2;
   position: relative;
   overflow: hidden;
+}
+
+.ceramic-play-master:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .ceramic-play-master::before {
@@ -2523,6 +2677,12 @@ onUnmounted(() => {
   justify-content: center;
 }
 
+.volume-mute-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
 .volume-mute-toggle:hover { color: var(--color-text); }
 
 .ceramic-slider-input {
@@ -2532,6 +2692,11 @@ onUnmounted(() => {
   background: #D4C9BC;
   border-radius: 2px;
   outline: none;
+}
+
+.ceramic-slider-input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
 }
 
 .ceramic-slider-input::-webkit-slider-thumb {
@@ -2563,6 +2728,7 @@ onUnmounted(() => {
   border-radius: 20px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .diag-top-bar {
@@ -2585,6 +2751,14 @@ onUnmounted(() => {
   color: var(--color-text-lighter);
   font-size: 0.85rem;
   cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  transition: color 0.2s ease;
+}
+
+.diag-close-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 .diag-close-btn:hover { color: var(--color-text); }
 
@@ -2658,8 +2832,15 @@ onUnmounted(() => {
   font-size: 0.75rem;
   cursor: pointer;
   align-self: flex-start;
-  transition: all 0.2s;
+  border: none;
+  transition: background-color 0.2s ease;
 }
+
+.endpoint-test-action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .endpoint-test-action:hover:not(:disabled) { background: var(--color-accent-dark); }
 
 /* ── 通用 Spinner ── */
@@ -2680,7 +2861,7 @@ onUnmounted(() => {
 /* ── 进出过渡动画 ── */
 .capsule-pop-enter-active,
 .capsule-pop-leave-active {
-  transition: all 0.3s var(--ease-spring);
+  transition: opacity 0.3s var(--ease-spring), transform 0.3s var(--ease-spring);
 }
 .capsule-pop-enter-from { opacity: 0; transform: translateY(16px) scale(0.9); }
 .capsule-pop-leave-to   { opacity: 0; transform: translateY(12px) scale(0.92); }
@@ -2711,7 +2892,7 @@ onUnmounted(() => {
 
 .diag-fade-enter-active,
 .diag-fade-leave-active {
-  transition: all 0.24s var(--ease);
+  transition: opacity 0.24s var(--ease), transform 0.24s var(--ease);
 }
 .diag-fade-enter-from,
 .diag-fade-leave-to { opacity: 0; transform: scale(0.94); }

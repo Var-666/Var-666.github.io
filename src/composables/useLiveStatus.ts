@@ -34,8 +34,8 @@ const CACHE_TTL = 20 * 60 * 1000
 // ── 模块级单例状态 ──
 const timeStr = ref('')
 const dateStr = ref('')
-const city = ref('定位中...')
-const weather = ref('获取气象中...')
+const city = ref('定位中…')
+const weather = ref('获取气象中…')
 const temp = ref('--°C')
 const currentActivity = ref('专注造物中')
 const activityIcon = ref('💻')

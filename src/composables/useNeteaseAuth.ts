@@ -128,7 +128,7 @@ export function useNeteaseAuth() {
   async function testAndSaveApiUrl(targetUrl: string): Promise<boolean> {
     const cleanUrl = targetUrl.trim().replace(/\/+$/, '')
     apiTesting.value = true
-    apiTestMessage.value = '正在测试节点连通性...'
+    apiTestMessage.value = '正在测试节点连通性…'
 
     const res = await testApiConnection(cleanUrl)
     apiTesting.value = false
@@ -152,7 +152,7 @@ export function useNeteaseAuth() {
     if (!apiUrl.value) return false
     if (showFeedback) {
       apiTesting.value = true
-      apiTestMessage.value = '正在测速...'
+      apiTestMessage.value = '正在测速…'
     }
 
     const res = await testApiConnection(apiUrl.value)

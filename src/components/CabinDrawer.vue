@@ -389,7 +389,12 @@ function quickNavigate(href: string) {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.drawer-close-btn:focus-visible {
+  outline: 2px solid #70a1ff;
+  outline-offset: 2px;
 }
 
 .drawer-close-btn:hover {
@@ -409,6 +414,7 @@ function quickNavigate(href: string) {
 .drawer-content {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
@@ -439,7 +445,12 @@ function quickNavigate(href: string) {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.filter-pill:focus-visible {
+  outline: 2px solid #70a1ff;
+  outline-offset: 2px;
 }
 
 .filter-pill:hover {
@@ -469,8 +480,13 @@ function quickNavigate(href: string) {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
-  transition: all 0.25s ease;
+  transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
   cursor: pointer;
+}
+
+.project-card:focus-visible {
+  outline: 2px solid #70a1ff;
+  outline-offset: 2px;
 }
 
 .project-card:hover {
@@ -749,7 +765,12 @@ function quickNavigate(href: string) {
   color: #fff;
   cursor: pointer;
   text-align: left;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.index-btn:focus-visible {
+  outline: 2px solid #70a1ff;
+  outline-offset: 2px;
 }
 
 .index-btn:hover {
@@ -777,7 +798,7 @@ function quickNavigate(href: string) {
 /* 抽屉平滑滑入滑出动画 */
 .drawer-enter-active,
 .drawer-leave-active {
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .drawer-enter-from,

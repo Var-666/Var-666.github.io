@@ -272,7 +272,12 @@ onMounted(async () => {
   padding: 16px 20px;
   min-width: 80px;
   text-decoration: none;
-  transition: all var(--transition);
+  transition: border-color var(--transition), transform var(--transition);
+}
+
+.social-btn:focus-visible {
+  outline: 2px solid var(--color-glaze-celadon-light);
+  outline-offset: 2px;
 }
 
 .social-btn:hover {
@@ -399,8 +404,8 @@ onMounted(async () => {
   font-size: 1.1rem;
 }
 
-.toast-enter-active { transition: all 0.35s var(--ease-spring); }
-.toast-leave-active { transition: all 0.25s var(--ease); }
+.toast-enter-active { transition: opacity 0.35s var(--ease-spring), transform 0.35s var(--ease-spring); }
+.toast-leave-active { transition: opacity 0.25s var(--ease), transform 0.25s var(--ease); }
 .toast-enter-from { opacity: 0; transform: translateY(16px) scale(0.95); }
 .toast-leave-to { opacity: 0; transform: translateY(-10px) scale(0.95); }
 

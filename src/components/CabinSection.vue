@@ -107,7 +107,7 @@ function triggerItem(item: any) {
       <!-- 初始加载等待动画 -->
       <div v-if="!isLoaded" class="cabin-loading">
         <div class="loading-spinner"></div>
-        <p>正在生成 3D 小木屋世界...</p>
+        <p>正在生成 3D 小木屋世界…</p>
       </div>
     </div>
 
@@ -122,7 +122,12 @@ function triggerItem(item: any) {
       </div>
       <div class="header-actions">
         <span class="header-quote">在代码与自然之间漫步</span>
-        <button class="fullscreen-toggle-btn" @click="toggleFullscreen" title="切换全屏沉浸模式">
+        <button
+          class="fullscreen-toggle-btn"
+          @click="toggleFullscreen"
+          :aria-label="isFullscreen ? '退出全屏' : '沉浸模式'"
+          :title="isFullscreen ? '退出全屏' : '切换全屏沉浸模式'"
+        >
           <svg v-if="!isFullscreen" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
           </svg>
@@ -145,7 +150,12 @@ function triggerItem(item: any) {
           left: `${item.screenX}px`,
           top: `${item.screenY}px`,
         }"
+        role="button"
+        tabindex="0"
+        :aria-label="`查看 ${item.label}`"
         @click="triggerItem(item)"
+        @keydown.enter="triggerItem(item)"
+        @keydown.space.prevent="triggerItem(item)"
       >
         <span class="tag-icon">{{ item.icon }}</span>
         <span class="tag-label">{{ item.label }}</span>
@@ -411,7 +421,12 @@ function triggerItem(item: any) {
   border-radius: 9999px;
   font-size: 0.82rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.fullscreen-toggle-btn:focus-visible {
+  outline: 2px solid #70a1ff;
+  outline-offset: 2px;
 }
 
 .fullscreen-toggle-btn:hover {
@@ -444,9 +459,14 @@ function triggerItem(item: any) {
   font-weight: 500;
   pointer-events: auto;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
+}
+
+.world-tag:focus-visible {
+  outline: 2px solid #70a1ff;
+  outline-offset: 2px;
 }
 
 .world-tag:hover {
@@ -500,7 +520,7 @@ function triggerItem(item: any) {
 
 .pop-enter-active,
 .pop-leave-active {
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: opacity 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .pop-enter-from,
 .pop-leave-to {
@@ -654,7 +674,7 @@ function triggerItem(item: any) {
 
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .toast-enter-from,
 .toast-leave-to {
@@ -734,8 +754,13 @@ function triggerItem(item: any) {
   color: #fff;
   cursor: pointer;
   touch-action: manipulation;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.25s, opacity 0.25s;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+
+.mobile-interact-btn:focus-visible {
+  outline: 2px solid #70a1ff;
+  outline-offset: 2px;
 }
 
 .mobile-interact-btn.is-active {
