@@ -14,12 +14,12 @@ let lastScrollY = 0
 const SCROLL_DELTA_THRESHOLD = 6 // 小抖动不触发，防止滚动吸附震颤
 
 const navLinks = [
-  { label: '维度', href: '#hero', id: 'hero' },
-  { label: '形而上', href: '#about', id: 'about' },
-  { label: '时空仪', href: '#now', id: 'now' },
-  { label: '星宿', href: '#skills', id: 'skills' },
+  { label: '首页', href: '#hero', id: 'hero' },
+  { label: '关于', href: '#about', id: 'about' },
+  { label: '近况', href: '#now', id: 'now' },
+  { label: '技能', href: '#skills', id: 'skills' },
   { label: '小木屋 🌲', href: '#cabin', id: 'cabin' },
-  { label: '信笺', href: '#contact', id: 'contact' },
+  { label: '联系', href: '#contact', id: 'contact' },
 ]
 
 function handleScroll() {
@@ -78,7 +78,7 @@ onUnmounted(() => {
     <div class="nav-container container">
       <!-- Logo -->
       <a class="nav-logo" href="#hero" @click.prevent="scrollTo('#hero')">
-        <span class="logo-icon">👁️</span>
+        <span class="logo-icon">●</span>
         <span class="logo-text">var</span>
       </a>
 
@@ -97,7 +97,7 @@ onUnmounted(() => {
       </ul>
 
       <!-- 实时微胶囊 (Live Pulse Pill) -->
-      <button class="nav-live-pill" @click="scrollTo('#now')" aria-label="查看时空仪与现实体征" title="查看时空仪与现实体征">
+      <button class="nav-live-pill" @click="scrollTo('#now')" aria-label="查看近况" title="查看近况">
         <span class="live-pulse-dot"></span>
         <span class="live-clock">{{ timeStr || '15:28' }}</span>
         <span class="live-city">{{ city }}</span>
@@ -150,10 +150,10 @@ onUnmounted(() => {
   height: var(--nav-height);
   display: flex;
   align-items: center;
-  background: rgba(10, 11, 22, 0.78);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(92, 225, 230, 0.15);
+  background: rgba(250, 248, 245, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid transparent;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
               height 0.24s var(--ease),
               background-color 0.24s var(--ease),
@@ -162,27 +162,25 @@ onUnmounted(() => {
   will-change: transform, height;
 }
 
-/* 向下滚动自动滑出视口 */
 .navbar.hidden {
   transform: translateY(-100%);
 }
 
-/* 滚动紧凑态 */
 .navbar.scrolled {
-  height: 58px;
-  background: rgba(10, 11, 22, 0.94);
-  border-bottom: 1px solid rgba(92, 225, 230, 0.25);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65);
+  height: 52px;
+  background: rgba(250, 248, 245, 0.95);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
 }
 
 .navbar.scrolled .logo-icon {
-  width: 28px;
-  height: 28px;
-  font-size: 0.9rem;
+  width: 26px;
+  height: 26px;
+  font-size: 0.7rem;
 }
 
 .navbar.scrolled .logo-text {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
 }
 
 .navbar.scrolled .nav-link {
@@ -202,7 +200,6 @@ onUnmounted(() => {
   height: 100%;
 }
 
-/* Logo */
 .nav-logo {
   display: flex;
   align-items: center;
@@ -216,72 +213,63 @@ onUnmounted(() => {
 }
 
 .logo-icon {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(92, 225, 230, 0.1);
-  color: var(--color-ether-cyan);
-  border-radius: var(--radius-sm);
-  font-size: 1.15rem;
-  border: 1px solid rgba(92, 225, 230, 0.35);
-  box-shadow: 0 0 16px rgba(92, 225, 230, 0.25);
-  transition: transform var(--transition-spring), box-shadow var(--transition-spring);
+  background: var(--color-accent);
+  color: #FFFFFF;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  transition: transform var(--transition-spring);
 }
 
 .nav-logo:hover .logo-icon {
-  transform: rotate(-8deg) scale(1.1);
-  box-shadow: 0 0 24px rgba(92, 225, 230, 0.45);
+  transform: rotate(-12deg) scale(1.08);
 }
 
 .nav-logo:focus-visible {
-  outline: 2px solid var(--color-ether-cyan);
+  outline: 2px solid var(--color-accent);
   outline-offset: 4px;
 }
 
 .logo-text {
-  letter-spacing: 0.04em;
-  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
   font-weight: 700;
-  font-size: 1.25rem;
-  color: #F0F2FD;
+  font-size: 1.2rem;
+  color: var(--color-ink);
 }
 
-/* Desktop Links */
 .nav-links {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
 }
 
 .nav-link {
-  padding: 6px 15px;
+  padding: 6px 14px;
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--color-text-light);
   border-radius: var(--radius-full);
-  transition: color var(--transition), background-color var(--transition), text-shadow var(--transition);
-  letter-spacing: 0.02em;
+  transition: color var(--transition), background-color var(--transition);
   position: relative;
 }
 
 .nav-link:focus-visible {
-  outline: 2px solid var(--color-ether-cyan);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
 .nav-link:hover {
-  color: var(--color-ether-cyan);
-  background: rgba(92, 225, 230, 0.08);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
 }
 
-/* 活跃链接指示 */
 .nav-link.active {
-  color: var(--color-ether-cyan);
+  color: var(--color-accent);
   font-weight: 600;
-  background: rgba(92, 225, 230, 0.12);
-  text-shadow: 0 0 10px rgba(92, 225, 230, 0.5);
 }
 
 .nav-link.active::after {
@@ -290,27 +278,24 @@ onUnmounted(() => {
   bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
-  width: 14px;
+  width: 16px;
   height: 2px;
-  background: var(--color-ether-cyan);
-  box-shadow: 0 0 8px var(--color-ether-cyan);
+  background: var(--color-accent);
   border-radius: var(--radius-full);
 }
 
-/* 滚动进度条 */
 .scroll-progress-track {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 2.5px;
-  background: rgba(255, 255, 255, 0.06);
+  height: 2px;
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .scroll-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #5CE1E6 0%, #F7B267 50%, #D65DB1 100%);
-  box-shadow: 0 0 12px rgba(92, 225, 230, 0.6);
+  background: var(--color-accent);
   transition: width 0.08s linear;
 }
 
@@ -327,7 +312,7 @@ onUnmounted(() => {
 }
 
 .mobile-toggle:focus-visible {
-  outline: 2px solid var(--color-ether-cyan);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
@@ -335,7 +320,7 @@ onUnmounted(() => {
   display: block;
   width: 22px;
   height: 2px;
-  background: #F0F2FD;
+  background: var(--color-ink);
   border-radius: var(--radius-full);
   transition: transform var(--transition), opacity var(--transition);
 }
@@ -352,52 +337,48 @@ onUnmounted(() => {
   transform: rotate(-45deg) translate(5px, -5px);
 }
 
-/* ── 实时状态微胶囊 ── */
 .nav-live-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 5px 14px;
-  background: rgba(20, 23, 48, 0.75);
-  border: 1px solid rgba(92, 225, 230, 0.22);
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-full);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  color: #F0F2FD;
+  color: var(--color-ink);
   font-size: 0.78rem;
   font-family: var(--font-mono);
   cursor: pointer;
-  transition: border-color var(--transition), background-color var(--transition), transform var(--transition), box-shadow var(--transition);
+  transition: border-color var(--transition), background-color var(--transition), transform var(--transition);
 }
 
 .nav-live-pill:focus-visible {
-  outline: 2px solid var(--color-ether-cyan);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
 .nav-live-pill:hover {
-  border-color: var(--color-ether-cyan);
-  background: rgba(28, 33, 68, 0.9);
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
   transform: translateY(-1px);
-  box-shadow: 0 0 16px rgba(92, 225, 230, 0.35);
 }
 
 .live-pulse-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-ether-cyan);
-  box-shadow: 0 0 8px var(--color-ether-cyan);
+  background: var(--color-accent);
   animation: pulse-ring 2s infinite;
 }
 
 @keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(92, 225, 230, 0.7); }
-  70% { box-shadow: 0 0 0 6px rgba(92, 225, 230, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(92, 225, 230, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(91, 140, 110, 0.5); }
+  70% { box-shadow: 0 0 0 5px rgba(91, 140, 110, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(91, 140, 110, 0); }
 }
 
 .live-clock {
-  color: #F0F2FD;
+  color: var(--color-ink);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -414,14 +395,13 @@ onUnmounted(() => {
   }
 }
 
-/* Mobile Menu */
 .mobile-menu {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(10, 11, 22, 0.96);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(250, 248, 245, 0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -440,7 +420,7 @@ onUnmounted(() => {
   font-family: var(--font-sans);
   font-weight: 600;
   font-size: 1.35rem;
-  color: #F0F2FD;
+  color: var(--color-ink);
   padding: 10px 24px;
   border-radius: var(--radius-full);
   text-decoration: none;
@@ -448,13 +428,13 @@ onUnmounted(() => {
 }
 
 .mobile-link:focus-visible {
-  outline: 2px solid var(--color-ether-cyan);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
 .mobile-link:hover {
-  color: var(--color-ether-cyan);
-  background: rgba(92, 225, 230, 0.12);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
 }
 
 @media (max-width: 768px) {
@@ -471,7 +451,7 @@ onUnmounted(() => {
   }
 
   .navbar.scrolled {
-    height: 52px;
+    height: 48px;
   }
 }
 </style>
