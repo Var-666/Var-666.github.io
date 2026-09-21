@@ -59,26 +59,16 @@ onMounted(async () => {
     <div class="container">
       <div class="section-header reveal">
         <h2 class="section-title">与我联系</h2>
-        <p class="section-subtitle">
-          无论是有意思的技术想法、项目探讨，还是单纯打个招呼，都很期待你的来信
-        </p>
       </div>
 
       <div class="contact-grid">
         <!-- 左侧：信笺与交流 -->
         <div class="contact-info reveal-left">
-          <p class="contact-text">
-            平时大多数时间在写代码或沉淀技术，但我会认真阅读每一封收到的信件，并尽快回复。
-          </p>
-          <p class="contact-text">
-            如果你有正在做的有趣项目、对前端交互或声音可视化有新想法，或者想在杭州线下交流，随时写信给我。
-          </p>
-
           <div class="contact-details">
             <div class="detail-tile">
               <span class="detail-icon">📍</span>
               <div class="detail-texts">
-                <span class="detail-sub">所在城市</span>
+                <span class="detail-sub">坐标</span>
                 <span class="detail-main">中国 · 杭州</span>
               </div>
             </div>

@@ -1,21 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useParticles } from '@/composables/useParticles'
-import { useTypewriter } from '@/composables/useTypewriter'
 import { useTextScramble } from '@/composables/useTextScramble'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const { init: initParticles } = useParticles()
 
-const mottos = [
-  '好的界面应该像呼吸一样自然，让人忘记它的存在',
-  '代码是手艺，把粗糙的想法磨成光滑的体验',
-  '在键盘和画布之间找到属于自己的节奏',
-  '每一行代码都是一次小小的创造',
-]
-
-const { displayText, start: startTypewriter } = useTypewriter(mottos, 90, 45, 2800)
 const { output: scrambledName, scramble } = useTextScramble()
 const { isPlaying: isAudioPlaying, selectTrack, togglePlay: toggleAudioPlay } = useAudioPlayer()
 
@@ -62,7 +53,6 @@ onMounted(() => {
   if (canvasRef.value) {
     initParticles(canvasRef.value)
   }
-  startTypewriter()
 
   // 初始加载时文字解码效果
   scramble('var', 1500)
@@ -75,8 +65,8 @@ onUnmounted(() => {
   if (nameHoverTimeout) clearTimeout(nameHoverTimeout)
 })
 
-function scrollToAbout() {
-  document.querySelector('#about')?.scrollIntoView({ behavior: 'smooth' })
+function scrollToNext() {
+  document.querySelector('#now')?.scrollIntoView({ behavior: 'smooth' })
 }
 
 function scrollToSection(selector: string) {
@@ -97,7 +87,7 @@ function scrollToSection(selector: string) {
       <!-- 身份微章 -->
       <div class="hero-chip">
         <span class="chip-sparkle">◆</span>
-        <span class="chip-text">创意开发者 · 杭州</span>
+        <span class="chip-text">创意开发 · 交互装置</span>
       </div>
 
       <!-- 签名大字 (交互解码) -->
@@ -111,28 +101,16 @@ function scrollToSection(selector: string) {
         >{{ scrambledName || 'var' }}</h1>
       </div>
 
-      <p class="hero-tagline">喜欢写代码、做界面、折腾声音和 3D，用技术把想法变成看得见的东西</p>
-
-      <!-- 打字机窗口 -->
-      <div class="typewriter-card tilt-shine">
-        <div class="typewriter-body">
-          <span class="typewriter-quote">“</span>
-          <span class="typewriter-text">{{ displayText }}</span>
-          <span class="typewriter-cursor">▌</span>
-          <span class="typewriter-quote">”</span>
-        </div>
-      </div>
-
       <!-- 行动按键行与音频播放 -->
       <div class="hero-actions">
         <button class="tile-btn-primary" @click="scrollToSection('#now')">
-          <span>看看最近在做什么</span>
+          <span>探索装置</span>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </button>
         <button class="tile-btn-secondary" @click="scrollToSection('#cabin')">
-          <span>逛逛小木屋 🌲</span>
+          <span>小木屋 🌲</span>
         </button>
         <button
           class="hero-audio-btn"
@@ -151,8 +129,8 @@ function scrollToSection(selector: string) {
     </div>
 
     <!-- 底部滚动引导 -->
-    <button class="scroll-indicator" @click="scrollToAbout" aria-label="向下探索">
-      <span class="scroll-text">往下看</span>
+    <button class="scroll-indicator" @click="scrollToNext" aria-label="向下探索">
+      <span class="scroll-text">探索装置</span>
       <span class="scroll-arrow">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 5v14M5 12l7 7 7-7" />
@@ -232,7 +210,7 @@ function scrollToSection(selector: string) {
 .hero-name-container {
   position: relative;
   display: inline-block;
-  margin-bottom: 1rem;
+  margin-bottom: 2.8rem;
 }
 
 .hero-name {
@@ -255,70 +233,6 @@ function scrollToSection(selector: string) {
 
 .hero-name:active {
   transform: scale(0.97);
-}
-
-.hero-tagline {
-  font-size: clamp(1rem, 2vw, 1.15rem);
-  font-weight: 400;
-  color: var(--color-text-light);
-  line-height: 1.7;
-  max-width: 540px;
-  margin: 0 auto 2.4rem;
-  text-wrap: balance;
-  opacity: 0;
-  animation: fadeInUp 0.8s var(--ease) 0.45s forwards;
-}
-
-/* 打字机窗口 */
-.typewriter-card {
-  max-width: 560px;
-  margin: 0 auto 2.8rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: var(--tile-shadow);
-  text-align: left;
-  opacity: 0;
-  animation: fadeInUp 0.8s var(--ease) 0.6s forwards;
-  transition: transform var(--transition), box-shadow var(--transition);
-}
-
-.typewriter-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--tile-shadow-hover);
-}
-
-.typewriter-body {
-  padding: 18px 24px;
-  font-family: var(--font-serif);
-  font-size: 1rem;
-  color: var(--color-ink);
-  display: flex;
-  align-items: center;
-  min-height: 56px;
-  line-height: 1.7;
-}
-
-.typewriter-quote {
-  color: var(--color-amber);
-  font-size: 1.15rem;
-  font-weight: 700;
-  margin: 0 4px;
-}
-
-.typewriter-text {
-  flex: 1;
-}
-
-.typewriter-cursor {
-  color: var(--color-accent);
-  animation: blink 1s step-end infinite;
-  margin-left: 2px;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
 }
 
 .hero-actions {

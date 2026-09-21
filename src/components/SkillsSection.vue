@@ -51,7 +51,6 @@ onMounted(() => {
     <div class="container">
       <div class="section-header reveal">
         <h2 class="section-title">技能与工具</h2>
-        <p class="section-subtitle">不给技能打冰冷的分数，只记录日常陪伴左右的语言、框架与持续探索的好奇心</p>
       </div>
 
       <div class="skills-cabinet">

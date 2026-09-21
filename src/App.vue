@@ -2,7 +2,6 @@
 import { ref, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import NavBar from '@/components/NavBar.vue'
 import HeroSection from '@/components/HeroSection.vue'
-import AboutSection from '@/components/AboutSection.vue'
 import NowSection from '@/components/NowSection.vue'
 import SkillsSection from '@/components/SkillsSection.vue'
 import ContactSection from '@/components/ContactSection.vue'
@@ -35,7 +34,6 @@ onUnmounted(() => {
   <NavBar />
   <main>
     <HeroSection />
-    <AboutSection />
     <NowSection />
     <SkillsSection />
     <CabinSection />

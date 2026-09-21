@@ -98,9 +98,6 @@ onMounted(async () => {
       <!-- 标题 -->
       <div class="section-header reveal">
         <h2 class="section-title">此时此刻</h2>
-        <p class="section-subtitle">
-          记录当下的状态、最近在读的书、循环的音乐与近期的折腾记录
-        </p>
       </div>
 
       <!-- 实时控制台 -->
@@ -150,18 +147,15 @@ onMounted(async () => {
           <div class="now-card-top">
             <div class="tile-chip">
               <span class="now-card-icon">📖</span>
-              <span>在读书籍</span>
+              <span>在读</span>
             </div>
-            <span class="book-edition-tag">原研哉 · 著</span>
+            <span class="book-edition-tag">原研哉</span>
           </div>
           <h3 class="now-card-title">《设计中的设计》</h3>
-          <p class="now-card-author">日本平面设计大师与无印良品艺术总监理念集</p>
+          <p class="now-card-author">无印良品艺术总监理念集</p>
           <div class="book-progress-bar">
             <div class="progress-fill" style="width: 74%"></div>
           </div>
-          <p class="now-card-quote">
-            “白并不是一种颜色，而是一种感觉的容纳。把多余的视觉噪音去掉，信息本身才能发出清晰的声音。”
-          </p>
         </div>
 
         <!-- 2. 本周单曲循环 -->
@@ -179,7 +173,7 @@ onMounted(async () => {
           <div class="now-card-top">
             <div class="tile-chip">
               <span class="now-card-icon">{{ isAudioPlaying ? '🎵' : '🎧' }}</span>
-              <span>{{ isAudioPlaying ? '正在播放' : '单曲循环' }}</span>
+              <span>{{ isAudioPlaying ? '正在播放' : '循环' }}</span>
             </div>
             <div class="audio-waves" :class="{ playing: isAudioPlaying }">
               <span class="wave-bar w-1"></span>
@@ -214,15 +208,11 @@ onMounted(async () => {
                   @click.stop="handleExpandPlayerClick"
                   aria-label="展开完整播放器"
                 >
-                  <span>展开播放器 ↗</span>
+                  <span>展开唱盘 ↗</span>
                 </button>
               </div>
             </div>
           </div>
-
-          <p class="now-card-desc">
-            写代码时很喜欢的背景音乐。钢琴与环境采样交织，克制又深邃，适合让人静下心来进入专注状态。
-          </p>
         </div>
 
         <!-- 3. 技术试验田 -->
@@ -233,17 +223,17 @@ onMounted(async () => {
           <div class="now-card-top">
             <div class="tile-chip">
               <span class="now-card-icon">⚡</span>
-              <span>正在探索</span>
+              <span>探索</span>
             </div>
           </div>
           <h3 class="now-card-title">本地优先与音频实验</h3>
           <p class="now-card-author">Web Audio · Local-First · Canvas Shaders</p>
           <p class="now-card-desc">
-            研究利用 Web Audio API 实时合成声音波形反馈，结合 CRDT 和客户端 IndexedDB 尝试无依赖断网可用的笔记架构。
+            Web Audio API 实时音频分析 · 客户端 CRDT 离线状态同步
           </p>
         </div>
 
-        <!-- 4. 日常生活感受 -->
+        <!-- 4. 观察记录 -->
         <div
           :ref="(el) => { if (el) cardRefs[3] = el as HTMLElement }"
           class="now-card tile-card tilt-shine reveal-scale delay-4"
@@ -251,13 +241,13 @@ onMounted(async () => {
           <div class="now-card-top">
             <div class="tile-chip">
               <span class="now-card-icon">🌿</span>
-              <span>生活随想</span>
+              <span>记录</span>
             </div>
           </div>
-          <h3 class="now-card-title">西湖边的夜走与宣纸微粒</h3>
-          <p class="now-card-author">杭州 · 漫游随笔</p>
+          <h3 class="now-card-title">西湖夜行与宣纸微粒</h3>
+          <p class="now-card-author">30°15' N, 120°10' E · 杭州</p>
           <p class="now-card-desc">
-            偶尔在北山街和断桥附近散步吹晚风。也很喜欢手工粗纹纸吸墨的纹理，与屏幕前冷硬的像素有种奇妙的互补感。
+            手工粗纹纸张吸收墨汁的毛细扩散，与屏幕冷硬像素的互补对照
           </p>
         </div>
       </div>
@@ -266,7 +256,6 @@ onMounted(async () => {
       <div class="timeline-wrap tile-card reveal">
         <div class="timeline-header">
           <h3 class="timeline-title">近期足迹</h3>
-          <span class="timeline-sub">记录每一步探索的痕迹（点击展开详情）</span>
         </div>
 
         <div class="timeline-list">

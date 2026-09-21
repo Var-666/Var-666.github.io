@@ -15,7 +15,6 @@ const SCROLL_DELTA_THRESHOLD = 6 // 小抖动不触发，防止滚动吸附震�
 
 const navLinks = [
   { label: '首页', href: '#hero', id: 'hero' },
-  { label: '关于', href: '#about', id: 'about' },
   { label: '近况', href: '#now', id: 'now' },
   { label: '技能', href: '#skills', id: 'skills' },
   { label: '小木屋 🌲', href: '#cabin', id: 'cabin' },
@@ -48,7 +47,7 @@ function handleScroll() {
   scrollProgress.value = total > 0 ? (currentY / total) * 100 : 0
 
   // 活跃板块检测
-  const sections = ['contact', 'cabin', 'skills', 'now', 'about', 'hero']
+  const sections = ['contact', 'cabin', 'skills', 'now', 'hero']
   for (const id of sections) {
     const el = document.getElementById(id)
     if (el && el.getBoundingClientRect().top <= 150) {
