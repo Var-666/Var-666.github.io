@@ -301,8 +301,8 @@ onMounted(async () => {
   margin-bottom: 3.5rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--tile-shadow);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
   position: relative;
   overflow: hidden;
 }
@@ -321,9 +321,9 @@ onMounted(async () => {
 }
 
 .console-label {
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
-  color: var(--color-accent);
+  color: var(--c-accent);
   letter-spacing: 0.04em;
 }
 
@@ -334,11 +334,11 @@ onMounted(async () => {
 }
 
 .auto-badge {
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
   padding: 2px 8px;
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--c-accent);
   border: 1px solid rgba(91, 140, 110, 0.2);
   font-weight: 500;
 }
@@ -359,7 +359,7 @@ onMounted(async () => {
 }
 
 .console-date {
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   color: var(--color-text-lighter);
 }
 
@@ -376,17 +376,17 @@ onMounted(async () => {
 
 .console-val-main {
   font-family: var(--font-sans);
-  font-size: 1.15rem;
+  font-size: var(--fs-h3);
   font-weight: 600;
   color: var(--color-ink);
 }
 
 .console-tag {
-  font-size: 0.82rem;
+  font-size: var(--fs-mono);
   padding: 4px 12px;
   background: var(--color-bg-alt);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   color: var(--color-text-light);
 }
 
@@ -394,7 +394,7 @@ onMounted(async () => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: var(--c-accent);
   box-shadow: 0 0 0 0 rgba(91, 140, 110, 0.5);
   animation: pulse-ring-green 2.2s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
@@ -418,7 +418,7 @@ onMounted(async () => {
 }
 
 .activity-emoji {
-  font-size: 1.15rem;
+  font-size: var(--fs-h3);
 }
 
 /* 四大近况卡片 */
@@ -436,15 +436,15 @@ onMounted(async () => {
   position: relative;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: var(--tile-shadow);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
   transition: transform 0.35s var(--ease-spring), border-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
 }
 
 .now-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(91, 140, 110, 0.3);
-  box-shadow: var(--tile-shadow-hover);
+  border-color: var(--c-border-hover);
+  box-shadow: var(--shadow-lg);
 }
 
 .now-card-top {
@@ -458,12 +458,12 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 13px;
+  padding: 5px 14px;
   background: var(--color-accent-soft);
   border: 1px solid rgba(91, 140, 110, 0.18);
-  border-radius: var(--radius-full);
-  color: var(--color-accent);
-  font-size: 0.8rem;
+  border-radius: var(--r-full);
+  color: var(--c-accent);
+  font-size: var(--fs-sm);
   font-weight: 500;
 }
 
@@ -472,13 +472,13 @@ onMounted(async () => {
 }
 
 .book-edition-tag {
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   color: var(--color-text-lighter);
 }
 
 .now-card-title {
   font-family: var(--font-serif);
-  font-size: 1.35rem;
+  font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--color-ink);
   margin-bottom: 0.35rem;
@@ -486,11 +486,11 @@ onMounted(async () => {
 }
 
 .now-card:hover .now-card-title {
-  color: var(--color-accent);
+  color: var(--c-accent);
 }
 
 .now-card-author {
-  font-size: 0.86rem;
+  font-size: var(--fs-sm);
   color: var(--color-text-lighter);
   margin-bottom: 1.1rem;
 }
@@ -499,30 +499,20 @@ onMounted(async () => {
   width: 100%;
   height: 6px;
   background: var(--color-bg-alt);
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   margin-bottom: 1.2rem;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--color-accent);
-  border-radius: var(--radius-full);
+  background: var(--c-accent);
+  border-radius: var(--r-full);
   transition: width 1.2s var(--ease);
 }
 
-.now-card-quote {
-  font-family: var(--font-serif);
-  font-size: 0.94rem;
-  line-height: 1.85;
-  color: var(--color-text-light);
-  padding-left: 14px;
-  border-left: 2px solid var(--color-accent);
-  font-style: italic;
-}
-
 .now-card-desc {
-  font-size: 0.94rem;
+  font-size: var(--fs-body);
   line-height: 1.8;
   color: var(--color-text-light);
   font-weight: 400;
@@ -537,7 +527,7 @@ onMounted(async () => {
   padding: 14px 16px;
   background: var(--color-bg-alt);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
 }
 
 .mini-vinyl-disc {
@@ -592,12 +582,12 @@ onMounted(async () => {
 
 .vinyl-meta-info .now-card-title {
   margin-bottom: 2px;
-  font-size: 1.15rem;
+  font-size: var(--fs-h3);
 }
 
 .vinyl-meta-info .now-card-author {
   margin-bottom: 8px;
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
 }
 
 .mini-vinyl-actions {
@@ -608,8 +598,8 @@ onMounted(async () => {
 
 .mini-vinyl-btn {
   padding: 6px 14px;
-  font-size: 0.78rem;
-  border-radius: var(--radius-full);
+  font-size: var(--fs-xs);
+  border-radius: var(--r-full);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -619,7 +609,7 @@ onMounted(async () => {
 }
 
 .mini-vinyl-btn.primary {
-  background: var(--color-accent);
+  background: var(--c-accent);
   color: #FFFFFF;
   border: none;
 }
@@ -637,8 +627,8 @@ onMounted(async () => {
 
 .mini-vinyl-btn.secondary:hover {
   background: var(--color-accent-soft);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  border-color: var(--c-accent);
+  color: var(--c-accent);
 }
 
 /* 音频波形 */
@@ -651,7 +641,7 @@ onMounted(async () => {
 
 .wave-bar {
   width: 2px;
-  background: var(--color-accent);
+  background: var(--c-accent);
   border-radius: 1px;
   height: 4px;
   transition: height 0.3s var(--ease);
@@ -677,7 +667,7 @@ onMounted(async () => {
 }
 
 .interactive-music-card:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--c-accent);
   outline-offset: 3px;
 }
 
@@ -686,8 +676,8 @@ onMounted(async () => {
   padding: 2.8rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--tile-shadow);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .timeline-header {
@@ -698,15 +688,10 @@ onMounted(async () => {
 
 .timeline-title {
   font-family: var(--font-serif);
-  font-size: 1.45rem;
+  font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--color-ink);
   margin-bottom: 4px;
-}
-
-.timeline-sub {
-  font-size: 0.86rem;
-  color: var(--color-text-lighter);
 }
 
 .timeline-list {
@@ -730,7 +715,7 @@ onMounted(async () => {
 .timeline-item {
   position: relative;
   padding: 14px 18px;
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   border: 1px solid transparent;
   cursor: pointer;
   transition: transform 0.25s var(--ease), background-color 0.25s var(--ease), border-color 0.25s var(--ease);
@@ -754,7 +739,7 @@ onMounted(async () => {
   height: 14px;
   border-radius: 50%;
   background: #FFFFFF;
-  border: 2px solid var(--color-accent);
+  border: 2px solid var(--c-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -770,7 +755,7 @@ onMounted(async () => {
 .point-core {
   width: 4px;
   height: 4px;
-  background: var(--color-accent);
+  background: var(--c-accent);
   border-radius: 50%;
 }
 
@@ -784,33 +769,33 @@ onMounted(async () => {
 
 .item-date {
   font-family: var(--font-mono);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--color-amber);
 }
 
 .item-tag {
-  font-size: 0.74rem;
+  font-size: var(--fs-xs);
   padding: 2px 10px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   color: var(--color-text-lighter);
 }
 
 .item-highlight-tag {
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-size: var(--fs-xs);
   padding: 2px 10px;
   background: var(--color-accent-soft);
-  color: var(--color-accent);
-  border-radius: var(--radius-full);
+  color: var(--c-accent);
+  border-radius: var(--r-full);
   border: 1px solid rgba(91, 140, 110, 0.18);
 }
 
 .item-title {
   font-family: var(--font-serif);
-  font-size: 1.15rem;
+  font-size: var(--fs-h3);
   font-weight: 600;
   color: var(--color-ink);
   margin-bottom: 6px;
@@ -819,11 +804,11 @@ onMounted(async () => {
 
 .timeline-item:hover .item-title,
 .timeline-item.expanded .item-title {
-  color: var(--color-accent);
+  color: var(--c-accent);
 }
 
 .item-detail {
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   line-height: 1.75;
   color: var(--color-text-light);
   font-weight: 400;
@@ -836,5 +821,15 @@ onMounted(async () => {
   .now-card { padding: 2rem 1.6rem; }
   .timeline-wrap { padding: 2rem 1.6rem; }
   .vinyl-mini-stage { flex-direction: column; align-items: flex-start; }
+}
+
+.mini-vinyl-btn:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+.timeline-item:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
 }
 </style>

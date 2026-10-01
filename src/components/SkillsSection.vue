@@ -123,15 +123,15 @@ onMounted(() => {
   gap: 1.4rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--tile-shadow);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
   transition: transform 0.35s var(--ease-spring), border-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
 }
 
 .skill-tier-card:hover {
   transform: translateY(-3px);
   border-color: rgba(91, 140, 110, 0.3);
-  box-shadow: var(--tile-shadow-hover);
+  box-shadow: var(--shadow-lg);
 }
 
 .tier-header {
@@ -148,7 +148,7 @@ onMounted(() => {
 }
 
 .tier-symbol {
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   color: var(--color-accent);
   background: var(--color-accent-soft);
   width: 32px;
@@ -156,21 +156,21 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   border: 1px solid rgba(91, 140, 110, 0.2);
 }
 
 .tier-label {
-  font-family: var(--font-serif);
-  font-size: 1.35rem;
+  font-family: var(--f-serif);
+  font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--color-ink);
 }
 
 .tier-badge {
-  font-size: 0.74rem;
+  font-size: var(--fs-xs);
   padding: 3px 12px;
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   font-weight: 500;
   border: 1px solid var(--color-border);
   background: var(--color-bg-alt);
@@ -179,13 +179,13 @@ onMounted(() => {
 
 .tier-primary .tier-badge {
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--c-accent-dark);
   border-color: rgba(91, 140, 110, 0.25);
 }
 
 .tier-secondary .tier-badge {
   background: rgba(200, 148, 74, 0.1);
-  color: var(--color-amber);
+  color: var(--c-warm-dark);
   border-color: rgba(200, 148, 74, 0.25);
 }
 
@@ -196,7 +196,7 @@ onMounted(() => {
 }
 
 .tier-sublabel {
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   color: var(--color-text-light);
   line-height: 1.6;
 }
@@ -215,9 +215,9 @@ onMounted(() => {
   padding: 8px 18px;
   background: var(--color-bg-alt);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   color: var(--color-ink);
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   font-weight: 500;
   cursor: default;
   transition: transform 0.25s var(--ease-spring), background-color 0.25s var(--ease), border-color 0.25s var(--ease), color 0.25s var(--ease);
@@ -278,7 +278,7 @@ onMounted(() => {
   }
   .skill-chip {
     padding: 7px 14px;
-    font-size: 0.86rem;
+    font-size: var(--fs-sm);
   }
 }
 </style>

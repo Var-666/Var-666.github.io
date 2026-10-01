@@ -168,8 +168,8 @@ onUnmounted(() => {
 .navbar.scrolled {
   height: 52px;
   background: rgba(250, 248, 245, 0.95);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--c-border);
+  box-shadow: var(--shadow-sm);
 }
 
 .navbar.scrolled .logo-icon {
@@ -183,13 +183,13 @@ onUnmounted(() => {
 }
 
 .navbar.scrolled .nav-link {
-  padding: 5px 12px;
-  font-size: 0.86rem;
+  padding: 5px var(--sp-3);
+  font-size: var(--fs-sm);
 }
 
 .navbar.scrolled .nav-live-pill {
-  padding: 4px 10px;
-  font-size: 0.74rem;
+  padding: var(--sp-1) 10px;
+  font-size: var(--fs-xs);
 }
 
 .nav-container {
@@ -248,26 +248,26 @@ onUnmounted(() => {
 
 .nav-link {
   padding: 6px 14px;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
   font-weight: 500;
-  color: var(--color-text-light);
-  border-radius: var(--radius-full);
-  transition: color var(--transition), background-color var(--transition);
+  color: var(--c-text-2);
+  border-radius: var(--r-full);
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
   position: relative;
 }
 
 .nav-link:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--c-accent);
   outline-offset: 2px;
 }
 
 .nav-link:hover {
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
+  color: var(--c-accent-dark);
+  background: var(--c-accent-soft);
 }
 
 .nav-link.active {
-  color: var(--color-accent);
+  color: var(--c-accent-dark);
   font-weight: 600;
 }
 

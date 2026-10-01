@@ -187,10 +187,10 @@ onMounted(async () => {
 
 <style scoped>
 #contact.section-dark {
-  background: #242725;
-  color: #F0EFED;
+  background: var(--c-bg-dark);
+  color: var(--c-text-inv);
   position: relative;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--c-border-dark);
 }
 
 .contact-grid {
@@ -201,13 +201,6 @@ onMounted(async () => {
 }
 
 /* 左侧信笺与交流 */
-.contact-text {
-  font-size: 1.05rem;
-  line-height: 1.9;
-  color: rgba(240, 239, 237, 0.75);
-  margin-bottom: 1.2rem;
-  font-weight: 400;
-}
 
 .contact-details {
   margin: 2.2rem 0;
@@ -223,16 +216,16 @@ onMounted(async () => {
   padding: 16px 20px;
   text-decoration: none;
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-dark);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   transition: transform 0.25s var(--ease-spring), border-color 0.25s var(--ease), background-color 0.25s var(--ease);
 }
 
 .detail-tile:hover {
   transform: translateX(4px);
-  border-color: rgba(91, 140, 110, 0.5);
-  background: rgba(91, 140, 110, 0.1);
+  border-color: var(--c-accent-soft);
+  background: var(--c-accent-glow);
 }
 
 .detail-icon {
@@ -263,6 +256,11 @@ onMounted(async () => {
   color: var(--color-accent-light);
 }
 
+.mail-tile:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 3px;
+}
+
 /* 社交链接 */
 .social-links {
   display: flex;
@@ -279,8 +277,8 @@ onMounted(async () => {
   min-width: 84px;
   text-decoration: none;
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-dark);
   transition: all 0.25s var(--ease);
 }
 
@@ -291,7 +289,7 @@ onMounted(async () => {
 
 .social-btn:hover {
   border-color: var(--color-accent);
-  background: rgba(91, 140, 110, 0.12);
+  background: var(--c-accent-glow);
   transform: translateY(-2px);
 }
 
@@ -304,7 +302,7 @@ onMounted(async () => {
 
 .social-name {
   font-size: 0.76rem;
-  color: rgba(240, 239, 237, 0.7);
+  color: var(--c-text-inv-2);
 }
 
 .social-btn:hover .social-name {
@@ -315,8 +313,8 @@ onMounted(async () => {
 .contact-form {
   padding: 2.8rem;
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-dark);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
 }
 
@@ -339,7 +337,7 @@ onMounted(async () => {
   display: block;
   font-size: 0.85rem;
   font-weight: 500;
-  color: rgba(240, 239, 237, 0.75);
+  color: var(--c-text-inv-2);
   margin-bottom: 8px;
   letter-spacing: 0.02em;
   transition: color var(--transition);
@@ -347,19 +345,6 @@ onMounted(async () => {
 
 .form-group:focus-within .form-label {
   color: var(--color-accent-light);
-}
-
-.contact-form :deep(.glow-input) {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #FFFFFF;
-  border-radius: var(--radius-sm);
-}
-
-.contact-form :deep(.glow-input):focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(91, 140, 110, 0.25);
-  background: rgba(0, 0, 0, 0.35);
 }
 
 .glow-textarea {
@@ -372,13 +357,13 @@ onMounted(async () => {
 .submit-btn {
   width: 100%;
   margin-top: 0.5rem;
-  padding: 14px 28px;
+  padding: 12px 28px;
   background: var(--color-accent);
   color: #FFFFFF;
   font-weight: 600;
   border: none;
   border-radius: var(--radius-full);
-  box-shadow: 0 4px 16px rgba(91, 140, 110, 0.3);
+  box-shadow: 0 4px 16px var(--c-accent-glow);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -390,7 +375,7 @@ onMounted(async () => {
 .submit-btn:hover {
   background: var(--color-accent-light);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(91, 140, 110, 0.4);
+  box-shadow: 0 6px 20px var(--c-accent-glow);
 }
 
 .submit-btn.submitting {
@@ -427,42 +412,16 @@ onMounted(async () => {
 .footer-text {
   font-family: var(--font-serif);
   font-size: 0.96rem;
-  color: rgba(240, 239, 237, 0.7);
+  color: var(--c-text-inv-2);
   margin-bottom: 0.4rem;
 }
 
 .footer-sub {
   font-size: 0.78rem;
-  color: rgba(240, 239, 237, 0.4);
+  color: var(--c-text-inv-2);
 }
 
-/* Toast 通知 */
-.toast-notification {
-  position: fixed;
-  bottom: 36px;
-  right: 36px;
-  z-index: 9000;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 24px;
-  background: var(--color-accent);
-  color: #FFFFFF;
-  border-radius: var(--radius-full);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  font-size: 0.92rem;
-  font-weight: 500;
-}
 
-.toast-icon {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.toast-enter-active { transition: opacity 0.35s var(--ease-spring), transform 0.35s var(--ease-spring); }
-.toast-leave-active { transition: opacity 0.25s var(--ease), transform 0.25s var(--ease); }
-.toast-enter-from { opacity: 0; transform: translateY(16px) scale(0.95); }
-.toast-leave-to { opacity: 0; transform: translateY(-10px) scale(0.95); }
 
 @media (max-width: 900px) {
   .contact-grid {
@@ -471,12 +430,6 @@ onMounted(async () => {
   }
   .contact-form {
     padding: 2rem 1.6rem;
-  }
-  .toast-notification {
-    bottom: 24px;
-    right: 24px;
-    left: 24px;
-    justify-content: center;
   }
 }
 </style>

@@ -60,8 +60,8 @@ onUnmounted(() => {
 <style>
 .back-to-top {
   position: fixed;
-  bottom: 32px;
-  right: 32px;
+  bottom: var(--sp-8);
+  right: var(--sp-8);
   z-index: 900;
   width: 44px;
   height: 44px;
@@ -71,25 +71,25 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  color: var(--color-ink);
-  box-shadow: 0 6px 20px rgba(36, 51, 41, 0.12);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-full);
+  color: var(--c-text);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
-  transition: transform var(--transition), background var(--transition), color var(--transition), box-shadow var(--transition), border-color var(--transition);
+  transition: transform var(--dur) var(--ease), background var(--dur) var(--ease), color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 
 .back-to-top:focus-visible {
-  outline: 2px solid var(--color-forest);
+  outline: 2px solid var(--c-accent);
   outline-offset: 3px;
 }
 
 .back-to-top:hover {
-  background: var(--color-forest);
+  background: var(--c-accent);
   color: #FFFFFF;
-  border-color: var(--color-forest);
+  border-color: var(--c-accent);
   transform: translateY(-3px);
-  box-shadow: 0 10px 24px rgba(62, 107, 72, 0.3);
+  box-shadow: 0 10px 24px rgba(91, 140, 110, 0.3);
 }
 
 .btt-enter-active { transition: opacity 0.3s var(--ease-spring), transform 0.3s var(--ease-spring); }

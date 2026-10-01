@@ -189,7 +189,7 @@ function scrollToSection(selector: string) {
   padding: 6px 18px;
   background: var(--color-accent-soft);
   border: 1px solid rgba(91, 140, 110, 0.2);
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   margin-bottom: 1.6rem;
   opacity: 0;
   animation: fadeInDown 0.7s var(--ease) 0.15s forwards;
@@ -197,11 +197,11 @@ function scrollToSection(selector: string) {
 
 .chip-sparkle {
   color: var(--color-accent);
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
 }
 
 .chip-text {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--color-accent);
   letter-spacing: 0.02em;
@@ -250,12 +250,12 @@ function scrollToSection(selector: string) {
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
   font-weight: 500;
   color: var(--color-text-light);
   background: rgba(0, 0, 0, 0.03);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   cursor: pointer;
   transition: transform var(--transition), border-color var(--transition), background-color var(--transition), color var(--transition);
 }
@@ -279,7 +279,7 @@ function scrollToSection(selector: string) {
 }
 
 .audio-icon {
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
 }
 
 .audio-bars {
@@ -322,10 +322,15 @@ function scrollToSection(selector: string) {
   align-items: center;
   gap: 6px;
   color: var(--color-text-lighter);
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   transition: color var(--transition), transform 0.24s;
   opacity: 0;
   animation: fadeInUpCenter 0.8s var(--ease) 0.9s forwards;
+}
+
+.scroll-indicator:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 3px;
 }
 
 .scroll-indicator:hover {
@@ -369,10 +374,6 @@ function scrollToSection(selector: string) {
   }
   .hero-name {
     font-size: clamp(3.2rem, 16vw, 5rem);
-  }
-  .hero-tagline {
-    font-size: 0.96rem;
-    margin-bottom: 2rem;
   }
   .hero-actions {
     flex-direction: column;
