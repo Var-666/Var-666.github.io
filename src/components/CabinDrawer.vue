@@ -339,7 +339,7 @@ function quickNavigate(href: string) {
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--r-lg);
-  box-shadow: -8px 12px 48px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   z-index: 20;
@@ -503,7 +503,7 @@ function quickNavigate(href: string) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .card-thumb-icon {
@@ -613,7 +613,7 @@ function quickNavigate(href: string) {
   position: relative;
   padding: 18px 18px 14px;
   border-radius: var(--r-sm);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-md);
   color: #2f3542;
 }
 
@@ -727,13 +727,13 @@ function quickNavigate(href: string) {
 }
 
 .locked-title {
-  font-size: 0.84rem;
+  font-size: var(--fs-sm);
   color: var(--c-text-inv-2);
   margin: 4px 0 2px;
 }
 
 .locked-hint {
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   color: var(--c-text-inv-3);
 }
 

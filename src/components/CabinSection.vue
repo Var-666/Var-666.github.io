@@ -542,7 +542,7 @@ function triggerItem(item: any) {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--r-lg);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-md);
   z-index: 15;
   color: #ffffff;
 }
@@ -556,7 +556,7 @@ function triggerItem(item: any) {
   align-items: center;
   justify-content: center;
   border: 2px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -650,7 +650,7 @@ function triggerItem(item: any) {
   background: rgba(30, 39, 46, 0.95);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(112, 161, 255, 0.4);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-lg);
   border-radius: var(--r-full);
   color: #ffffff;
   z-index: 30;
@@ -705,7 +705,7 @@ function triggerItem(item: any) {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 2px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -755,7 +755,7 @@ function triggerItem(item: any) {
   cursor: pointer;
   touch-action: manipulation;
   transition: background 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.25s, opacity 0.25s;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg);
 }
 
 .mobile-interact-btn:focus-visible {
