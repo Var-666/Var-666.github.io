@@ -338,7 +338,7 @@ function quickNavigate(href: string) {
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
+  border-radius: var(--r-lg);
   box-shadow: -8px 12px 48px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-direction: column;
@@ -367,11 +367,11 @@ function quickNavigate(href: string) {
 }
 
 .drawer-icon {
-  font-size: 1.25rem;
+  font-size: var(--fs-h3);
 }
 
 .drawer-title {
-  font-size: 1.15rem;
+  font-size: var(--fs-h3);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #ffffff;
@@ -404,7 +404,7 @@ function quickNavigate(href: string) {
 }
 
 .drawer-subtitle {
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   color: rgba(255, 255, 255, 0.55);
   margin: 0;
   line-height: 1.4;
@@ -426,7 +426,7 @@ function quickNavigate(href: string) {
 }
 .drawer-content::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
+  border-radius: var(--r-xs);
 }
 
 /* 分类胶囊按钮 */
@@ -441,9 +441,9 @@ function quickNavigate(href: string) {
   padding: 6px 14px;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 9999px;
+  border-radius: var(--r-full);
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
@@ -479,7 +479,7 @@ function quickNavigate(href: string) {
   padding: 14px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  border-radius: var(--r-md);
   transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
   cursor: pointer;
 }
@@ -498,7 +498,7 @@ function quickNavigate(href: string) {
 .project-card-thumb {
   width: 60px;
   height: 60px;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -516,7 +516,7 @@ function quickNavigate(href: string) {
 }
 
 .project-card-title {
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   font-weight: 600;
   color: #ffffff;
   margin: 0 0 4px;
@@ -526,7 +526,7 @@ function quickNavigate(href: string) {
 }
 
 .project-card-desc {
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   color: rgba(255, 255, 255, 0.6);
   margin: 0 0 8px;
   line-height: 1.35;
@@ -543,10 +543,10 @@ function quickNavigate(href: string) {
 }
 
 .project-tag {
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   padding: 2px 7px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   color: rgba(255, 255, 255, 0.75);
 }
 
@@ -572,17 +572,17 @@ function quickNavigate(href: string) {
   padding: 16px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  border-radius: var(--r-md);
 }
 
 .article-meta {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: var(--fs-xs);
+  color: var(--c-text-inv-2);
   margin-bottom: 6px;
 }
 
 .article-title {
-  font-size: 0.98rem;
+  font-size: var(--fs-body);
   font-weight: 600;
   color: #ffffff;
   margin: 0 0 6px;
@@ -590,14 +590,14 @@ function quickNavigate(href: string) {
 }
 
 .article-summary {
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   color: rgba(255, 255, 255, 0.65);
   line-height: 1.5;
   margin: 0 0 10px;
 }
 
 .read-more-link {
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   color: #70a1ff;
   cursor: pointer;
 }
@@ -612,7 +612,7 @@ function quickNavigate(href: string) {
 .cork-note {
   position: relative;
   padding: 18px 18px 14px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   color: #2f3542;
 }
@@ -636,19 +636,19 @@ function quickNavigate(href: string) {
   position: absolute;
   top: -8px;
   left: 14px;
-  font-size: 1.1rem;
+  font-size: var(--fs-h3);
 }
 
 .note-date {
   display: block;
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  opacity: 0.6;
+  opacity: 0.8;
   margin-bottom: 4px;
 }
 
 .note-text {
-  font-size: 0.86rem;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   margin: 0;
   font-weight: 500;
@@ -659,7 +659,7 @@ function quickNavigate(href: string) {
   text-align: center;
   padding: 16px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   border: 1px dashed rgba(255, 255, 255, 0.15);
 }
 
@@ -670,7 +670,7 @@ function quickNavigate(href: string) {
 }
 
 .cabinet-stat-label {
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   color: rgba(255, 255, 255, 0.55);
 }
 
@@ -684,34 +684,34 @@ function quickNavigate(href: string) {
   padding: 14px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  border-radius: var(--r-md);
 }
 
 .disc-badge {
   display: inline-block;
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   background: rgba(112, 161, 255, 0.15);
   color: #70a1ff;
   margin-bottom: 4px;
 }
 
 .disc-title {
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   color: #ffffff;
   margin: 2px 0 4px;
 }
 
 .disc-desc {
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   color: rgba(255, 255, 255, 0.6);
   margin: 0 0 6px;
 }
 
 .disc-time {
   font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--c-text-inv-2);
 }
 
 .discovered-card.locked {
@@ -728,22 +728,22 @@ function quickNavigate(href: string) {
 
 .locked-title {
   font-size: 0.84rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--c-text-inv-2);
   margin: 4px 0 2px;
 }
 
 .locked-hint {
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--c-text-inv-3);
 }
 
 /* ── 全局导览 MAP INDEX ── */
 .index-intro {
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   color: rgba(255, 255, 255, 0.75);
   background: rgba(255, 255, 255, 0.06);
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   line-height: 1.5;
   margin-bottom: 14px;
 }
@@ -761,7 +761,7 @@ function quickNavigate(href: string) {
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   color: #fff;
   cursor: pointer;
   text-align: left;
@@ -785,13 +785,13 @@ function quickNavigate(href: string) {
 
 .ib-title {
   display: block;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   font-weight: 600;
 }
 
 .ib-sub {
   display: block;
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   color: rgba(255, 255, 255, 0.5);
 }
 

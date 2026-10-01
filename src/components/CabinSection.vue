@@ -362,13 +362,13 @@ function triggerItem(item: any) {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   padding: 8px 18px;
-  border-radius: 9999px;
+  border-radius: var(--r-full);
   border: 1px solid rgba(255, 255, 255, 0.1);
   pointer-events: auto;
 }
 
 .brand-icon {
-  font-size: 1.4rem;
+  font-size: var(--fs-h3);
 }
 
 .brand-text-group {
@@ -377,16 +377,16 @@ function triggerItem(item: any) {
 }
 
 .brand-title {
-  font-size: 1.05rem;
+  font-size: var(--fs-body);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #ffffff;
 }
 
 .brand-sub {
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--c-text-inv-2);
 }
 
 .header-actions {
@@ -399,7 +399,7 @@ function triggerItem(item: any) {
 .header-quote {
   font-family: var(--font-serif);
   font-style: italic;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   color: rgba(255, 255, 255, 0.55);
 }
 
@@ -418,8 +418,8 @@ function triggerItem(item: any) {
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #ffffff;
   padding: 8px 16px;
-  border-radius: 9999px;
-  font-size: 0.82rem;
+  border-radius: var(--r-full);
+  font-size: var(--fs-sm);
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
@@ -453,14 +453,14 @@ function triggerItem(item: any) {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 9999px;
+  border-radius: var(--r-full);
   color: #ffffff;
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   font-weight: 500;
   pointer-events: auto;
   cursor: pointer;
   transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-sm);
   white-space: nowrap;
 }
 
@@ -489,7 +489,7 @@ function triggerItem(item: any) {
 }
 
 .tag-icon {
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
 }
 
 /* 靠近时弹出的 [E] 交互气泡 */
@@ -504,18 +504,18 @@ function triggerItem(item: any) {
   background: #ffffff;
   color: #1e272e;
   padding: 3px 10px;
-  border-radius: 9999px;
+  border-radius: var(--r-full);
   font-weight: 700;
-  font-size: 0.74rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  font-size: var(--fs-xs);
+  box-shadow: var(--shadow-sm);
 }
 
 .key-pill {
   background: #1e272e;
   color: #ffffff;
   padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 0.7rem;
+  border-radius: var(--r-xs);
+  font-size: var(--fs-xs);
 }
 
 .pop-enter-active,
@@ -541,7 +541,7 @@ function triggerItem(item: any) {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
+  border-radius: var(--r-lg);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   z-index: 15;
   color: #ffffff;
@@ -570,11 +570,11 @@ function triggerItem(item: any) {
 .hud-hearts {
   display: flex;
   gap: 3px;
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
 }
 
 .hud-progress-text {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.03em;
   color: rgba(255, 255, 255, 0.85);
@@ -584,14 +584,14 @@ function triggerItem(item: any) {
   width: 100%;
   height: 5px;
   background: rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
+  border-radius: var(--r-full);
   overflow: hidden;
 }
 
 .hud-progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #10b981, #34d399);
-  border-radius: 9999px;
+  border-radius: var(--r-full);
   transition: width 0.4s ease;
 }
 
@@ -609,9 +609,9 @@ function triggerItem(item: any) {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 9999px;
+  border-radius: var(--r-full);
   color: rgba(255, 255, 255, 0.75);
-  font-size: 0.76rem;
+  font-size: var(--fs-xs);
   z-index: 15;
   pointer-events: none;
 }
@@ -626,10 +626,10 @@ function triggerItem(item: any) {
   padding: 2px 6px;
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
+  border-radius: var(--r-sm);
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
   color: #fff;
 }
 
@@ -651,24 +651,24 @@ function triggerItem(item: any) {
   backdrop-filter: blur(20px);
   border: 1px solid rgba(112, 161, 255, 0.4);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
-  border-radius: 9999px;
+  border-radius: var(--r-full);
   color: #ffffff;
   z-index: 30;
 }
 
 .toast-icon {
-  font-size: 1.3rem;
+  font-size: var(--fs-h3);
   animation: pulse 1.5s infinite;
 }
 
 .toast-title {
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: #70a1ff;
 }
 
 .toast-desc {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   color: rgba(255, 255, 255, 0.65);
 }
 
@@ -777,12 +777,12 @@ function triggerItem(item: any) {
 }
 
 .mobile-btn-icon {
-  font-size: 1.4rem;
+  font-size: var(--fs-h3);
   line-height: 1;
 }
 
 .mobile-btn-text {
-  font-size: 0.65rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
 }
