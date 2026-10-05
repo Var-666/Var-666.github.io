@@ -162,7 +162,7 @@ onMounted(() => {
 
 .tier-label {
   font-family: var(--f-serif);
-  font-size: var(--fs-h3);
+  font-size: var(--fs-h2);
   font-weight: 700;
   color: var(--color-ink);
 }

@@ -5,13 +5,105 @@
 
 /* ── CSS 自定义属性 ── */
 :root {
-  /* 核心色彩 — 像手工纸、铜器和午后窗台的光 */
-  --color-base: #FAF8F5;           /* 暖纸白底色 */
+  /* ═══ 设计系统 Token (规范源: design.md) ═══ */
+
+  /* 色彩 — 浅底 */
+  --c-bg:             #FAF8F5;
+  --c-bg-alt:         #F0EDE8;
+  --c-surface:        #FFFFFF;
+  --c-surface-hover:  #F7F5F1;
+  --c-surface-sunken: #EDEAE5;
+
+  /* 色彩 — 深底 */
+  --c-bg-dark:        #242725;
+  --c-bg-dark-alt:    #2E312F;
+  --c-surface-dark:   rgba(42, 45, 43, 0.92);
+
+  /* 边框 */
+  --c-border:            rgba(0, 0, 0, 0.08);
+  --c-border-subtle:     rgba(0, 0, 0, 0.05);
+  --c-border-hover:      rgba(91, 140, 110, 0.4);
+  --c-border-dark:       rgba(255, 255, 255, 0.12);
+  --c-border-dark-hover: rgba(255, 255, 255, 0.25);
+
+  /* 文字 — 浅底 */
+  --c-text:   #2C2C2E;
+  --c-text-2: #6B6B6F;
+  --c-text-3: #9A9A9E;
+
+  /* 文字 — 深底 */
+  --c-text-inv:   #F0EFED;
+  --c-text-inv-2: rgba(240, 239, 237, 0.65);
+  --c-text-inv-3: rgba(240, 239, 237, 0.4);
+
+  /* 铜绿 */
+  --c-accent:       #5B8C6E;
+  --c-accent-light: #78A688;
+  --c-accent-dark:  #4A7559;
+  --c-accent-glow:  rgba(91, 140, 110, 0.15);
+  --c-accent-soft:  rgba(91, 140, 110, 0.08);
+
+  /* 琥珀 */
+  --c-warm:       #C8944A;
+  --c-warm-light: #DEAE6B;
+  --c-warm-dark:  #A87838;
+
+  /* 状态 */
+  --c-error:      #C45B4A;
+  --c-error-soft: rgba(196, 91, 74, 0.08);
+
+  /* 字体 */
+  --f-serif: 'Noto Serif SC', 'Songti SC', serif;
+  --f-sans:  -apple-system, BlinkMacSystemFont, 'Noto Sans SC', system-ui, sans-serif;
+  --f-mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  /* 字号阶梯 — 8 级，主次分明 */
+  --fs-hero:    clamp(4rem, 14vw, 11rem);
+  --fs-display: clamp(2rem, 3.6vw, 2.8rem);
+  --fs-h2:      1.35rem;   /* 卡片标题、分组标题 */
+  --fs-h3:      1.15rem;   /* 次级标题、黑胶标题 */
+  --fs-body:    0.95rem;
+  --fs-sm:      0.84rem;
+  --fs-xs:      0.75rem;
+  --fs-mono:    0.82rem;
+
+  /* 间距 — 8px 网格 */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* 圆角 */
+  --r-lg:   20px;
+  --r-md:   14px;
+  --r-sm:   8px;
+  --r-xs:   4px;
+  --r-full: 9999px;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+
+  /* 动效 */
+  --dur:      0.28s;
+  --dur-slow: 0.6s;
+
+  /* ═══ 向后兼容 (旧变量名) ═══ */
+
+  /* 核心色彩 */
+  --color-base: #FAF8F5;
   --color-bg: var(--color-base);
-  --color-bg-alt: #F3F0EB;         /* 略深一点的暖灰白 */
-  --color-surface: #FFFFFF;         /* 卡片白底 */
-  --color-surface-hover: #F7F5F1;   /* 悬停微暖 */
-  --color-surface-sunken: #EDEAE5;  /* 凹陷输入框底色 */
+  --color-bg-alt: #F3F0EB;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F7F5F1;
+  --color-surface-sunken: #EDEAE5;
 
   --color-border: rgba(0, 0, 0, 0.08);
   --color-border-subtle: rgba(0, 0, 0, 0.05);
@@ -20,13 +112,12 @@
   --color-grout-subtle: rgba(0, 0, 0, 0.03);
   --color-grout-dark: rgba(0, 0, 0, 0.1);
 
-  --color-ink: #2C2C2E;             /* 墨石深 — 正文主色 */
+  --color-ink: #2C2C2E;
   --color-text: var(--color-ink);
-  --color-text-light: #6B6B6F;      /* 次级文字 */
-  --color-text-lighter: #8A8A8E;    /* 窗台灰标注 */
+  --color-text-light: #6B6B6F;
+  --color-text-lighter: #8A8A8E;
   --color-text-muted: #8A8A8E;
 
-  /* 老铜绿 (主强调色) */
   --color-accent: #5B8C6E;
   --color-accent-light: #78A688;
   --color-accent-dark: #4A7559;
@@ -34,55 +125,48 @@
   --color-accent-glow-strong: rgba(91, 140, 110, 0.3);
   --color-accent-soft: rgba(91, 140, 110, 0.08);
 
-  /* 琥珀暖 (辅助强调) */
   --color-amber: #C8944A;
   --color-amber-light: #DEAE6B;
   --color-amber-dark: #A87838;
   --color-sunlit: var(--color-amber);
+  --color-warm: var(--color-amber);
 
-  /* 深色场景兼容变量 (暗色区域: Contact底部/MusicPlayer/Cabin) */
-  --color-bg-dark: #2A2D2B;
-  --color-bg-dark-alt: #353835;
+  --color-bg-dark: #242725;
+  --color-bg-dark-alt: #2E312F;
   --color-slate-surface: rgba(42, 45, 43, 0.92);
   --color-slate-border: rgba(255, 255, 255, 0.12);
   --color-text-inv: #F0EFED;
-  --color-text-inv-light: rgba(240, 239, 237, 0.7);
+  --color-text-inv-light: rgba(240, 239, 237, 0.65);
 
-  /* 卡片质感 */
   --tile-bg: #FFFFFF;
   --tile-border: rgba(0, 0, 0, 0.08);
-  --tile-shadow: 0 2px 8px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --tile-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --tile-shadow: var(--shadow-md);
+  --tile-shadow-hover: var(--shadow-lg);
 
-  /* 玻璃质感 */
   --glass-bg: rgba(255, 255, 255, 0.75);
   --glass-bg-hover: rgba(255, 255, 255, 0.9);
   --glass-bg-dark: rgba(42, 45, 43, 0.85);
   --glass-bg-dark-hover: rgba(42, 45, 43, 0.95);
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-border-dark: rgba(255, 255, 255, 0.15);
-  --glass-shadow: var(--tile-shadow);
-  --glass-shadow-hover: var(--tile-shadow-hover);
+  --glass-shadow: var(--shadow-md);
+  --glass-shadow-hover: var(--shadow-lg);
 
-  /* 圆角 */
   --radius-lg: 20px;
   --radius: 14px;
   --radius-sm: 10px;
   --radius-xs: 6px;
   --radius-full: 9999px;
 
-  /* 字体族系 */
-  --font-serif: 'Noto Serif SC', 'Songti SC', serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-serif: var(--f-serif);
+  --font-sans: var(--f-sans);
+  --font-mono: var(--f-mono);
 
-  /* 边框与间距 */
   --border-light: rgba(0, 0, 0, 0.06);
   --border-medium: rgba(0, 0, 0, 0.12);
-  --shadow-card: var(--tile-shadow);
-  --card-border: var(--tile-border);
+  --shadow-card: var(--shadow-md);
+  --card-border: rgba(0, 0, 0, 0.08);
 
-  /* 动效缓冲 */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -90,8 +174,8 @@
   --transition-slow: 0.6s var(--ease);
   --transition-spring: 0.4s var(--ease-spring);
 
-  /* 页面尺度 */
   --section-padding: 110px 0;
+  --section-py: 110px;
   --container-width: 1100px;
   --nav-height: 64px;
 }
@@ -172,7 +256,7 @@ ul, ol {
 /* ── 板块标题排版 ── */
 .section-header {
   text-align: center;
-  margin-bottom: var(--sp-10);
+  margin-bottom: 3.5rem;
 }
 
 .section-title {

@@ -478,7 +478,7 @@ onMounted(async () => {
 
 .now-card-title {
   font-family: var(--font-serif);
-  font-size: var(--fs-h3);
+  font-size: var(--fs-h2);
   font-weight: 700;
   color: var(--color-ink);
   margin-bottom: 0.35rem;
@@ -688,7 +688,7 @@ onMounted(async () => {
 
 .timeline-title {
   font-family: var(--font-serif);
-  font-size: var(--fs-h3);
+  font-size: var(--fs-h2);
   font-weight: 700;
   color: var(--color-ink);
   margin-bottom: 4px;
@@ -795,7 +795,7 @@ onMounted(async () => {
 
 .item-title {
   font-family: var(--font-serif);
-  font-size: var(--fs-h3);
+  font-size: var(--fs-h2);
   font-weight: 600;
   color: var(--color-ink);
   margin-bottom: 6px;
