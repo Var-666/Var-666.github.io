@@ -17,7 +17,6 @@ const navLinks = [
   { label: '首页', href: '#hero', id: 'hero' },
   { label: '近况', href: '#now', id: 'now' },
   { label: '技能', href: '#skills', id: 'skills' },
-  { label: '小木屋 🌲', href: '#cabin', id: 'cabin' },
   { label: '联系', href: '#contact', id: 'contact' },
 ]
 
@@ -47,7 +46,7 @@ function handleScroll() {
   scrollProgress.value = total > 0 ? (currentY / total) * 100 : 0
 
   // 活跃板块检测
-  const sections = ['contact', 'cabin', 'skills', 'now', 'hero']
+  const sections = ['contact', 'skills', 'now', 'hero']
   for (const id of sections) {
     const el = document.getElementById(id)
     if (el && el.getBoundingClientRect().top <= 150) {

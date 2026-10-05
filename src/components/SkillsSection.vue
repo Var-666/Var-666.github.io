@@ -85,31 +85,10 @@ onMounted(() => {
         </div>
       </div>
     </div>
-
-    <!-- 转换至小木屋夜幕的平滑过渡遮罩 -->
-    <div class="skills-dusk-transition" aria-hidden="true"></div>
   </section>
 </template>
 
 <style scoped>
-#skills {
-  background-color: transparent;
-  position: relative;
-  padding-bottom: calc(var(--section-padding) + 40px);
-}
-
-/* 自然过渡至 3D 小木屋夜空 */
-.skills-dusk-transition {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 150px;
-  background: linear-gradient(180deg, transparent 0%, rgba(26, 38, 30, 0.4) 40%, rgba(26, 38, 30, 0.85) 80%, #1A261E 100%);
-  pointer-events: none;
-  z-index: 2;
-}
-
 .skills-cabinet {
   display: flex;
   flex-direction: column;

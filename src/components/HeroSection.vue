@@ -109,8 +109,8 @@ function scrollToSection(selector: string) {
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </button>
-        <button class="tile-btn-secondary" @click="scrollToSection('#cabin')">
-          <span>小木屋 🌲</span>
+        <button class="tile-btn-secondary" @click="scrollToSection('#contact')">
+          <span>与我联系</span>
         </button>
         <button
           class="hero-audio-btn"
