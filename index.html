@@ -1,22 +1,84 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#FAF8F5" />
-    <meta name="referrer" content="no-referrer" />
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
-    <title>var | 创意开发者</title>
-    <meta name="description" content="var — 喜欢写代码、做界面、折腾声音和 3D 的创意开发者" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap"
-      rel="stylesheet"
-    />
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>var</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #FAF8F5;
+      color: #2C2C2E;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Noto Serif SC", "Songti SC", "Source Han Serif SC", serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .name {
+      font-size: clamp(5rem, 24vw, 18rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      cursor: pointer;
+      transition: color 0.4s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .name:hover {
+      color: #5B8C6E;
+      transform: scale(1.04);
+    }
+
+    .name:active {
+      transform: scale(0.97);
+    }
+  </style>
+</head>
+<body>
+  <h1 class="name" id="name" title="var">var</h1>
+
+  <script>
+    const el = document.getElementById('name');
+    const target = 'var';
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789~*#@!';
+    let timer = null;
+
+    function scramble() {
+      let frame = 0;
+      const totalFrames = 18;
+      clearInterval(timer);
+      timer = setInterval(() => {
+        el.innerText = target
+          .split('')
+          .map((char, i) => {
+            if (frame / totalFrames > (i + 0.5) / target.length) return char;
+            return chars[Math.floor(Math.random() * chars.length)];
+          })
+          .join('');
+        frame++;
+        if (frame > totalFrames) {
+          el.innerText = target;
+          clearInterval(timer);
+        }
+      }, 30);
+    }
+
+    el.addEventListener('mouseenter', scramble);
+    el.addEventListener('click', scramble);
+    setTimeout(scramble, 300);
+  </script>
+</body>
 </html>
