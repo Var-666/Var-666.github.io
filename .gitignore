@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local build and hosting metadata
+*.tsbuildinfo
+.sites-runtime/
+.openai/
+.env*
