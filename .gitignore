@@ -28,3 +28,6 @@ dist-ssr
 .sites-runtime/
 .openai/
 .env*
+
+# Generated local PDF.js resources
+/public/pdf-assets/

@@ -23,3 +23,15 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## File conversion libraries
+
+- Papa Parse: MIT, https://github.com/mholt/PapaParse
+- docx-preview: Apache-2.0, https://github.com/VolodymyrBaydalka/docxjs
+- docx: MIT, https://github.com/dolanmiu/docx
+- PDF.js: Apache-2.0, https://github.com/mozilla/pdf.js
+- jsPDF: MIT, https://github.com/parallax/jsPDF
+- html2canvas: MIT, https://github.com/niklasvh/html2canvas
+- fflate: MIT, https://github.com/101arrowz/fflate
+
+The distributed packages retain their own copyright and license notices.

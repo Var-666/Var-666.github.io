@@ -1,4 +1,4 @@
-# 理文 · 文本整理工作台
+# VAR · 日常工具箱
 
 React + TypeScript + Vite + Tailwind CSS 4，使用官方 shadcn/ui New York 组件、Radix UI、Lucide 图标和 Sonner 通知。
 
@@ -11,7 +11,24 @@ npm run dev
 
 打开终端打印的本地地址。`npm test` 验证整理规则，`npm run build` 完成 TypeScript 检查并生成 `dist/`，`npm run preview` 查看构建结果。
 
-## 功能
+## 工具与入口
+
+- `#/`：工具箱首页。
+- `#/text`：文本整理，保留现有全部功能。
+- `#/files`：文件格式转换。使用 hash 路由，GitHub Pages 刷新子页面无需重写规则。
+- 工具之间切换会保留当前页面内的输入和转换结果；刷新或关闭后清空。主题在首页与各工具间共用。
+
+## 文件格式转换
+
+- PNG / JPG / WebP 互转，最多 10 个文件，可单独下载或 ZIP 打包。单张 20 MB、2400 万像素，总输入 50 MB、总输出 100 MB。JPG 透明背景填白，动画仅保留第一帧，元数据不保留。
+- Markdown → TXT，复用现有 Markdown 解析规则。
+- CSV → JSON：逗号分隔、首行为唯一且非空的列名；保留字符串和前导零，支持引号、逗号、换行。
+- JSON → CSV：非空对象数组，不支持嵌套字段；合并所有列，缺失字段留空，长整数需要写成字符串；对疑似表格公式添加单引号。
+- Word `.docx` → PDF：浏览器渲染并输出图片版 A4 PDF，文字不能选择。字体、复杂分页、表格等不保证原样还原，不支持旧 `.doc`。外部资源在隔离渲染区域内禁止加载，文件解压大小受限。
+- 文字型 PDF → Word `.docx`：提取文字、保留页间分页，不恢复图片、表格与布局。扫描件、含无文字页的混合文档、加密 PDF 不转换，以免无提示地遗漏内容。
+- 文本类文件单个 2 MB、UTF-8；办公文档单个 10 MB、最多 50 页。所有转换在本地执行，没有服务端或文件上传。转换依赖按需加载。`predev` / `prebuild` 从已安装的 PDF.js 复制中文字符映射与标准字体到 `public/pdf-assets/`，该生成目录不提交 Git。
+
+## 文本整理
 
 - 日常清理、PDF 复制文字断行修复、名单去重、中文排版、Markdown 转纯文本。
 - Markdown 模式去除标题、强调、引用和列表标记，保留代码内容和缩进；链接保留为“文字（网址）”，图片保留说明，表格转成制表符分隔的文本行。
@@ -23,7 +40,11 @@ npm run dev
 
 ## 结构
 
-- `src/App.tsx`：界面、文件与剪贴板交互、设置。
+- `src/App.tsx`：首页、导航和共用主题。
+- `src/TextTool.tsx`：原文本工具、文件与剪贴板交互、设置。
+- `src/FileTool.tsx`：转换队列、错误状态、结果与批量下载。
+- `src/lib/file-convert.ts`：本地图片与办公文档转换。
+- `src/lib/file-text.ts`：CSV / JSON 与 Markdown 文件转换。
 - `src/lib/text.ts`：纯函数整理规则、场景预设、统计。
 - `src/lib/markdown.ts`：基于 Marked 语法分析的纯文本转换，不渲染或执行 HTML。
 - `src/lib/markdown.test.ts`：Markdown 格式、代码、链接、图片、表格等转换测试。
