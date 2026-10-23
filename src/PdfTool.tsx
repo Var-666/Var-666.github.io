@@ -11,6 +11,7 @@ import {
   RotateCw,
   Trash2,
   X,
+  ZoomIn,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,7 @@ import { openPdf } from './lib/file-convert'
 import { validateQueueFiles } from './lib/file-queue'
 import { pdfPageNumbers } from './lib/media-options'
 import { loadOrganizablePdf, organizePdf, type PdfPageEntry } from './lib/pdf-organize'
+import PdfPreview from './PdfPreview'
 
 type Source = {
   id: string
@@ -27,8 +29,18 @@ type Source = {
   task: PDFDocumentLoadingTask
 }
 
-function Thumbnail({ source, page }: { source: Source; page: PdfPageEntry }) {
-  const container = useRef<HTMLDivElement>(null)
+function Thumbnail({
+  source,
+  page,
+  onOpen,
+  position,
+}: {
+  source: Source
+  page: PdfPageEntry
+  onOpen: (button: HTMLButtonElement) => void
+  position: number
+}) {
+  const container = useRef<HTMLButtonElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const [visible, setVisible] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -83,7 +95,14 @@ function Thumbnail({ source, page }: { source: Source; page: PdfPageEntry }) {
     }
   }, [source, page.index, page.rotation, visible])
   return (
-    <div className="pdf-thumbnail" ref={container}>
+    <button
+      type="button"
+      className="pdf-thumbnail pdf-preview-trigger"
+      ref={container}
+      onClick={(event) => onOpen(event.currentTarget)}
+      aria-label={`放大页面 ${position + 1}`}
+      title="点击放大预览"
+    >
       {failed && <span>预览不可用</span>}
       <canvas
         hidden={failed}
@@ -91,11 +110,14 @@ function Thumbnail({ source, page }: { source: Source; page: PdfPageEntry }) {
         ref={canvas}
         aria-label={`${source.file.name} 第 ${page.index + 1} 页预览`}
       />
-    </div>
+      <span className="pdf-zoom-hint" aria-hidden="true">
+        <ZoomIn size={14} />
+      </span>
+    </button>
   )
 }
 
-export default function PdfTool() {
+export default function PdfTool({ active = true }: { active?: boolean }) {
   const [sources, setSources] = useState<Source[]>([])
   const [pages, setPages] = useState<PdfPageEntry[]>([])
   const [busy, setBusy] = useState(false)
@@ -103,12 +125,17 @@ export default function PdfTool() {
   const [range, setRange] = useState('')
   const [dragging, setDragging] = useState(false)
   const [result, setResult] = useState('')
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!active) setPreviewId(null)
+  }, [active])
   const input = useRef<HTMLInputElement>(null)
   const tasks = useRef(new Set<PDFDocumentLoadingTask>())
   const resultUrl = useRef('')
   const running = useRef(false)
   const mounted = useRef(true)
   const moving = useRef<string | null>(null)
+  const previewTrigger = useRef<HTMLButtonElement | null>(null)
   useEffect(() => {
     mounted.current = true
     const current = tasks.current
@@ -235,6 +262,9 @@ export default function PdfTool() {
     }
   }
   const selected = pages.filter((page) => page.selected).length
+  const previewPosition = pages.findIndex((page) => page.id === previewId)
+  const previewPage = pages[previewPosition]
+  const previewSource = sources.find((source) => source.id === previewPage?.sourceId)
   return (
     <main className="main-content pdf-tool">
       <section className="intro">
@@ -412,7 +442,15 @@ export default function PdfTool() {
                         <GripVertical size={15} />
                       </span>
                     </div>
-                    <Thumbnail source={source} page={page} />
+                    <Thumbnail
+                      source={source}
+                      page={page}
+                      position={index}
+                      onOpen={(button) => {
+                        previewTrigger.current = button
+                        setPreviewId(page.id)
+                      }}
+                    />
                     <p className="pdf-page-origin" title={label}>
                       {source.file.name}
                       <span>
@@ -503,6 +541,22 @@ export default function PdfTool() {
           </div>
         </div>
       </section>
+      {active && previewPage && previewSource && (
+        <PdfPreview
+          document={previewSource.preview}
+          pageIndex={previewPage.index}
+          rotation={previewPage.rotation}
+          name={previewSource.file.name}
+          position={previewPosition}
+          total={pages.length}
+          onNavigate={(offset) => {
+            const next = pages[previewPosition + offset]
+            if (next) setPreviewId(next.id)
+          }}
+          onClose={() => setPreviewId(null)}
+          returnFocus={previewTrigger.current}
+        />
+      )}
     </main>
   )
 }

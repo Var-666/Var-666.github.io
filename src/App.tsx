@@ -202,7 +202,7 @@ export default function App() {
       {pdfVisited && (
         <div hidden={route !== 'pdf'}>
           <Suspense fallback={<main className="main-content">正在加载 PDF 工具…</main>}>
-            <PdfTool />
+            <PdfTool active={route === 'pdf'} />
           </Suspense>
         </div>
       )}
