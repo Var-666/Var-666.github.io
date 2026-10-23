@@ -1,11 +1,23 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { ArrowLeft, ArrowUpRight, FileText, Files, LayoutGrid, Moon, Sun } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  FileText,
+  Files,
+  FileStack,
+  PencilLine,
+  LayoutGrid,
+  Moon,
+  Sun,
+} from 'lucide-react'
 import { Toaster } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { readThemePreference } from './lib/theme'
 
 const TextTool = lazy(() => import('./TextTool'))
 const FileTool = lazy(() => import('./FileTool'))
+const PdfTool = lazy(() => import('./PdfTool'))
+const RenameTool = lazy(() => import('./RenameTool'))
 const tools = [
   {
     id: 'text',
@@ -21,18 +33,38 @@ const tools = [
     icon: Files,
     tags: ['PNG / JPG / WebP', 'CSV / JSON', 'Word / PDF'],
   },
+  {
+    id: 'pdf',
+    title: 'PDF 页面整理',
+    description: '合并、提取、删除、旋转与页面排序',
+    icon: FileStack,
+    tags: ['保留页面图文', '按页整理'],
+  },
+  {
+    id: 'rename',
+    title: '批量重命名',
+    description: '统一编号、替换文字、添加前后缀',
+    icon: PencilLine,
+    tags: ['实时预览', 'ZIP 下载'],
+  },
 ]
 const readRoute = () =>
   window.location.hash.startsWith('#/files')
     ? 'files'
-    : window.location.hash.startsWith('#/text') || window.location.hash === '#workspace'
-      ? 'text'
-      : 'home'
+    : window.location.hash.startsWith('#/pdf')
+      ? 'pdf'
+      : window.location.hash.startsWith('#/rename')
+        ? 'rename'
+        : window.location.hash.startsWith('#/text') || window.location.hash === '#workspace'
+          ? 'text'
+          : 'home'
 
 export default function App() {
   const [route, setRoute] = useState(readRoute)
   const [textVisited, setTextVisited] = useState(() => readRoute() === 'text')
   const [filesVisited, setFilesVisited] = useState(() => readRoute() === 'files')
+  const [pdfVisited, setPdfVisited] = useState(() => readRoute() === 'pdf')
+  const [renameVisited, setRenameVisited] = useState(() => readRoute() === 'rename')
   const [themePreference, setThemePreference] = useState(() =>
     readThemePreference(() => localStorage.getItem('liwen-theme')),
   )
@@ -52,6 +84,8 @@ export default function App() {
       setRoute(next)
       if (next === 'text') setTextVisited(true)
       if (next === 'files') setFilesVisited(true)
+      if (next === 'pdf') setPdfVisited(true)
+      if (next === 'rename') setRenameVisited(true)
     }
     window.addEventListener('hashchange', changed)
     return () => window.removeEventListener('hashchange', changed)
@@ -162,6 +196,20 @@ export default function App() {
         <div hidden={route !== 'files'}>
           <Suspense fallback={<main className="main-content">正在加载文件工具…</main>}>
             <FileTool active={route === 'files'} />
+          </Suspense>
+        </div>
+      )}
+      {pdfVisited && (
+        <div hidden={route !== 'pdf'}>
+          <Suspense fallback={<main className="main-content">正在加载 PDF 工具…</main>}>
+            <PdfTool />
+          </Suspense>
+        </div>
+      )}
+      {renameVisited && (
+        <div hidden={route !== 'rename'}>
+          <Suspense fallback={<main className="main-content">正在加载重命名工具…</main>}>
+            <RenameTool />
           </Suspense>
         </div>
       )}

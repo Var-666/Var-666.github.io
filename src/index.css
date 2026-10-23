@@ -1733,3 +1733,339 @@ a {
     display: none;
   }
 }
+
+.hub-pdf {
+  background: #f0ecff;
+  color: #8862cd;
+}
+.hub-rename {
+  background: #fff2e6;
+  color: #bd854d;
+}
+.dark .hub-pdf {
+  background: #332b46;
+  color: #bda2ed;
+}
+.dark .hub-rename {
+  background: #423427;
+  color: #dcab78;
+}
+.tool-input {
+  min-width: 0;
+  width: 100%;
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--input);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--ink);
+  font: inherit;
+}
+.tool-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.rename-rules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 22px;
+  padding: 0;
+  margin: 24px 0 0;
+  border: 0;
+}
+.rename-rules label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--gray);
+}
+.rename-rules .rename-numbering > label {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.rename-numbering > div {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.rename-numbering > div > label {
+  flex: 1;
+  min-width: 0;
+}
+.rename-numbering [role='combobox'] {
+  width: 100%;
+}
+.rename-table-wrap {
+  overflow-x: auto;
+}
+.rename-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.rename-table th {
+  text-align: left;
+  color: var(--gray);
+  font-weight: 500;
+  background: var(--subtle);
+}
+.rename-table th,
+.rename-table td {
+  padding: 13px 10px;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.rename-table th:first-child {
+  width: 100px;
+}
+.rename-table th:last-child {
+  width: 44px;
+}
+.rename-order {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.rename-order > span {
+  min-width: 18px;
+  color: var(--gray);
+}
+.rename-order button,
+.rename-table td:last-child button {
+  width: 27px;
+  height: 30px;
+}
+.rename-new {
+  color: var(--primary);
+}
+.rename-error,
+.tool-error {
+  color: var(--destructive);
+}
+.rename-error small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+}
+.tool-error,
+.tool-status {
+  font-size: 12px;
+  margin: 15px 0;
+  overflow-wrap: anywhere;
+}
+.tool-status {
+  color: var(--gray);
+}
+.pdf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 22px 0 16px;
+}
+.pdf-toolbar > span {
+  font-size: 12px;
+  color: var(--gray);
+}
+.pdf-toolbar > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pdf-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--gray);
+  margin-bottom: 20px;
+}
+.pdf-range .tool-input {
+  width: 180px;
+}
+.pdf-pages {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 14px;
+}
+.pdf-page {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  overflow: hidden;
+  min-width: 0;
+  background: var(--background);
+}
+.pdf-page.is-selected {
+  border-color: var(--primary);
+}
+.pdf-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  gap: 8px;
+  font-size: 12px;
+}
+.pdf-page-heading label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.pdf-page-heading input {
+  accent-color: var(--primary);
+  width: 14px;
+  height: 14px;
+}
+.pdf-drag {
+  display: flex;
+  padding: 3px;
+  color: var(--gray);
+  cursor: grab;
+}
+.pdf-thumbnail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 220px;
+  padding: 10px;
+  background: var(--subtle);
+  color: var(--gray);
+  font-size: 11px;
+}
+.pdf-thumbnail canvas {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  box-shadow: 0 1px 5px #00000016;
+}
+.pdf-page-origin {
+  margin: 11px 12px 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pdf-page-origin span {
+  display: block;
+  color: var(--gray);
+  margin-top: 3px;
+}
+.pdf-page-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 6px 6px;
+}
+.pdf-page-actions button {
+  width: 30px;
+  height: 30px;
+}
+@media (min-width: 651px) and (max-width: 1100px) {
+  .header-inner {
+    gap: 25px;
+    padding: 0 24px;
+  }
+  .desktop-nav {
+    gap: 16px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 650px) {
+  .rename-rules {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px 12px;
+  }
+  .rename-table th:first-child {
+    width: 40px;
+  }
+  .rename-table th,
+  .rename-table td {
+    padding: 10px 5px;
+  }
+  .rename-order {
+    flex-direction: column;
+  }
+  .rename-table th:last-child {
+    width: 30px;
+  }
+  .pdf-pages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .pdf-thumbnail {
+    height: 155px;
+    padding: 8px;
+  }
+  .pdf-thumbnail canvas {
+    max-height: 139px;
+  }
+  .pdf-range {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pdf-range label {
+    width: 100%;
+  }
+  .pdf-range .tool-input {
+    width: min(180px, 70%);
+  }
+  .pdf-page-heading {
+    padding: 8px;
+  }
+  .pdf-page-actions button {
+    width: 26px;
+  }
+  .pdf-page-origin {
+    margin-left: 8px;
+    margin-right: 8px;
+  }
+}
+
+.pdf-tool .file-drop.has-files,
+.rename-tool .file-drop.has-files {
+  padding: 16px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.pdf-tool .file-drop.has-files .file-drop-icon,
+.rename-tool .file-drop.has-files .file-drop-icon {
+  margin: 0;
+}
+@media (max-width: 650px) {
+  .file-drop.has-files > span:last-child {
+    width: 100%;
+  }
+}
+@media (min-width: 651px) and (max-width: 850px) {
+  .header-inner {
+    gap: 16px;
+    padding: 0 20px;
+  }
+  .brand-en {
+    display: none;
+  }
+  .desktop-nav {
+    gap: 12px;
+    font-size: 11px;
+  }
+  .local-indicator {
+    font-size: 10px;
+  }
+}
+.pdf-tool .conversion-actions > div,
+.rename-tool .conversion-actions > div {
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+@media (max-width: 650px) {
+  .rename-numbering {
+    grid-column: 1 / -1;
+  }
+}

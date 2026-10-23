@@ -21,3 +21,10 @@ test('archive rejects oversized output before reading its bytes', async () => {
   const blob = { size: 101 * 1024 * 1024 } as Blob
   await assert.rejects(packOutputs([{ name: 'big.png', blob }], 'big.zip'), /100 MB/)
 })
+
+test('reserved object key cannot silently disappear from the archive', async () => {
+  await assert.rejects(
+    packOutputs([{ name: '__proto__', blob: new Blob(['content']) }], 'renamed.zip'),
+    /文件名/,
+  )
+})

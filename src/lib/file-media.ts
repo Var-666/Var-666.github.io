@@ -3,9 +3,11 @@ import { pdfPageNumbers } from './media-options'
 
 export async function packOutputs(outputs: OutputFile[], name: string): Promise<OutputFile> {
   const { zipSync } = await import('fflate')
-  const files: Record<string, Uint8Array> = {}
+  const files: Record<string, Uint8Array> = Object.create(null)
   let bytes = 0
   for (const output of outputs) {
+    // fflate flattens names into a plain object, where this key would silently disappear.
+    if (output.name === '__proto__') throw new Error('不支持此文件名，请先添加编号或修改名称。')
     bytes += output.blob.size
     if (bytes > 100 * 1024 * 1024) throw new Error('输出超过 100 MB，请减少页数或文件数量。')
     files[output.name] = new Uint8Array(await output.blob.arrayBuffer())

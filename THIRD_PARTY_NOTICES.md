@@ -30,6 +30,7 @@ SOFTWARE.
 - docx-preview: Apache-2.0, https://github.com/VolodymyrBaydalka/docxjs
 - docx: MIT, https://github.com/dolanmiu/docx
 - PDF.js: Apache-2.0, https://github.com/mozilla/pdf.js
+- pdf-lib: MIT, https://github.com/Hopding/pdf-lib
 - jsPDF: MIT, https://github.com/parallax/jsPDF
 - html2canvas: MIT, https://github.com/niklasvh/html2canvas
 - fflate: MIT, https://github.com/101arrowz/fflate
