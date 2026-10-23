@@ -6,8 +6,14 @@ test('clipboard access returns the successful result', async () => {
 })
 test('clipboard permission rejection reaches the fallback', async () => {
   const error = new Error('permission denied')
-  await assert.rejects(clipboardWithTimeout(() => Promise.reject(error)), value => value === error)
+  await assert.rejects(
+    clipboardWithTimeout(() => Promise.reject(error)),
+    (value) => value === error,
+  )
 })
 test('unanswered clipboard permission eventually reaches the fallback', async () => {
-  await assert.rejects(clipboardWithTimeout(() => new Promise(() => {}), 10), /clipboard timed out/)
+  await assert.rejects(
+    clipboardWithTimeout(() => new Promise(() => {}), 10),
+    /clipboard timed out/,
+  )
 })
