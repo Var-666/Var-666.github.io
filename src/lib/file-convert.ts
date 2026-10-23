@@ -1,4 +1,5 @@
 import { findWhitespaceCut } from './page-break'
+import { imageDimensions, type ImageSize } from './media-options'
 
 export type OutputFile = { blob: Blob; name: string }
 export const outputName = (name: string, extension: string) =>
@@ -8,6 +9,7 @@ export async function convertImage(
   file: File,
   format: 'png' | 'jpeg' | 'webp',
   quality: number,
+  size: ImageSize = 'original',
 ): Promise<OutputFile> {
   const bitmap = await createImageBitmap(file).catch(() => {
     throw new Error('无法读取图片，请检查文件是否损坏或格式是否正确。')
@@ -16,15 +18,16 @@ export async function convertImage(
     if (bitmap.width * bitmap.height > 24_000_000)
       throw new Error('图片超过 2400 万像素，请先缩小尺寸。')
     const canvas = document.createElement('canvas')
-    canvas.width = bitmap.width
-    canvas.height = bitmap.height
+    const dimensions = imageDimensions(bitmap.width, bitmap.height, size)
+    canvas.width = dimensions.width
+    canvas.height = dimensions.height
     const context = canvas.getContext('2d')
     if (!context) throw new Error('浏览器无法创建图片画布。')
     if (format === 'jpeg') {
       context.fillStyle = '#fff'
       context.fillRect(0, 0, canvas.width, canvas.height)
     }
-    context.drawImage(bitmap, 0, 0)
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
     const mime = `image/${format}`
     const blob = await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob(
@@ -42,14 +45,11 @@ export async function convertImage(
   }
 }
 
-export async function pdfToWord(
-  file: File,
-  progress: (message: string) => void,
-): Promise<OutputFile> {
+export async function openPdf(file: File) {
   const pdfjs = await import('pdfjs-dist')
   const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default
-  const task = pdfjs.getDocument({
+  return pdfjs.getDocument({
     data: new Uint8Array(await file.arrayBuffer()),
     enableXfa: false,
     useSystemFonts: true,
@@ -57,6 +57,13 @@ export async function pdfToWord(
     cMapPacked: true,
     standardFontDataUrl: `${import.meta.env.BASE_URL}pdf-assets/standard_fonts/`,
   })
+}
+
+export async function pdfToWord(
+  file: File,
+  progress: (message: string) => void,
+): Promise<OutputFile> {
+  const task = await openPdf(file)
   try {
     const pdf = await task.promise
     if (pdf.numPages > 50) throw new Error('一次最多转换 50 页 PDF，请先拆分。')

@@ -1663,3 +1663,73 @@ a {
 .file-row .remove-file:hover {
   color: var(--destructive);
 }
+
+.pdf-options {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-bottom: 20px;
+}
+.image-options .page-range {
+  width: 170px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--input);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--ink);
+}
+.image-options [role='combobox'][aria-label='图片尺寸'] {
+  width: 138px;
+}
+.table-paste {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.table-paste textarea {
+  min-height: 94px;
+  padding: 12px;
+  font-size: 12px;
+}
+.file-order {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  color: var(--gray);
+}
+.file-order > span {
+  cursor: grab;
+  display: flex;
+  padding: 8px 2px;
+}
+.file-order button {
+  width: 26px;
+  height: 30px;
+}
+.merged-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 18px;
+  font-size: 12px;
+}
+.merged-result > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 650px) {
+  .file-order {
+    flex-direction: column;
+  }
+  .file-row {
+    gap: 8px;
+  }
+  .file-order > span {
+    display: none;
+  }
+}

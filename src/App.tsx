@@ -161,7 +161,7 @@ export default function App() {
       {filesVisited && (
         <div hidden={route !== 'files'}>
           <Suspense fallback={<main className="main-content">正在加载文件工具…</main>}>
-            <FileTool />
+            <FileTool active={route === 'files'} />
           </Suspense>
         </div>
       )}

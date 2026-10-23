@@ -47,6 +47,8 @@ function inline(tokens: Token[]): string {
     .join('')
 }
 
+export { inline as markdownInlineToText }
+
 function blocks(tokens: Token[]): string {
   return tokens
     .map((raw) => {

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { convertFileText } from './file-text'
+import Papa from 'papaparse'
+import { convertFileText, markdownTables } from './file-text'
 
 test('CSV preserves quoted commas, newlines, quotes and leading zeroes', () => {
   assert.deepEqual(
@@ -38,4 +39,38 @@ test('JSON does not export inherited values for missing fields and rejects unsaf
     'toString,other\r\nvalue,\r\n,ok',
   )
   assert.throws(() => convertFileText('[{"id":9007199254740993}]', 'json-csv'), /精度/)
+})
+
+test('CSV and Excel TSV become Markdown with literal formatting and multiline cells preserved', () => {
+  const source = '姓名\t备注\t编号\r\n小王\t"**原文** | <img> & `code`\n第二行"\t001'
+  const result = convertFileText(source, 'csv-markdown', '\t')
+  assert.match(result, /^\| 姓名 \| 备注 \| 编号 \|\n\| --- \| --- \| --- \|/)
+  const rows = Papa.parse<string[]>(markdownTables(result)[0]).data
+  assert.deepEqual(rows, [
+    ['姓名', '备注', '编号'],
+    ['小王', '**原文** | <img> & `code`\n第二行', '001'],
+  ])
+  assert.throws(() => convertFileText('a,b\n1', 'csv-markdown'), /列数/)
+})
+test('Markdown extracts all real tables including nested tables but ignores fenced code', () => {
+  const result = markdownTables(
+    '```md\n| fake |\n| --- |\n```\n\n| a | b |\n| --- | --- |\n| **bold** | =1+1 |\n\n> | 姓名 |\n> | --- |\n> | 小王 |',
+  )
+  assert.equal(result.length, 2)
+  assert.deepEqual(Papa.parse<string[]>(result[0]).data, [
+    ['a', 'b'],
+    ['bold', "'=1+1"],
+  ])
+  assert.deepEqual(Papa.parse<string[]>(result[1]).data, [['姓名'], ['小王']])
+  assert.throws(() => markdownTables('# no table'), /没有找到/)
+})
+
+test('CSV headers with literal tabs and one-column tables use the declared delimiter', () => {
+  const result = convertFileText('"a\tb",c\n001,002', 'csv-markdown')
+  assert.deepEqual(Papa.parse<string[]>(markdownTables(result)[0]).data, [
+    ['a\tb', 'c'],
+    ['001', '002'],
+  ])
+  assert.equal(convertFileText('编号\n001', 'csv-markdown'), '| 编号 |\n| --- |\n| 001 |')
+  assert.throws(() => convertFileText('', 'csv-markdown'), /不能为空/)
 })
