@@ -2,8 +2,9 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { ArrowLeft, ArrowUpRight, FileText, Files, LayoutGrid, Moon, Sun } from 'lucide-react'
 import { Toaster } from 'sonner'
 import { Button } from '@/components/ui/button'
-import TextTool from './TextTool'
+import { readThemePreference } from './lib/theme'
 
+const TextTool = lazy(() => import('./TextTool'))
 const FileTool = lazy(() => import('./FileTool'))
 const tools = [
   {
@@ -32,13 +33,19 @@ export default function App() {
   const [route, setRoute] = useState(readRoute)
   const [textVisited, setTextVisited] = useState(() => readRoute() === 'text')
   const [filesVisited, setFilesVisited] = useState(() => readRoute() === 'files')
-  const [dark, setDark] = useState(() => {
-    try {
-      return localStorage.getItem('liwen-theme') === 'dark'
-    } catch {
-      return false
-    }
-  })
+  const [themePreference, setThemePreference] = useState(() =>
+    readThemePreference(() => localStorage.getItem('liwen-theme')),
+  )
+  const [systemDark, setSystemDark] = useState(
+    () => window.matchMedia('(prefers-color-scheme: dark)').matches,
+  )
+  const dark = themePreference ?? systemDark
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const changed = (event: MediaQueryListEvent) => setSystemDark(event.matches)
+    media.addEventListener('change', changed)
+    return () => media.removeEventListener('change', changed)
+  }, [])
   useEffect(() => {
     const changed = () => {
       const next = readRoute()
@@ -51,12 +58,18 @@ export default function App() {
   }, [])
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', dark ? '#131722' : '#f7f8fa')
+  }, [dark])
+  useEffect(() => {
+    if (themePreference === null) return
     try {
-      localStorage.setItem('liwen-theme', dark ? 'dark' : 'light')
+      localStorage.setItem('liwen-theme', themePreference ? 'dark' : 'light')
     } catch {
       /* optional */
     }
-  }, [dark])
+  }, [themePreference])
   useEffect(() => {
     document.title = `${route === 'home' ? '日常工具箱' : tools.find((tool) => tool.id === route)?.title} · VAR`
   }, [route])
@@ -92,7 +105,7 @@ export default function App() {
               variant="ghost"
               size="icon"
               aria-label={dark ? '切换浅色主题' : '切换深色主题'}
-              onClick={() => setDark(!dark)}
+              onClick={() => setThemePreference(!dark)}
             >
               {dark ? <Sun size={18} /> : <Moon size={18} />}
             </Button>
@@ -140,7 +153,9 @@ export default function App() {
       )}
       {textVisited && (
         <div hidden={route !== 'text'}>
-          <TextTool active={route === 'text'} />
+          <Suspense fallback={<main className="main-content">正在加载文本工具…</main>}>
+            <TextTool active={route === 'text'} />
+          </Suspense>
         </div>
       )}
       {filesVisited && (

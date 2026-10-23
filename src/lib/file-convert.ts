@@ -1,3 +1,5 @@
+import { findWhitespaceCut } from './page-break'
+
 export type OutputFile = { blob: Blob; name: string }
 export const outputName = (name: string, extension: string) =>
   `${name.replace(/.*[\\/]/, '').replace(/\.[^.]+$/, '') || '转换结果'}.${extension}`
@@ -182,12 +184,27 @@ export async function wordToPdf(
         height,
       })
       const pageHeight = Math.round((canvas.width * 841.89) / 595.28)
-      for (let y = 0; y < canvas.height; y += pageHeight) {
+      const sourceContext = canvas.getContext('2d')
+      if (!sourceContext) throw new Error('无法读取 PDF 渲染页面。')
+      for (let y = 0; y < canvas.height;) {
+        let sliceHeight = Math.min(pageHeight, canvas.height - y)
+        if (y + pageHeight < canvas.height) {
+          const scanHeight = Math.min(80, pageHeight - 1)
+          const band = sourceContext.getImageData(
+            0,
+            y + pageHeight - scanHeight,
+            canvas.width,
+            scanHeight,
+          )
+          // shortcut: images and ruled tables may have no blank row; use layout-aware pagination for those.
+          const cut = findWhitespaceCut(band.data, canvas.width, scanHeight)
+          if (cut !== null) sliceHeight = pageHeight - scanHeight + cut
+        }
         if (++pageCount > 50) throw new Error('转换结果超过 50 页，请拆分文档。')
         if (pageCount > 1) pdf.addPage()
         const slice = document.createElement('canvas')
         slice.width = canvas.width
-        slice.height = Math.min(pageHeight, canvas.height - y)
+        slice.height = sliceHeight
         const context = slice.getContext('2d')
         if (!context) throw new Error('无法创建 PDF 页面。')
         context.drawImage(canvas, 0, y, slice.width, slice.height, 0, 0, slice.width, slice.height)
@@ -199,6 +216,7 @@ export async function wordToPdf(
           595.28,
           (slice.height * 595.28) / slice.width,
         )
+        y += sliceHeight
         slice.width = 0
         slice.height = 0
       }

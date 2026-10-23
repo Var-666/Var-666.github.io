@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
+import { validateQueueFiles } from './lib/file-queue'
 import { convertFileText, type TextConversion } from './lib/file-text'
 import { convertImage, outputName, pdfToWord, wordToPdf, type OutputFile } from './lib/file-convert'
 
@@ -127,29 +128,32 @@ export default function FileTool() {
       previous.map((row) => ({ id: row.id, file: row.file, status: 'waiting' })),
     )
   }
+  const removeRow = (row: Row) => {
+    if (running.current || packing) return
+    if (row.output) {
+      URL.revokeObjectURL(row.output.url)
+      urls.current.delete(row.output.url)
+    }
+    setRows((previous) => previous.filter((item) => item.id !== row.id))
+  }
   const addFiles = (files: File[]) => {
-    if (running.current) return
-    if (files.length > 10 || files.reduce((sum, file) => sum + file.size, 0) > 50 * 1024 * 1024) {
-      toast.error('一次最多选择 10 个文件，总大小不超过 50 MB')
-      return
-    }
-    const extensions = modes[mode].accept.split(',')
+    if (running.current || packing || !files.length) return
     const limit = mode === 'image' ? 20 : mode === 'pdf-word' || mode === 'word-pdf' ? 10 : 2
-    if (
-      files.some(
-        (file) => !extensions.some((extension) => file.name.toLowerCase().endsWith(extension)),
+    try {
+      validateQueueFiles(
+        rows.map((row) => row.file),
+        files,
+        modes[mode].accept,
+        limit,
       )
-    ) {
-      toast.error(`请选择 ${modes[mode].accept} 文件`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '文件无法添加')
       return
     }
-    if (files.some((file) => !file.size || file.size > limit * 1024 * 1024)) {
-      toast.error(`文件不能为空，且单个不超过 ${limit} MB`)
-      return
-    }
-    if (!files.length) return
-    reset()
-    setRows(files.map((file) => ({ id: crypto.randomUUID(), file, status: 'waiting' })))
+    setRows((previous) => [
+      ...previous,
+      ...files.map((file) => ({ id: crypto.randomUUID(), file, status: 'waiting' as const })),
+    ])
   }
   const run = async () => {
     if (running.current || !rows.length) return
@@ -347,7 +351,9 @@ export default function FileTool() {
               <span className="file-drop-icon">
                 {mode === 'image' ? <Image size={25} /> : <FileUp size={25} />}
               </span>
-              <strong>点击选择文件，或拖到这里</strong>
+              <strong>
+                {rows.length ? '继续添加文件，或拖到这里' : '点击选择文件，或拖到这里'}
+              </strong>
               <span>{modes[mode].hint}</span>
             </button>
             <input
@@ -398,6 +404,16 @@ export default function FileTool() {
                         </a>
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="remove-file"
+                      aria-label={`移除 ${row.file.name}`}
+                      disabled={busy || packing}
+                      onClick={() => removeRow(row)}
+                    >
+                      <X size={15} />
+                    </Button>
                   </div>
                 ))}
               </div>

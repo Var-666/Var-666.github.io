@@ -1653,3 +1653,13 @@ a {
     display: inline-flex;
   }
 }
+
+.file-row .remove-file {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  color: var(--gray);
+}
+.file-row .remove-file:hover {
+  color: var(--destructive);
+}
