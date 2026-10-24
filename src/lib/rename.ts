@@ -32,6 +32,7 @@ export function renamePreview(names: string[], options: RenameOptions) {
     else if (
       !stem.trim() ||
       name === '__proto__' ||
+      // eslint-disable-next-line no-control-regex -- 该正则的用途就是检测文件名中的控制字符
       /[<>:"/\\|?*\u0000-\u001f]/.test(name) ||
       /[. ]$/.test(name) ||
       /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name)

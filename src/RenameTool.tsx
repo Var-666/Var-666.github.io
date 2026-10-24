@@ -24,7 +24,7 @@ const defaults: RenameOptions = {
   digits: 3,
 }
 
-export default function RenameTool() {
+export default function RenameTool({ active = true }: { active?: boolean }) {
   const [files, setFiles] = useState<{ id: string; file: File }[]>([])
   const [options, setOptions] = useState(defaults)
   const [packing, setPacking] = useState(false)
@@ -34,6 +34,9 @@ export default function RenameTool() {
   const resultUrl = useRef('')
   const running = useRef(false)
   const mounted = useRef(true)
+  useEffect(() => {
+    if (!active) setDragging(false)
+  }, [active])
   useEffect(() => {
     mounted.current = true
     return () => {

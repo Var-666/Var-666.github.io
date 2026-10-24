@@ -3,10 +3,70 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f8fa" />
-    <meta name="description" content="VAR 日常工具箱：文本整理、图片互转、Markdown 转 TXT、CSV 与 JSON、Word 与 PDF 转换，文件在浏览器本地处理。" />
+    <meta
+      name="description"
+      content="VAR 日常工具箱：文本整理、图片互转、Markdown 转 TXT、CSV 与 JSON、Word 与 PDF 转换，文件在浏览器本地处理。"
+    />
+    <link rel="canonical" href="https://www.hi-var.top/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="VAR · 日常工具箱" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content="VAR · 日常工具箱" />
+    <meta
+      property="og:description"
+      content="文本整理、PDF 页面整理、批量重命名与文件格式转换，全部在浏览器本地处理，可离线使用。"
+    />
+    <meta property="og:url" content="https://www.hi-var.top/" />
+    <meta property="og:image" content="https://www.hi-var.top/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="VAR · TOOLBOX" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="VAR · 日常工具箱" />
+    <meta
+      name="twitter:description"
+      content="文本整理、PDF 页面整理、批量重命名与文件格式转换，全部在浏览器本地处理，可离线使用。"
+    />
+    <meta name="twitter:image" content="https://www.hi-var.top/og-image.png" />
     <title>VAR · 日常工具箱</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; child-src 'self' blob:; manifest-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "VAR · 日常工具箱",
+        "url": "https://www.hi-var.top/",
+        "description": "文本整理、PDF 页面整理、批量重命名与文件格式转换，全部在浏览器本地处理。",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "inLanguage": "zh-CN",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CNY" }
+      }
+    </script>
   </head>
-  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <main style="max-width: 40rem; margin: 3rem auto; padding: 0 1rem; font-family: system-ui">
+        <h1>VAR · 日常工具箱</h1>
+        <p>本站需要启用 JavaScript 才能使用。所有工具都在浏览器本地运行，不上传文件：</p>
+        <ul>
+          <li>文本整理：清理、去重、PDF 断行修复、中文排版、Markdown 转纯文本</li>
+          <li>
+            文件格式转换：图片互转、图片与 PDF 互转、CSV / JSON / Markdown 转换、Word 与 PDF 转换
+          </li>
+          <li>PDF 页面整理：合并、提取、删除、旋转与排序</li>
+          <li>批量重命名：编号、替换文字、前后缀，ZIP 打包下载</li>
+        </ul>
+      </main>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

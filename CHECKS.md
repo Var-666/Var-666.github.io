@@ -101,3 +101,18 @@ PDF 断行修复仍为规则推测，复杂排版可能需要人工调整。该�
 - 69 项测试通过，新增预览比例、横竖页面适配、像素密度 / 画布内存上限及非法尺寸检查。画布最多约 1200 万像素、单边 8192 像素，CSS 页面单边 16384 像素；达到尺寸上限时禁用继续放大。
 - 构建后的浏览器验证：英文与中文 PDF，连续放大与跨文件翻页、最后一页按钮边界、适合页面、旋转 90° 后预览尺寸、Esc 关闭与焦点恢复。预览打开时改变 hash 到首页会关闭弹窗，再返回仍保留整理草稿。
 - 窄屏下预览自动适配，按钮换行，弹窗位于视口内，页面没有横向溢出；未覆盖真实手机触控、Safari / Firefox。没有新增依赖。
+
+## 工程化补强 · 2026-10-24
+
+此前各节的测试计数（42 / 48 / 56 / 66 / 69 项）为当轮数字，当前以本节为准：73 项测试全部通过。
+
+- 环境声明：`package.json` 增加 `engines.node >= 20.19`，根目录 `.nvmrc` 固定 Node 22；CI 改用 `node-version-file` 读取同一文件，避免本地与线上版本漂移。
+- 新增 ESLint 10（flat config，typescript-eslint + react-hooks v7 + react-refresh），`npm run lint` 覆盖 src、scripts、Vite / ESLint 配置与 `public/sw.js`；CI 在测试前运行。当轮修复：5 处 catch 内重抛补充 `cause`；文件名控制字符正则与 PDF 预览 `returnFocus` 读取 ref 两处加行内豁免并注明原因；「props 变化时复位状态」与防抖处理管线两种既有模式按已验证行为保留（关闭 `set-state-in-effect`）。
+- SEO：新增 `robots.txt`、`sitemap.xml`、canonical、Open Graph / Twitter 卡片、JSON-LD（WebApplication）与 `noscript` 兜底说明。hash 路由在 GitHub Pages 下无法让各工具页以 200 状态单独收录（路径路由会命中 404 页），站点地图仅登记首页。
+- PWA：`manifest.webmanifest` + `public/sw.js`（导航网络优先、其余同源 GET 走 stale-while-revalidate，仅生产构建注册）。图标与 `og-image.png` 由 `npm run icons` 以零依赖像素绘制脚本生成，og 图经视觉模型逐字母核对。
+- CSP：`index.html` 增加 meta 策略，`script-src 'self'` 且不含 `unsafe-eval`；确认 pdfjs-dist v6 已移除 eval 依赖。
+- 旧名清理：包名改为 `hi-var-site`；`liwen-theme` / `liwen-settings` 在启动时由 `src/lib/storage.ts` 迁移为 `var-*` 并删除旧键（新增 4 项测试）。
+- 路由重构：`readRoute` 改表驱动并保留 `#workspace` 兼容；四个 `xxxVisited` 状态合并为一个 `visited`；`RenameTool` 与其他工具一致接收 `active` 参数。
+- `.agents/`（AI 编程助手设计规范）移出 Git 跟踪并加入 `.gitignore`，本地文件保留；历史提交中仍可见，彻底清除需重写历史。
+- 自动检查：73 项测试、`tsc -b`、`npm run lint`、`format:check`、`npm run build` 全部通过；主入口约 301 KB（gzip 约 94 KB），与上一轮持平。
+- 浏览器实测（`vite preview`）：首页与四个工具页正常加载，标题随路由切换；旧 `liwen-*` 键刷新后自动迁移、深色主题立即生效且旧键删除；手动切换浅色后刷新保持；文本工具输入「你好 世界」示例经 Worker 整理输出正确；四个工具的动态模块与 Worker 加载触发 `securitypolicyviolation` 零违规；Service Worker 注册并接管页面，`var-toolbox-v1` 缓存 21 项（含全部工具 chunk、样式、图标与入口页）；robots / sitemap / manifest / og-image / sw.js / 三枚图标 / apple-touch-icon 均 200。未实测真实断网与安装到桌面，PDF 转换链路未在本轮重测（依赖加载路径已由 CSP 巡检覆盖）。

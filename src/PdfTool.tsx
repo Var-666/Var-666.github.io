@@ -554,6 +554,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
             if (next) setPreviewId(next.id)
           }}
           onClose={() => setPreviewId(null)}
+          // eslint-disable-next-line react-hooks/refs -- 弹窗只由用户点击缩略图后渲染，读取打开者引用是安全的
           returnFocus={previewTrigger.current}
         />
       )}

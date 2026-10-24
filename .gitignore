@@ -29,5 +29,8 @@ dist-ssr
 .openai/
 .env*
 
+# AI 编程助手的本地设计规范，不随仓库分发
+.agents/
+
 # Generated local PDF.js resources
 /public/pdf-assets/

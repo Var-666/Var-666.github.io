@@ -103,7 +103,7 @@ export async function pdfToWord(
     return { blob, name: outputName(file.name, 'docx') }
   } catch (error) {
     if (error instanceof Error && error.name === 'PasswordException')
-      throw new Error('PDF 已加密，请解密后重试。')
+      throw new Error('PDF 已加密，请解密后重试。', { cause: error })
     throw error
   } finally {
     await task.destroy()
@@ -137,7 +137,7 @@ export async function wordToPdf(
     })
   } catch (error) {
     if (error instanceof Error && error.message.includes('解压后过大')) throw error
-    throw new Error('无法读取 DOCX，请检查文件是否损坏或已加密。')
+    throw new Error('无法读取 DOCX，请检查文件是否损坏或已加密。', { cause: error })
   }
   if (!documentFound) throw new Error('文件不是有效的 DOCX 文档。旧版 .doc 请先另存为 .docx。')
   const frame = document.createElement('iframe')

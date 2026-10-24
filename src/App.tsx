@@ -13,6 +13,7 @@ import {
 import { Toaster } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { readThemePreference } from './lib/theme'
+import { storageKeys } from './lib/storage'
 
 const TextTool = lazy(() => import('./TextTool'))
 const FileTool = lazy(() => import('./FileTool'))
@@ -48,25 +49,22 @@ const tools = [
     tags: ['实时预览', 'ZIP 下载'],
   },
 ]
-const readRoute = () =>
-  window.location.hash.startsWith('#/files')
-    ? 'files'
-    : window.location.hash.startsWith('#/pdf')
-      ? 'pdf'
-      : window.location.hash.startsWith('#/rename')
-        ? 'rename'
-        : window.location.hash.startsWith('#/text') || window.location.hash === '#workspace'
-          ? 'text'
-          : 'home'
+type Route = 'home' | 'text' | 'files' | 'pdf' | 'rename'
+const routes = new Set(['text', 'files', 'pdf', 'rename'])
+const readRoute = (): Route => {
+  const segment = window.location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]
+  if (segment === 'workspace') return 'text' // 兼容旧版理文地址
+  return routes.has(segment) ? (segment as Route) : 'home'
+}
 
 export default function App() {
   const [route, setRoute] = useState(readRoute)
-  const [textVisited, setTextVisited] = useState(() => readRoute() === 'text')
-  const [filesVisited, setFilesVisited] = useState(() => readRoute() === 'files')
-  const [pdfVisited, setPdfVisited] = useState(() => readRoute() === 'pdf')
-  const [renameVisited, setRenameVisited] = useState(() => readRoute() === 'rename')
+  const [visited, setVisited] = useState<Partial<Record<Route, true>>>(() => {
+    const initial = readRoute()
+    return initial === 'home' ? {} : { [initial]: true }
+  })
   const [themePreference, setThemePreference] = useState(() =>
-    readThemePreference(() => localStorage.getItem('liwen-theme')),
+    readThemePreference(() => localStorage.getItem(storageKeys.theme)),
   )
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
@@ -82,10 +80,9 @@ export default function App() {
     const changed = () => {
       const next = readRoute()
       setRoute(next)
-      if (next === 'text') setTextVisited(true)
-      if (next === 'files') setFilesVisited(true)
-      if (next === 'pdf') setPdfVisited(true)
-      if (next === 'rename') setRenameVisited(true)
+      setVisited((previous) =>
+        next === 'home' || previous[next] ? previous : { ...previous, [next]: true },
+      )
     }
     window.addEventListener('hashchange', changed)
     return () => window.removeEventListener('hashchange', changed)
@@ -99,7 +96,7 @@ export default function App() {
   useEffect(() => {
     if (themePreference === null) return
     try {
-      localStorage.setItem('liwen-theme', themePreference ? 'dark' : 'light')
+      localStorage.setItem(storageKeys.theme, themePreference ? 'dark' : 'light')
     } catch {
       /* optional */
     }
@@ -185,31 +182,31 @@ export default function App() {
           </div>
         </main>
       )}
-      {textVisited && (
+      {visited.text && (
         <div hidden={route !== 'text'}>
           <Suspense fallback={<main className="main-content">正在加载文本工具…</main>}>
             <TextTool active={route === 'text'} />
           </Suspense>
         </div>
       )}
-      {filesVisited && (
+      {visited.files && (
         <div hidden={route !== 'files'}>
           <Suspense fallback={<main className="main-content">正在加载文件工具…</main>}>
             <FileTool active={route === 'files'} />
           </Suspense>
         </div>
       )}
-      {pdfVisited && (
+      {visited.pdf && (
         <div hidden={route !== 'pdf'}>
           <Suspense fallback={<main className="main-content">正在加载 PDF 工具…</main>}>
             <PdfTool active={route === 'pdf'} />
           </Suspense>
         </div>
       )}
-      {renameVisited && (
+      {visited.rename && (
         <div hidden={route !== 'rename'}>
           <Suspense fallback={<main className="main-content">正在加载重命名工具…</main>}>
-            <RenameTool />
+            <RenameTool active={route === 'rename'} />
           </Suspense>
         </div>
       )}

@@ -8,12 +8,14 @@ React + TypeScript + Vite + Tailwind CSS 4，使用官方 shadcn/ui New York 组
 
 ## 本地运行
 
+需要 Node.js 20.19 或更高版本（Vite 7 的要求）；仓库根目录的 `.nvmrc` 固定 Node 22，CI 使用同一文件。
+
 ```sh
 npm install
 npm run dev
 ```
 
-打开终端打印的本地地址。`npm run format` 统一格式，`npm run format:check` 检查源码排版；发布流程会运行格式检查。`npm test` 验证整理规则，`npm run build` 完成 TypeScript 检查并生成 `dist/`，`npm run preview` 查看构建结果。
+打开终端打印的本地地址。`npm run format` 统一格式，`npm run format:check` 检查源码排版；发布流程会运行格式检查。`npm run lint` 运行 ESLint（typescript-eslint + react-hooks + react-refresh）。`npm test` 验证整理规则，`npm run build` 完成 TypeScript 检查并生成 `dist/`，`npm run preview` 查看构建结果。`npm run icons` 重新生成 PWA 图标与分享图（产物在 `public/`，需提交）。
 
 ## 工具与入口
 
@@ -73,6 +75,7 @@ npm run dev
 - `src/lib/media-options.ts`：图片缩放与 PDF 页码校验。
 - `src/lib/file-text.ts`：CSV / JSON 与 Markdown 文件转换。
 - `src/lib/text.ts`：纯函数整理规则、场景预设、统计。
+- `src/lib/storage.ts`：localStorage 键名（`var-*`）与旧版 `liwen-*` 键的一次性迁移。
 - `src/lib/markdown.ts`：基于 Marked 语法分析的纯文本转换，不渲染或执行 HTML。
 - `src/lib/markdown.test.ts`：Markdown 格式、代码、链接、图片、表格等转换测试。
 - `src/lib/text.worker.ts`：后台整理线程。
@@ -80,12 +83,18 @@ npm run dev
 - `src/lib/clipboard.test.ts`：剪贴板成功、权限拒绝及超时的测试。
 - `src/components/ui/`：来自官方 shadcn/ui 注册表的组件。
 - `src/index.css`：设计变量、布局及手机适配。
+- `public/sw.js` + `public/manifest.webmanifest`：PWA 离线缓存与安装清单，`scripts/generate-icons.mjs` 生成图标与 `og-image.png`。
+- `public/robots.txt` / `public/sitemap.xml`：搜索引擎抓取与站点地图。
 
 ## 部署与边界
 
 线上地址：https://www.hi-var.top/ 。推送到 `main` 后，GitHub Actions 使用 Node.js 22 安装锁定依赖、运行测试、构建并发布 `dist/` 到 GitHub Pages。自定义域名沿用仓库 Pages 设置，本地电脑无需保持开机。回退到此前的 Git 提交并重新发布即可恢复旧版。
 
 `dist/` 是标准静态网站产物，可以部署在支持 HTTPS 的静态托管或自己的服务器上，再配置域名。剪贴板接口需要 HTTPS 或 localhost，权限不足时会提示使用键盘复制粘贴。
+
+离线与安装：生产构建注册 Service Worker（`public/sw.js`），导航请求网络优先保证拿到新版本，其余同源资源 stale-while-revalidate；访问过的工具在断网后仍可打开，也可安装到桌面 / 主屏幕（`manifest.webmanifest`）。开发模式不注册，避免干扰热更新。
+
+SEO 与安全：`robots.txt` 与 `sitemap.xml` 随构建发布；页面带 canonical、Open Graph、Twitter 卡片与 JSON-LD 描述。因为使用 hash 路由且 GitHub Pages 对路径路由返回 404 状态，各工具页不单独进站点地图，搜索引擎只收录首页。`index.html` 内置 CSP（GitHub Pages 无法设置响应头的替代方案），脚本仅允许同源且不含 `unsafe-eval`；pdfjs-dist v6 已不再依赖 eval。
 
 Markdown 默认保留空格与空行，避免破坏代码缩进；另外开启清理或排版规则时，这些规则会继续作用于转换后的纯文本。任务列表的复选框作为格式标记去除，正文保留。
 

@@ -15,8 +15,8 @@ export async function loadOrganizablePdf(bytes: Uint8Array) {
     document = await PDFDocument.load(bytes, { updateMetadata: false })
   } catch (error) {
     if (error instanceof Error && /encrypt/i.test(error.message))
-      throw new Error('暂不支持加密 PDF，请解密后重试。')
-    throw new Error('无法读取 PDF，请检查文件是否损坏。')
+      throw new Error('暂不支持加密 PDF，请解密后重试。', { cause: error })
+    throw new Error('无法读取 PDF，请检查文件是否损坏。', { cause: error })
   }
   if (!document.getPageCount() || document.getPageCount() > 100)
     throw new Error('单个 PDF 需要有 1–100 页。')

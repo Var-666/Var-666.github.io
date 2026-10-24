@@ -59,6 +59,7 @@ import {
 } from '@/lib/text'
 import { cn } from '@/lib/utils'
 import { clipboardWithTimeout } from '@/lib/clipboard'
+import { storageKeys } from '@/lib/storage'
 
 const icons = {
   clean: WandSparkles,
@@ -71,7 +72,7 @@ const presetKeys = Object.keys(presets) as Preset[]
 const maxChars = 1_000_000
 function initialSettings(): { preset: Preset; options: Options } {
   try {
-    const saved = JSON.parse(localStorage.getItem('liwen-settings') || 'null')
+    const saved = JSON.parse(localStorage.getItem(storageKeys.settings) || 'null')
     const options = { ...baseOptions, ...saved?.options }
     if (
       saved &&
@@ -214,7 +215,7 @@ export default function TextTool({ active }: { active: boolean }) {
   }, [source, options, composing])
   useEffect(() => {
     try {
-      localStorage.setItem('liwen-settings', JSON.stringify(settings))
+      localStorage.setItem(storageKeys.settings, JSON.stringify(settings))
     } catch {
       /* optional */
     }

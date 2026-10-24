@@ -101,7 +101,7 @@ export async function pdfToImages(
       : packOutputs(outputs, outputName(file.name, 'images.zip'))
   } catch (error) {
     if (error instanceof Error && error.name === 'PasswordException')
-      throw new Error('PDF 已加密，请解密后重试。')
+      throw new Error('PDF 已加密，请解密后重试。', { cause: error })
     throw error
   } finally {
     canvas.width = canvas.height = combined.width = combined.height = 0
