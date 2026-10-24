@@ -10,8 +10,10 @@ import {
   Copy,
   FileText,
   FileUp,
+  Diff,
   ListFilter,
   LoaderCircle,
+  Pin,
   RotateCcw,
   Settings2,
   ShieldCheck,
@@ -53,6 +55,7 @@ import {
   presets,
   baseOptions,
   textStats,
+  KEEP_BREAK_MARK,
   type Options,
   type Preset,
   type ProcessResult,
@@ -60,6 +63,9 @@ import {
 import { cn } from '@/lib/utils'
 import { clipboardWithTimeout } from '@/lib/clipboard'
 import { storageKeys } from '@/lib/storage'
+import { textDiff, DIFF_MAX_CHARS, type DiffHunk } from '@/lib/text-diff'
+
+type DiffMark = { start: number; end: number; hunk: number; side: 'del' | 'ins' }
 
 const icons = {
   clean: WandSparkles,
@@ -83,7 +89,8 @@ function initialSettings(): { preset: Preset; options: Options } {
       Object.keys(baseOptions).every(
         (key) => typeof options[key] === typeof baseOptions[key as keyof Options],
       ) &&
-      ['keep', 'single', 'remove'].includes(options.blankLines)
+      ['keep', 'single', 'remove'].includes(options.blankLines) &&
+      ['conservative', 'standard'].includes(options.repairMode)
     )
       return { preset: saved.preset, options }
   } catch {
@@ -130,6 +137,45 @@ function Rule({
     </div>
   )
 }
+// 覆盖层内容：在完整原文中把变更范围包上高亮 span，文字本身保持透明
+function OverlayMarks({ text, marks }: { text: string; marks: DiffMark[] }) {
+  const nodes: React.ReactNode[] = []
+  let cursor = 0
+  marks.forEach((mark, index) => {
+    const start = Math.max(cursor, mark.start)
+    if (start >= mark.end) return
+    if (start > cursor) nodes.push(text.slice(cursor, start))
+    nodes.push(
+      <span
+        key={index}
+        data-hunk={mark.hunk}
+        className={mark.side === 'del' ? 'diff-del' : 'diff-ins'}
+      >
+        {text.slice(start, mark.end)}
+      </span>,
+    )
+    cursor = mark.end
+  })
+  nodes.push(text.slice(cursor))
+  return <>{nodes}</>
+}
+const previewLimit = 36
+const markWhitespace = (text: string) => text.replace(/\n/g, '⏎').replace(/\t/g, '␉')
+function recordPreview(source: string, result: string, hunk: DiffHunk) {
+  const clip = (text: string) =>
+    markWhitespace(text.slice(0, previewLimit)) + (text.length > previewLimit ? '…' : '')
+  if (hunk.kind === 'remove')
+    return <span className="old">{clip(source.slice(hunk.source.start, hunk.source.end))}</span>
+  if (hunk.kind === 'add')
+    return <span className="new">{clip(result.slice(hunk.result.start, hunk.result.end))}</span>
+  return (
+    <>
+      <span className="old">{clip(source.slice(hunk.source.start, hunk.source.end))}</span>
+      <span className="arrow">→</span>
+      <span className="new">{clip(result.slice(hunk.result.start, hunk.result.end))}</span>
+    </>
+  )
+}
 export default function TextTool({ active }: { active: boolean }) {
   const [settings, setSettings] = useState(initialSettings)
   const { preset, options } = settings
@@ -145,6 +191,10 @@ export default function TextTool({ active }: { active: boolean }) {
   const [helpOpen, setHelpOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [diff, setDiff] = useState<DiffHunk[] | null>(null)
+  const [recordsOpen, setRecordsOpen] = useState(false)
+  const sourceOverlay = useRef<HTMLDivElement>(null)
+  const resultOverlay = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!active) {
       setAdvancedOpen(false)
@@ -168,9 +218,11 @@ export default function TextTool({ active }: { active: boolean }) {
         setProcessing(false)
         if (data.error) {
           setFailed(true)
+          setDiff(null)
           toast.error(data.error)
         } else {
           setResult(data.result)
+          setDiff(data.diff ?? null)
           setFailed(false)
         }
       }
@@ -178,6 +230,7 @@ export default function TextTool({ active }: { active: boolean }) {
         instance?.terminate()
         worker.current = null
         setFailed(true)
+        setDiff(null)
         setProcessing(false)
         toast.error('处理线程暂时不可用，请修改文字重试，或刷新页面。')
       }
@@ -200,6 +253,7 @@ export default function TextTool({ active }: { active: boolean }) {
     }
     if (!source) {
       setResult({ text: '', changes: [] })
+      setDiff([])
       setProcessing(false)
       return
     }
@@ -207,7 +261,9 @@ export default function TextTool({ active }: { active: boolean }) {
     const timer = setTimeout(() => {
       if (worker.current) worker.current.postMessage({ id, text: source, options })
       else {
-        setResult(processText(source, options))
+        const processed = processText(source, options)
+        setResult(processed)
+        setDiff(textDiff(source, processed.text))
         setProcessing(false)
       }
     }, 180)
@@ -249,6 +305,26 @@ export default function TextTool({ active }: { active: boolean }) {
   const loadSample = () => {
     replaceSource(presets[preset].sample)
     toast.success('已载入当前场景的示例')
+  }
+  const insertKeepMark = () => {
+    const textarea = input.current
+    const at = textarea
+      ? Math.min(textarea.selectionStart ?? source.length, source.length)
+      : source.length
+    // 标记必须紧贴行尾才生效，因此插入到光标所在行的末尾（下一个换行符之前）
+    const lineBreak = source.indexOf('\n', at)
+    const insertAt = lineBreak === -1 ? source.length : lineBreak
+    fileRequest.current++
+    setImporting(false)
+    setSource(`${source.slice(0, insertAt)}${KEEP_BREAK_MARK}${source.slice(insertAt)}`)
+    requestAnimationFrame(() => {
+      textarea?.focus()
+      textarea?.setSelectionRange(
+        insertAt + KEEP_BREAK_MARK.length,
+        insertAt + KEEP_BREAK_MARK.length,
+      )
+    })
+    toast.info('已在当前行尾插入保留标记：这一行的换行不会被合并')
   }
   const importFile = async (file?: File) => {
     if (!file) return
@@ -357,6 +433,55 @@ export default function TextTool({ active }: { active: boolean }) {
       </Select>
     </div>
   )
+  const sourceMarks = useMemo<DiffMark[]>(
+    () =>
+      diff?.flatMap((hunk) =>
+        hunk.sourceRuns.map((run) => ({ ...run, hunk: hunk.id, side: 'del' as const })),
+      ) ?? [],
+    [diff],
+  )
+  const resultMarks = useMemo<DiffMark[]>(
+    () =>
+      diff?.flatMap((hunk) =>
+        hunk.resultRuns.map((run) => ({ ...run, hunk: hunk.id, side: 'ins' as const })),
+      ) ?? [],
+    [diff],
+  )
+  // 差异碎块过多时放弃覆盖层渲染，避免超大 DOM 拖慢输入
+  const marksTooMany = sourceMarks.length + resultMarks.length > 4000
+  const syncOverlayWidths = () => {
+    for (const [textarea, overlay] of [
+      [input.current, sourceOverlay.current],
+      [output.current, resultOverlay.current],
+    ] as const) {
+      if (textarea && overlay) overlay.style.width = `${textarea.clientWidth}px`
+    }
+  }
+  useEffect(() => {
+    if (marksTooMany) return
+    const observer = new ResizeObserver(syncOverlayWidths)
+    for (const textarea of [input.current, output.current]) if (textarea) observer.observe(textarea)
+    syncOverlayWidths()
+    return () => observer.disconnect()
+  }, [marksTooMany, diff])
+  const locate = (hunk: DiffHunk) => {
+    const side: 'source' | 'result' = hunk.kind === 'remove' ? 'source' : 'result'
+    if (mobileTab !== side) setMobileTab(side)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const overlay = (side === 'source' ? sourceOverlay : resultOverlay).current
+        const textarea = (side === 'source' ? input : output).current
+        const span = overlay?.querySelector<HTMLElement>(`[data-hunk="${hunk.id}"]`)
+        if (!overlay || !textarea || !span) return
+        const top = Math.max(0, span.offsetTop - overlay.clientHeight / 3)
+        textarea.scrollTo({ top })
+        overlay.scrollTop = top
+        span.classList.remove('diff-flash')
+        void span.offsetWidth
+        span.classList.add('diff-flash')
+      })
+    })
+  }
   return (
     <TooltipProvider delayDuration={200}>
       <main className="main-content">
@@ -434,14 +559,44 @@ export default function TextTool({ active }: { active: boolean }) {
                   <span>首尾空格</span>
                 </label>
               ) : preset === 'pdf' ? (
-                <label>
-                  <Switch
-                    aria-label="连接断行"
-                    checked={options.repairBreaks}
-                    onCheckedChange={(value) => update('repairBreaks', value)}
-                  />
-                  <span>连接断行</span>
-                </label>
+                <>
+                  <label>
+                    <Switch
+                      aria-label="连接断行"
+                      checked={options.repairBreaks}
+                      onCheckedChange={(value) => update('repairBreaks', value)}
+                    />
+                    <span>连接断行</span>
+                  </label>
+                  <Select
+                    value={options.repairMode}
+                    onValueChange={(value) => update('repairMode', value as Options['repairMode'])}
+                  >
+                    <SelectTrigger aria-label="断行修复模式" className="repair-mode-trigger">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="conservative">保守修复</SelectItem>
+                      <SelectItem value="standard">标准修复</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="keep-mark-button"
+                        onClick={insertKeepMark}
+                      >
+                        <Pin size={14} />
+                        <span>保留换行</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      在光标处插入 ⟦保留换行⟧：标记前的换行不会被合并，结果中自动移除标记
+                    </TooltipContent>
+                  </Tooltip>
+                </>
               ) : preset === 'dedupe' ? (
                 <label>
                   <Switch
@@ -562,6 +717,9 @@ export default function TextTool({ active }: { active: boolean }) {
                 </div>
               </div>
               <div className={cn('editor-body', dragging && 'is-dragging')}>
+                <div ref={sourceOverlay} className="diff-overlay" aria-hidden="true">
+                  <OverlayMarks text={source} marks={marksTooMany ? [] : sourceMarks} />
+                </div>
                 <Textarea
                   ref={input}
                   aria-label="原始文本"
@@ -576,6 +734,13 @@ export default function TextTool({ active }: { active: boolean }) {
                   }}
                   onCompositionStart={() => setComposing(true)}
                   onCompositionEnd={() => setComposing(false)}
+                  onScroll={(event) => {
+                    const overlay = sourceOverlay.current
+                    if (overlay) {
+                      overlay.scrollTop = event.currentTarget.scrollTop
+                      overlay.scrollLeft = event.currentTarget.scrollLeft
+                    }
+                  }}
                   placeholder={source ? undefined : '在这里输入或粘贴文字…'}
                 />
                 {!source && (
@@ -635,6 +800,9 @@ export default function TextTool({ active }: { active: boolean }) {
                 </div>
               </div>
               <div className="editor-body">
+                <div ref={resultOverlay} className="diff-overlay" aria-hidden="true">
+                  <OverlayMarks text={result.text} marks={marksTooMany ? [] : resultMarks} />
+                </div>
                 <Textarea
                   ref={output}
                   aria-label="整理结果"
@@ -642,6 +810,13 @@ export default function TextTool({ active }: { active: boolean }) {
                   value={result.text}
                   readOnly
                   spellCheck={false}
+                  onScroll={(event) => {
+                    const overlay = resultOverlay.current
+                    if (overlay) {
+                      overlay.scrollTop = event.currentTarget.scrollTop
+                      overlay.scrollLeft = event.currentTarget.scrollLeft
+                    }
+                  }}
                 />
                 {!result.text && (
                   <div className="output-empty">
@@ -683,25 +858,95 @@ export default function TextTool({ active }: { active: boolean }) {
             </section>
           </div>
           {source && !processing && !failed && (
-            <div className="workbench-bottom">
-              <div className="changes-summary" aria-live="polite">
-                <CheckCheck size={15} />
-                <span>
-                  {changeCount ? (
-                    <>
-                      已整理 <strong>{changeCount}</strong> 处细节
-                    </>
-                  ) : (
-                    '无需修改'
-                  )}
-                </span>
-                {result.changes.slice(0, 2).map((change) => (
-                  <span className="change-chip" key={change.label}>
-                    {change.label} {change.count}
+            <>
+              <div className="workbench-bottom">
+                <div className="changes-summary" aria-live="polite">
+                  <CheckCheck size={15} />
+                  <span>
+                    {changeCount ? (
+                      <>
+                        已整理 <strong>{changeCount}</strong> 处细节
+                      </>
+                    ) : (
+                      '无需修改'
+                    )}
                   </span>
-                ))}
+                  {result.changes.slice(0, 2).map((change) => (
+                    <span className="change-chip" key={change.label}>
+                      {change.label} {change.count}
+                    </span>
+                  ))}
+                </div>
+                <div className="workbench-bottom-right">
+                  {diff === null && (
+                    <span
+                      className="diff-skip-hint"
+                      title={`差异高亮最多支持 ${DIFF_MAX_CHARS / 10000} 万字符`}
+                    >
+                      文本较长，未生成差异高亮
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="records-toggle"
+                    aria-expanded={recordsOpen}
+                    disabled={!diff?.length}
+                    onClick={() => setRecordsOpen((value) => !value)}
+                  >
+                    <Diff size={14} />
+                    修改明细{diff?.length ? `（${diff.length}）` : ''}
+                  </Button>
+                </div>
               </div>
-            </div>
+              {recordsOpen && !!diff?.length && (
+                <div className="diff-records" aria-label="修改明细">
+                  <div className="diff-records-head">
+                    <span>
+                      共 {diff.length} 处变化 · 新增 {diff.filter((h) => h.kind === 'add').length} ·
+                      删除 {diff.filter((h) => h.kind === 'remove').length} · 替换{' '}
+                      {diff.filter((h) => h.kind === 'replace').length}
+                    </span>
+                    <span className="diff-records-tip">
+                      {marksTooMany ? '差异过多，定位已停用' : '点击定位到对应位置'}
+                    </span>
+                  </div>
+                  <ul className="diff-records-list">
+                    {diff.slice(0, 200).map((hunk) => (
+                      <li key={hunk.id}>
+                        <button
+                          className="diff-record"
+                          disabled={marksTooMany}
+                          onClick={() => locate(hunk)}
+                        >
+                          <span
+                            className={`diff-badge ${
+                              hunk.kind === 'add'
+                                ? 'diff-badge-ins'
+                                : hunk.kind === 'remove'
+                                  ? 'diff-badge-del'
+                                  : 'diff-badge-mod'
+                            }`}
+                          >
+                            {hunk.kind === 'add'
+                              ? '新增'
+                              : hunk.kind === 'remove'
+                                ? '删除'
+                                : '替换'}
+                          </span>
+                          <span className="diff-record-text">
+                            {recordPreview(source, result.text, hunk)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {diff.length > 200 && (
+                    <div className="diff-records-more">仅显示前 200 处，共 {diff.length} 处</div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </section>
       </main>
@@ -748,6 +993,26 @@ export default function TextTool({ active }: { active: boolean }) {
                     '修复 PDF 断行',
                     '规则推测连接断句；尽量保留段落、列表与链接',
                   )}
+                  <div className="rule">
+                    <label htmlFor="repair-mode">
+                      断行修复模式
+                      <small>保守尽量保留原结构，标准更积极合并软换行</small>
+                    </label>
+                    <Select
+                      value={options.repairMode}
+                      onValueChange={(value) =>
+                        update('repairMode', value as Options['repairMode'])
+                      }
+                    >
+                      <SelectTrigger id="repair-mode" className="w-[130px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="conservative">保守修复</SelectItem>
+                        <SelectItem value="standard">标准修复</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   {rule('dedupe', '删除重复行', '保留第一次出现的行与原有顺序')}
                   {rule('ignoreWhitespace', '去重时忽略首尾空格')}
                   {rule('ignoreCase', '去重时忽略英文大小写')}

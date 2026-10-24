@@ -1,7 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { processText, presets, baseOptions, textStats } from './text'
+import { processText, presets, baseOptions, textStats, KEEP_BREAK_MARK } from './text'
 const untouched = { ...baseOptions, trimLines: false, blankLines: 'keep' as const }
+const conservative = { ...presets.pdf.options, repairMode: 'conservative' as const }
+const standard = { ...presets.pdf.options, repairMode: 'standard' as const }
 test('daily cleanup preserves paragraphs and normalizes Windows line endings', () => {
   const { text, changes } = processText(
     '  第一行  \r\n\r\n\r\n第二行    内容\r\n',
@@ -128,5 +130,119 @@ test('preset results stay stable when processed a second time', () => {
   for (const preset of Object.values(presets)) {
     const first = processText(preset.sample, preset.options).text
     assert.equal(processText(first, preset.options).text, first, preset.title)
+  }
+})
+
+test('conservative keeps breaks after sentence-final punctuation while standard merges wrapped sentences', () => {
+  const source = '这是第一句话。\n这是第二句话。'
+  assert.equal(processText(source, conservative).text, source)
+  assert.equal(processText(source, standard).text, '这是第一句话。这是第二句话。')
+})
+
+test('standard joins lowercase continuation after a period but keeps new sentences', () => {
+  assert.equal(
+    processText('The test passed.\nnext case begins here.', standard).text,
+    'The test passed. next case begins here.',
+  )
+  assert.equal(
+    processText('The test passed.\nNext case begins.', standard).text,
+    'The test passed.\nNext case begins.',
+  )
+})
+
+test('conservative keeps uncertain breaks where the next line starts uppercase', () => {
+  const source = '我们讨论了\nReact 与 Vite 的取舍'
+  assert.equal(processText(source, conservative).text, source)
+  assert.equal(processText(source, standard).text, '我们讨论了 React 与 Vite 的取舍')
+})
+
+test('standard merges a multi-sentence Chinese paragraph without losing punctuation', () => {
+  assert.equal(
+    processText('这是一段较长的中文段落。\n它包含多个句子，\nPDF 复制时被拆到了不同行。', standard)
+      .text,
+    '这是一段较长的中文段落。它包含多个句子， PDF 复制时被拆到了不同行。',
+  )
+})
+
+test('English sentences join inside a paragraph and stay separate across sentences', () => {
+  assert.equal(
+    processText(
+      'The quick brown fox\njumps over the lazy dog.\nA new thought starts here.',
+      conservative,
+    ).text,
+    'The quick brown fox jumps over the lazy dog.\nA new thought starts here.',
+  )
+})
+
+test('headings and chapter numbering stay on their own lines in both modes', () => {
+  const source = '第一章 引言\n本章介绍研究背景。\n第二节 研究方法\n说明内容。'
+  for (const options of [conservative, standard]) {
+    assert.equal(processText(source, options).text, source)
+  }
+})
+
+test('list item boundaries are kept in both modes', () => {
+  const source = '- 第一项\n- 第二项\n• 第三项\n（一）第四项\n二、第五项'
+  for (const options of [conservative, standard]) {
+    assert.equal(processText(source, options).text, source)
+  }
+})
+
+test('inline code spanning lines and table rows are not merged', () => {
+  const source = '参数为 `value\n= 1` 时生效\n名称 | 数量\n苹果 | 3'
+  for (const options of [conservative, standard]) {
+    assert.equal(processText(source, options).text, source)
+  }
+})
+
+test('numbers, dates, versions and URLs survive both modes', () => {
+  const source =
+    '版本号 v2.1.0\n更新日期 2026-10-24\n价格 3.14\nhttps://example.com/v2.1.0?a=1&b=2\nhello@example.com'
+  assert.equal(processText(source, conservative).text, source)
+  const merged = processText(source, standard).text
+  assert.ok(merged.includes('v2.1.0'))
+  assert.ok(merged.includes('2026-10-24'))
+  assert.ok(merged.includes('3.14'))
+  assert.ok(merged.includes('https://example.com/v2.1.0?a=1&b=2\nhello@example.com'))
+})
+
+test('hyphen removal only applies to wrapped lowercase words', () => {
+  assert.equal(
+    processText('state-of-\nthe-art design', conservative).text,
+    'state-of-the-art design',
+  )
+  assert.equal(processText('Anne-\nMarie visited', standard).text, 'Anne-\nMarie visited')
+})
+
+test('keep-break marker protects the marked break and is removed from output', () => {
+  const source = `第一段${KEEP_BREAK_MARK}\n第二段`
+  assert.equal(processText(source, conservative).text, '第一段\n第二段')
+  assert.equal(processText(source, standard).text, '第一段\n第二段')
+})
+
+test('marker only affects its own break and stays literal elsewhere', () => {
+  assert.equal(
+    processText(`前一句，\n中间${KEEP_BREAK_MARK}\n后面继续`, standard).text,
+    '前一句，中间\n后面继续',
+  )
+  assert.equal(
+    processText(`A${KEEP_BREAK_MARK}\nB`, presets.clean.options).text,
+    `A${KEEP_BREAK_MARK}\nB`,
+  )
+  const code = '```js\nconst value = "⟦保留换行⟧";\nconst next = 2\n```'
+  assert.equal(processText(code, standard).text, code)
+})
+
+test('repair keeps line-ending and trailing-newline behavior stable', () => {
+  assert.equal(processText('第一行，\r\n第二行。\r', conservative).text, '第一行，第二行。\n')
+  assert.equal(processText('\n\n', conservative).text, '\n\n')
+})
+
+test('repair output is deterministic for identical input and settings', () => {
+  const source = '第一句，\n第二句。\nThird line continues\nhere today.\n- 列表一\n- 列表二'
+  for (const options of [conservative, standard]) {
+    const first = processText(source, options).text
+    assert.equal(processText(source, options).text, first)
+    assert.equal(processText(first, options).text, first)
   }
 })

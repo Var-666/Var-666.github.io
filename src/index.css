@@ -429,6 +429,19 @@ a {
 .quick-rules [role='switch'] {
   flex-shrink: 0;
 }
+.quick-rules .repair-mode-trigger {
+  height: 26px;
+  width: 98px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.quick-rules .keep-mark-button {
+  height: 26px;
+  font-size: 11px;
+  gap: 5px;
+  padding: 0 9px;
+  flex-shrink: 0;
+}
 .quick-rules [role='switch'] {
   width: 26px;
   height: 15px;
@@ -575,9 +588,6 @@ a {
   color: var(--muted-foreground);
   font-size: 12px;
   opacity: 0.6;
-}
-.result-editor {
-  background: color-mix(in srgb, var(--soft-blue) 16%, var(--background));
 }
 .input-empty,
 .output-empty {
@@ -766,6 +776,170 @@ a {
   padding: 1px 5px;
   border-radius: 4px;
   background: var(--background);
+}
+:root {
+  --diff-del: #c0392f;
+  --diff-del-bg: color-mix(in srgb, #e05a4e 18%, transparent);
+  --diff-ins: #23805f;
+  --diff-ins-bg: color-mix(in srgb, #41a982 20%, transparent);
+}
+.dark {
+  --diff-del: #ff9d94;
+  --diff-del-bg: color-mix(in srgb, #ff6f61 24%, transparent);
+  --diff-ins: #7fd6b0;
+  --diff-ins-bg: color-mix(in srgb, #4ac494 24%, transparent);
+}
+/* 覆盖层与 textarea 的字体、行高、内边距、换行规则必须完全一致，否则高亮错位 */
+.editor-body .text-editor {
+  position: relative;
+  z-index: 1;
+}
+.diff-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  padding: 23px 24px;
+  font-size: 13px;
+  line-height: 1.95;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: transparent;
+}
+.diff-del {
+  background: var(--diff-del-bg);
+  border-radius: 2px;
+}
+.diff-ins {
+  background: var(--diff-ins-bg);
+  border-radius: 2px;
+}
+@keyframes diff-flash {
+  0% {
+    background: color-mix(in srgb, var(--primary) 45%, transparent);
+  }
+  60% {
+    background: color-mix(in srgb, var(--primary) 25%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+.diff-flash {
+  animation: diff-flash 1.8s ease;
+}
+.result-panel .editor-body {
+  background: color-mix(in srgb, var(--soft-blue) 16%, var(--background));
+}
+.workbench-bottom-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.diff-skip-hint {
+  font-size: 9px;
+  color: var(--muted-foreground);
+  margin-right: 4px;
+  cursor: help;
+}
+.records-toggle {
+  height: 26px;
+  font-size: 10px;
+  gap: 4px;
+  padding: 0 8px;
+}
+.diff-records {
+  border-top: 1px solid var(--border);
+  background: var(--subtle);
+  padding: 7px 19px 11px;
+}
+.diff-records-head {
+  font-size: 10px;
+  color: var(--gray);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.diff-records-tip {
+  color: var(--muted-foreground);
+  font-size: 9px;
+}
+.diff-records-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 168px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.diff-record {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 11px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.diff-record:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+.diff-record:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.diff-badge {
+  flex: none;
+  font-size: 9px;
+  line-height: 1.5;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.diff-badge-ins {
+  color: var(--diff-ins);
+  background: var(--diff-ins-bg);
+}
+.diff-badge-del {
+  color: var(--diff-del);
+  background: var(--diff-del-bg);
+}
+.diff-badge-mod {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.diff-record-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diff-record-text .old {
+  color: var(--diff-del);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.diff-record-text .new {
+  color: var(--diff-ins);
+}
+.diff-record-text .arrow {
+  color: var(--muted-foreground);
+  margin: 0 4px;
+}
+.diff-records-more {
+  font-size: 9px;
+  color: var(--muted-foreground);
+  margin-top: 7px;
 }
 .mobile-tabs {
   display: none;
@@ -1161,6 +1335,20 @@ a {
   .text-editor {
     padding: 17px;
     font-size: 13px;
+  }
+  .diff-overlay {
+    padding: 17px;
+    font-size: 13px;
+  }
+  .diff-records {
+    padding: 7px 12px 11px;
+  }
+  .records-toggle {
+    height: 24px;
+    padding: 0 6px;
+  }
+  .diff-skip-hint {
+    display: none;
   }
   .text-editor::placeholder {
     font-size: 11px;
