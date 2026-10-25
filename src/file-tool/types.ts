@@ -11,6 +11,8 @@ export type Row = {
   report?: ConvertReport
   detail?: { kind: 'pdf'; file: File } | { kind: 'text'; text: string }
   showDetail?: boolean
+  /** 转换过程中的处理说明（如表头改名），随成功结果展示 */
+  notices?: string[]
 }
 
 export const sizeLabel = (size: number) =>

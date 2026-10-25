@@ -28,7 +28,7 @@ export const modes = {
     title: 'CSV → JSON',
     accept: '.csv',
     hint: '逗号分隔 CSV · 单个 2 MB · UTF-8 编码',
-    note: '第一行作为列名，单元格保留为字符串，避免丢失编号中的前导零。',
+    note: '第一行作为列名，空表头按「列N」、重复表头加序号后缀（与 Excel → JSON 一致）；单元格保留为字符串，避免丢失编号中的前导零。',
   },
   'json-csv': {
     category: 'table',

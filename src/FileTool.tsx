@@ -328,6 +328,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
         try {
           const progress = (message: string) => update({ message })
           let output: OutputFile
+          let rowNotices: string[] | undefined
           if (mode === 'image')
             output = await convertImage(row.file, format, quality / 100, imageSize)
           else if (mode === 'pdf-image')
@@ -375,7 +376,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                   ? outputs[0]
                   : await packOutputs(outputs, outputName(row.file.name, 'tables.zip'))
             } else {
-              const text = convertFileText(
+              const converted = convertFileText(
                 source,
                 mode as TextConversion,
                 row.file.name.toLowerCase().endsWith('.tsv') ? '\t' : ',',
@@ -390,10 +391,14 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                       : 'csv'
               output = {
                 name: outputName(row.file.name, extension),
-                blob: new Blob([extension === 'json' || extension === 'md' ? '' : '\uFEFF', text], {
-                  type: `${extension === 'json' ? 'application/json' : extension === 'csv' ? 'text/csv' : extension === 'md' ? 'text/markdown' : 'text/plain'};charset=utf-8`,
-                }),
+                blob: new Blob(
+                  [extension === 'json' || extension === 'md' ? '' : '\uFEFF', converted.text],
+                  {
+                    type: `${extension === 'json' ? 'application/json' : extension === 'csv' ? 'text/csv' : extension === 'md' ? 'text/markdown' : 'text/plain'};charset=utf-8`,
+                  },
+                ),
               }
+              rowNotices = converted.notices.length ? converted.notices : undefined
             }
           }
           if (bytes + output.blob.size > 100 * 1024 * 1024)
@@ -430,7 +435,14 @@ export default function FileTool({ active = true }: { active?: boolean }) {
           }
           const url = URL.createObjectURL(output.blob)
           urls.current.add(url)
-          update({ status: 'done', message: undefined, output: { ...output, url }, report, detail })
+          update({
+            status: 'done',
+            message: undefined,
+            output: { ...output, url },
+            report,
+            detail,
+            notices: rowNotices,
+          })
         } catch (error) {
           update({
             status: 'error',

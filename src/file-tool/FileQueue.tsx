@@ -147,6 +147,11 @@ export function FileQueue({
               <X size={15} />
             </Button>
           </div>
+          {row.notices?.map((notice) => (
+            <p className="matrix-notice" key={notice}>
+              {notice}
+            </p>
+          ))}
           {row.showDetail && row.report && (
             <ConversionResultDetails
               report={row.report}

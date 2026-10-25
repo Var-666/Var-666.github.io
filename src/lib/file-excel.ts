@@ -3,7 +3,7 @@
 // 文本单元格保持原值；数值日期不重新计算公式，只读取缓存结果。
 import Papa from 'papaparse'
 import { unzipSync } from 'fflate'
-import { markdownTableFromMatrix } from './file-text'
+import { markdownTableFromMatrix, uniqueHeaders } from './file-text'
 import { outputName, type OutputFile } from './file-convert'
 import type { WorkBook, WorkSheet } from 'xlsx'
 
@@ -192,37 +192,7 @@ export function sheetNotices(sheet: SheetData): string[] {
   return notices
 }
 
-/** 空表头 / 重复表头生成唯一稳定的备用列名，并通过 notices说明处理方式。
- *  原始表头（含「订单号(2)」这类字面名）一律保留原名，重复列与空表头的备选名避开
- *  所有原始表头和已用名称，因此改名永远落在真正重复 / 为空的那一列上 */
-function uniqueHeaders(headers: string[], notices: string[]) {
-  const reserved = new Set<string>()
-  for (const header of headers) {
-    const name = header.trim()
-    if (name) reserved.add(name)
-  }
-  const used = new Set<string>()
-  let emptyCount = 0
-  let duplicateCount = 0
-  const result = headers.map((header, index) => {
-    const trimmed = header.trim()
-    let name = trimmed || `列${index + 1}`
-    if (!trimmed) emptyCount++
-    if (used.has(name) || (!trimmed && reserved.has(name))) {
-      duplicateCount++
-      let suffix = 2
-      while (used.has(`${name}(${suffix})`) || reserved.has(`${name}(${suffix})`)) suffix++
-      name = `${name}(${suffix})`
-    }
-    used.add(name)
-    return name
-  })
-  if (emptyCount) notices.push(`${emptyCount} 个空表头已按「列N」命名。`)
-  if (duplicateCount) notices.push(`${duplicateCount} 个重复表头已加序号后缀区分。`)
-  return result
-}
-
-/** 供预览展示的 JSON 表头处理提示（不生成完整输出） */
+/** 供预览展示的 JSON 表头处理提示（不生成完整输出）；规则见 file-text 的 uniqueHeaders */
 export function jsonHeaderNotices(headers: string[]): string[] {
   const notices: string[] = []
   uniqueHeaders(headers, notices)
