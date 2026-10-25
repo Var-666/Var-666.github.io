@@ -92,8 +92,8 @@ test('XLSX → JSON 处理中文、空表头与重复表头并给出提示', asy
   assert.ok(notices.some((notice) => notice.includes('重复表头')))
 })
 
-test('重复表头的序号后缀不与原始字段撞名，JSON 字段值不被覆盖', async () => {
-  // 回归：旧规则对 订单号、订单号(2)、订单号 会生成两个「订单号(2)」，fromEntries 时后值覆盖前值
+test('重复表头避让原始字段名：唯一列不改名，字段值不被覆盖', async () => {
+  // 回归 1：旧规则对 订单号、订单号(2)、订单号 生成两个「订单号(2)」，fromEntries 时后值覆盖前值
   const workbook = await loadWorkbook(
     fileFromWorkbook({
       表: XLSX.utils.aoa_to_sheet([
@@ -105,18 +105,37 @@ test('重复表头的序号后缀不与原始字段撞名，JSON 字段值不被
   assert.deepEqual(JSON.parse(sheetToJson(workbook.sheet('表')).text), [
     { 订单号: 'A', '订单号(2)': 'B', '订单号(3)': 'C' },
   ])
-  for (const headers of [
-    ['订单号', '订单号', '订单号(2)'],
-    ['列1', ''],
-    ['', '', '列2'],
-  ]) {
+  // 回归 2：重复列取首个空闲后缀，原本唯一的「订单号(2)」列保持原名；空表头同样避让
+  const cases: [string[], string[]][] = [
+    [
+      ['订单号', '订单号', '订单号(2)'],
+      ['订单号', '订单号(3)', '订单号(2)'],
+    ],
+    [
+      ['列1', ''],
+      ['列1', '列2'],
+    ],
+    [
+      ['', '', '列2'],
+      ['列1', '列2(2)', '列2'],
+    ],
+  ]
+  for (const [headers, expected] of cases) {
     const values = headers.map((_, index) => `v${index}`)
     const file = fileFromWorkbook({ 表: XLSX.utils.aoa_to_sheet([headers, values]) })
     const parsed = JSON.parse(sheetToJson((await loadWorkbook(file)).sheet('表')).text)
-    const keys = Object.keys(parsed[0])
-    assert.equal(new Set(keys).size, keys.length, `表头应唯一：${keys.join(',')}`)
+    assert.deepEqual(Object.keys(parsed[0]), expected, `最终字段名：${headers.join(',')}`)
     assert.deepEqual(Object.values(parsed[0]), values, `字段值应按列序保留：${headers.join(',')}`)
   }
+})
+
+test('恰好 15 位有效数字的小数不误报精度损失，16 位触发', async () => {
+  const source = [
+    ['十五位', '十六位'],
+    [1.23456789012345, 1.234567890123456],
+  ]
+  const workbook = await loadWorkbook(fileFromWorkbook({ 表: XLSX.utils.aoa_to_sheet(source) }))
+  assert.equal(workbook.sheet('表').precisionLoss, 1)
 })
 
 test('XLSX → Markdown 复用表格转义并可无损往返', async () => {
@@ -281,16 +300,18 @@ test('unzipTotalSize 只累加声明的解压大小，不解压；损坏输入�
 })
 
 test('压缩炸弹在解析前被拒绝：压缩体积达标但声明解压总量超限', async () => {
-  const zeros = new Uint8Array(excelLimits.maxUnzipBytes + 1)
-  const bomb = zipSync({ 'xl/worksheets/sheet1.xml': zeros })
-  assert.ok(bomb.byteLength <= excelLimits.maxFileBytes, '压缩后应先通过 10 MB 文件体积检查')
+  // 只改写中央目录条目里声明的解压后大小（实际内容仅 1 字节），无需构造真实超大数组
+  const bomb = Buffer.from(zipSync({ 'xl/worksheets/sheet1.xml': new TextEncoder().encode('x') }))
+  const entry = bomb.indexOf('PK\x01\x02')
+  bomb.writeUInt32LE(excelLimits.maxUnzipBytes + 1, entry + 24)
+  assert.ok(bomb.length <= excelLimits.maxFileBytes, '压缩后应先通过 10 MB 文件体积检查')
   await assert.rejects(
     () =>
       loadWorkbook({
         name: '炸弹.xlsx',
-        size: bomb.byteLength,
+        size: bomb.length,
         arrayBuffer: async () =>
-          bomb.buffer.slice(bomb.byteOffset, bomb.byteOffset + bomb.byteLength) as ArrayBuffer,
+          bomb.buffer.slice(bomb.byteOffset, bomb.byteOffset + bomb.length) as ArrayBuffer,
       }),
     /解压后超过/,
   )

@@ -43,7 +43,8 @@ function sheetRange(XLSX: typeof import('xlsx'), sheet: WorkSheet) {
   return (sheet['!ref'] && XLSX.utils.decode_range(sheet['!ref'])) || null
 }
 
-/** 校验 zip 结构并返回中央目录声明的解压后总大小（含 ZIP64）；不解压任何条目 */
+/** 校验 zip 结构并返回中央目录声明的解压后总大小（含 ZIP64）；不解压任何条目。
+ *  声明值可拦住如实申报的压缩炸弹；恶意低报元数据的文件只能在后续解析阶段暴露 */
 export function unzipTotalSize(bytes: Uint8Array): number {
   let total = 0
   // filter 恒为 false：只累加各条目声明的 originalSize，不解压；结构损坏时 unzipSync 仍会抛错
@@ -108,7 +109,8 @@ export async function loadWorkbook(file: FileLike): Promise<WorkbookData> {
 
 /** 最短往返十进制表示（String(number)，至多 17 位）里的有效数字位数 */
 function significantDigits(value: number): number {
-  const mantissa = String(value).split('e')[0].replace('-', '')
+  // 去掉小数点再计数：1.23456789012345 是 15 位有效数字，不能因 '.' 占一个字符而误报
+  const mantissa = String(value).split('e')[0].replace(/[-.]/g, '')
   const start = mantissa.search(/[1-9]/)
   if (start === -1) return 0
   let end = mantissa.length
@@ -190,25 +192,29 @@ export function sheetNotices(sheet: SheetData): string[] {
   return notices
 }
 
-/** 空表头 / 重复表头生成唯一稳定的备用列名，并通过 notices说明处理方式 */
+/** 空表头 / 重复表头生成唯一稳定的备用列名，并通过 notices说明处理方式。
+ *  原始表头（含「订单号(2)」这类字面名）一律保留原名，重复列与空表头的备选名避开
+ *  所有原始表头和已用名称，因此改名永远落在真正重复 / 为空的那一列上 */
 function uniqueHeaders(headers: string[], notices: string[]) {
-  const seen = new Set<string>()
+  const reserved = new Set<string>()
+  for (const header of headers) {
+    const name = header.trim()
+    if (name) reserved.add(name)
+  }
+  const used = new Set<string>()
   let emptyCount = 0
   let duplicateCount = 0
   const result = headers.map((header, index) => {
-    let name = header.trim()
-    if (!name) {
-      emptyCount++
-      name = `列${index + 1}`
-    }
-    if (seen.has(name)) {
+    const trimmed = header.trim()
+    let name = trimmed || `列${index + 1}`
+    if (!trimmed) emptyCount++
+    if (used.has(name) || (!trimmed && reserved.has(name))) {
       duplicateCount++
-      // 候选后缀名可能撞上原始表头（如 订单号、订单号(2)、订单号），须逐一试探到无人使用
       let suffix = 2
-      while (seen.has(`${name}(${suffix})`)) suffix++
+      while (used.has(`${name}(${suffix})`) || reserved.has(`${name}(${suffix})`)) suffix++
       name = `${name}(${suffix})`
     }
-    seen.add(name)
+    used.add(name)
     return name
   })
   if (emptyCount) notices.push(`${emptyCount} 个空表头已按「列N」命名。`)
