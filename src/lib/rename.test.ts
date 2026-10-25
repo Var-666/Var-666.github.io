@@ -1,15 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { renamePreview, validateRenameFiles, type RenameOptions } from './rename'
+import {
+  defaultRenameOptions,
+  parseNameList,
+  renamePreview,
+  validateRenameFiles,
+  type RenameOptions,
+} from './rename'
 const options: RenameOptions = {
-  base: '',
-  find: '',
-  replace: '',
-  prefix: '',
-  suffix: '',
-  numbered: true,
-  start: 1,
-  digits: 3,
+  ...defaultRenameOptions,
 }
 
 test('renaming preserves extensions and uses literal replacement, prefix, suffix and ordered numbers', () => {
@@ -93,4 +92,47 @@ test('combined queue enforces count and byte limits without changing the input',
     /100 个/,
   )
   assert.equal(existing.length, 1)
+})
+
+test('cleanup：特殊字符替换为空格、折叠空格与重复分隔符，只作用于主名', () => {
+  const cleaned = renamePreview(['a.txt'], {
+    ...options,
+    base: '报告:终稿?v2',
+    cleanup: { specialChars: true, spaces: true, duplicateSeparators: true },
+  })
+  assert.equal(cleaned[0].name, '报告 终稿 v2_001.txt')
+  assert.equal(cleaned[0].error, '')
+  // 不开清理时同样的名称报非法字符
+  const strict = renamePreview(['a.txt'], { ...options, base: '报告:终稿' })
+  assert.match(strict[0].error, /不支持的字符/)
+  const sep = renamePreview(['a.txt'], {
+    ...options,
+    base: '甲--乙__丙  丁',
+    numbered: false,
+    cleanup: { specialChars: false, spaces: false, duplicateSeparators: true },
+  })
+  assert.equal(sep[0].name, '甲-乙_丙 丁.txt')
+})
+
+test('逐项覆盖名走同一套校验，并与生成名一起参与重名检测', () => {
+  const rows = renamePreview(['a.txt', 'b.txt', 'c.txt'], { ...options, base: '统一' }, [
+    '自定义.txt',
+    undefined,
+    '统一_002.txt',
+  ])
+  assert.equal(rows[0].name, '自定义.txt')
+  assert.equal(rows[0].overridden, true)
+  // 第三行覆盖成「统一_002.txt」，与第二行的生成名撞名 → 两个都报重名
+  assert.equal(rows[2].name, '统一_002.txt')
+  assert.match(rows[1].error, /同名/)
+  assert.match(rows[2].error, /同名/)
+  // 覆盖名本身非法同样拦截
+  const illegal = renamePreview(['a.txt'], options, ['坏/名字.txt'])
+  assert.match(illegal[0].error, /不支持的字符/)
+})
+
+test('parseNameList：数量必须与文件数一致，空白行忽略', () => {
+  assert.deepEqual(parseNameList('甲\n\n乙\n丙', 3), { names: ['甲', '乙', '丙'] })
+  assert.match((parseNameList('甲\n乙', 3) as { error: string }).error, /2 个名称 vs 3 个文件/)
+  assert.match((parseNameList('  \n', 1) as { error: string }).error, /先粘贴/)
 })

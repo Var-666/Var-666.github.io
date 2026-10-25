@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowDownToLine, ArrowUp, FileUp, LoaderCircle, Trash2, X } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowUp,
+  ClipboardPaste,
+  FileUp,
+  LoaderCircle,
+  RotateCcw,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -10,23 +20,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { packOutputs } from './lib/file-media'
-import { renamePreview, validateRenameFiles, type RenameOptions } from './lib/rename'
-
-const defaults: RenameOptions = {
-  base: '',
-  find: '',
-  replace: '',
-  prefix: '',
-  suffix: '',
-  numbered: true,
-  start: 1,
-  digits: 3,
-}
+import {
+  defaultRenameOptions,
+  parseNameList,
+  renamePreview,
+  validateRenameFiles,
+  type RenameOptions,
+} from './lib/rename'
 
 export default function RenameTool({ active = true }: { active?: boolean }) {
   const [files, setFiles] = useState<{ id: string; file: File }[]>([])
-  const [options, setOptions] = useState(defaults)
+  const [options, setOptions] = useState(defaultRenameOptions)
+  const [overrides, setOverrides] = useState<Record<number, string>>({})
+  const [nameList, setNameList] = useState('')
   const [packing, setPacking] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [result, setResult] = useState('')
@@ -59,8 +67,9 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
       renamePreview(
         files.map((entry) => entry.file.name),
         options,
+        files.map((_, index) => overrides[index]),
       ),
-    [files, options],
+    [files, options, overrides],
   )
   const errors = preview.filter((row) => row.error).length
   const addFiles = (incoming: File[]) => {
@@ -75,6 +84,7 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
       return
     }
     invalidate()
+    setOverrides({})
     setFiles((previous) => [
       ...previous,
       ...incoming.map((file) => ({ id: crypto.randomUUID(), file })),
@@ -83,6 +93,7 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
   const move = (index: number, offset: number) => {
     if (running.current || index + offset < 0 || index + offset >= files.length) return
     invalidate()
+    setOverrides({})
     setFiles((previous) => {
       const next = [...previous]
       next.splice(index + offset, 0, next.splice(index, 1)[0])
@@ -198,6 +209,28 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
               onChange={(event) => update({ suffix: event.target.value })}
             />
           </label>
+          <div className="rename-cleanup">
+            <span>清理生成名称：</span>
+            {(
+              [
+                ['specialChars', '特殊字符换成空格'],
+                ['spaces', '折叠空格'],
+                ['duplicateSeparators', '合并重复分隔符'],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="rename-cleanup-item">
+                <Switch
+                  aria-label={label}
+                  checked={options.cleanup[key]}
+                  disabled={packing}
+                  onCheckedChange={(value) =>
+                    update({ cleanup: { ...options.cleanup, [key]: value } })
+                  }
+                />
+                {label}
+              </label>
+            ))}
+          </div>
           <div className="rename-numbering">
             <label htmlFor="rename-numbering">
               添加编号
@@ -244,6 +277,33 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
             )}
           </div>
         </fieldset>
+        <div className="name-import">
+          <Textarea
+            aria-label="粘贴目标名称列表"
+            placeholder="从文本列表导入：每行一个目标文件名（含扩展名），数量需与文件数一致"
+            value={nameList}
+            disabled={packing || !files.length}
+            onChange={(event) => setNameList(event.target.value)}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={packing || !files.length || !nameList.trim()}
+            onClick={() => {
+              const parsed = parseNameList(nameList, files.length)
+              if ('error' in parsed) {
+                toast.error(parsed.error)
+                return
+              }
+              invalidate()
+              setOverrides(Object.fromEntries(parsed.names.map((name, index) => [index, name])))
+              toast.success(`已导入 ${parsed.names.length} 个目标名称，可在表格中继续逐项修改。`)
+            }}
+          >
+            <ClipboardPaste size={14} />
+            导入名称
+          </Button>
+        </div>
         <p className="conversion-note">保留原扩展名，按列表顺序编号。仅导出副本，原文件不变。</p>
         {!!files.length && (
           <div className="rename-table-wrap">
@@ -286,7 +346,37 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
                     </td>
                     <td>{entry.file.name}</td>
                     <td className={preview[index].error ? 'rename-error' : 'rename-new'}>
-                      {preview[index].name}
+                      <div className="rename-name-cell">
+                        <input
+                          aria-label={`新文件名 ${entry.file.name}`}
+                          value={preview[index].name}
+                          disabled={packing}
+                          onChange={(event) => {
+                            invalidate()
+                            setOverrides((previous) => ({
+                              ...previous,
+                              [index]: event.target.value,
+                            }))
+                          }}
+                        />
+                        {overrides[index] !== undefined && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`还原 ${entry.file.name} 的生成名`}
+                            disabled={packing}
+                            onClick={() =>
+                              setOverrides((previous) => {
+                                const next = { ...previous }
+                                delete next[index]
+                                return next
+                              })
+                            }
+                          >
+                            <RotateCcw size={13} />
+                          </Button>
+                        )}
+                      </div>
                       {preview[index].error && <small>{preview[index].error}</small>}
                     </td>
                     <td>
@@ -321,6 +411,8 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
             disabled={!files.length || packing}
             onClick={() => {
               invalidate()
+              setOverrides({})
+              setNameList('')
               setFiles([])
             }}
           >
