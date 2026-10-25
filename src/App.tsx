@@ -1,24 +1,36 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  ArrowRightLeft,
   ArrowUpRight,
   FileText,
   Files,
   FileStack,
   PencilLine,
+  Table2,
   LayoutGrid,
   Moon,
+  Star,
   Sun,
 } from 'lucide-react'
 import { Toaster } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { readThemePreference } from './lib/theme'
-import { storageKeys } from './lib/storage'
+import {
+  readFavoriteTools,
+  readRecentTools,
+  recordRecentTool,
+  storageKeys,
+  toggleFavoriteTool,
+} from './lib/storage'
+import { searchHome } from './lib/home-search'
 
 const TextTool = lazy(() => import('./TextTool'))
 const FileTool = lazy(() => import('./FileTool'))
 const PdfTool = lazy(() => import('./PdfTool'))
 const RenameTool = lazy(() => import('./RenameTool'))
+const CompareTool = lazy(() => import('./CompareTool'))
+const TableTool = lazy(() => import('./TableTool'))
 const tools = [
   {
     id: 'text',
@@ -26,6 +38,7 @@ const tools = [
     description: '清理、去重、PDF 断行修复、中文排版',
     icon: FileText,
     tags: ['文字', 'Markdown'],
+    keywords: ['文本', '文字', '清理', '去重', '断行', '空格', '排版', '差异'],
   },
   {
     id: 'files',
@@ -33,6 +46,35 @@ const tools = [
     description: '图片、文本、表格与办公文档转换',
     icon: Files,
     tags: ['PNG / JPG / WebP', 'CSV / JSON', 'Word / PDF'],
+    keywords: [
+      '转换',
+      '图片',
+      '压缩',
+      '表格',
+      'Excel',
+      'xlsx',
+      'CSV',
+      'JSON',
+      'Markdown',
+      'Word',
+      'PDF',
+    ],
+  },
+  {
+    id: 'compare',
+    title: '表格对比',
+    description: '按主键比较两份 CSV / Excel 的差异',
+    icon: ArrowRightLeft,
+    tags: ['新增 / 删除 / 修改', '导出差异'],
+    keywords: ['对比', '比较', '差异', '核对', '表格', 'CSV', 'Excel', '主键'],
+  },
+  {
+    id: 'table',
+    title: '表格批量处理',
+    description: '合并、去重、筛选、拆分多份 CSV',
+    icon: Table2,
+    tags: ['同结构合并', '按列拆分'],
+    keywords: ['合并', '去重', '筛选', '拆分', '清洗', 'CSV', '表格'],
   },
   {
     id: 'pdf',
@@ -40,6 +82,7 @@ const tools = [
     description: '合并、提取、删除、旋转与页面排序',
     icon: FileStack,
     tags: ['保留页面图文', '按页整理'],
+    keywords: ['PDF', '合并', '提取', '拆分', '删除', '旋转', '排序', '页面'],
   },
   {
     id: 'rename',
@@ -47,10 +90,12 @@ const tools = [
     description: '统一编号、替换文字、添加前后缀',
     icon: PencilLine,
     tags: ['实时预览', 'ZIP 下载'],
+    keywords: ['重命名', '改名', '文件名', '编号', '前缀', '后缀', '批量'],
   },
 ]
-type Route = 'home' | 'text' | 'files' | 'pdf' | 'rename'
-const routes = new Set(['text', 'files', 'pdf', 'rename'])
+const toolIds = tools.map((tool) => tool.id)
+type Route = 'home' | 'text' | 'files' | 'compare' | 'table' | 'pdf' | 'rename'
+const routes = new Set(['text', 'files', 'compare', 'table', 'pdf', 'rename'])
 const readRoute = (): Route => {
   const segment = window.location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]
   if (segment === 'workspace') return 'text' // 兼容旧版理文地址
@@ -59,6 +104,11 @@ const readRoute = (): Route => {
 
 export default function App() {
   const [route, setRoute] = useState(readRoute)
+  const [query, setQuery] = useState('')
+  const [favorites, setFavorites] = useState<string[]>(() =>
+    readFavoriteTools(localStorage, toolIds),
+  )
+  const [recent, setRecent] = useState<string[]>(() => readRecentTools(localStorage, toolIds))
   const [visited, setVisited] = useState<Partial<Record<Route, true>>>(() => {
     const initial = readRoute()
     return initial === 'home' ? {} : { [initial]: true }
@@ -104,6 +154,13 @@ export default function App() {
   useEffect(() => {
     document.title = `${route === 'home' ? '日常工具箱' : tools.find((tool) => tool.id === route)?.title} · VAR`
   }, [route])
+  // 进入某个工具时记录最近使用（只存工具 id 与时间戳，不含任何正文）
+  useEffect(() => {
+    if (route === 'home') return
+    recordRecentTool(localStorage, route, toolIds)
+    setRecent(readRecentTools(localStorage, toolIds))
+  }, [route])
+  const results = useMemo(() => searchHome(query, tools), [query])
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -159,27 +216,97 @@ export default function App() {
             <h1>全部工具</h1>
             <span className="tool-count">{tools.length} 个工具</span>
           </section>
-          <div className="tool-grid">
-            {tools.map(({ id, title, description, icon: Icon, tags }) => (
-              <a key={id} className="tool-card" href={`#/${id}`}>
-                <span className={`hub-icon hub-${id}`}>
-                  <Icon size={22} />
-                </span>
-                <div>
-                  <h2>
-                    {title}
-                    <ArrowUpRight size={16} />
-                  </h2>
-                  <p>{description}</p>
-                  <div className="tool-tags">
-                    {tags.map((tag) => (
-                      <span key={tag}>{tag}</span>
-                    ))}
+          <input
+            className="home-search"
+            type="search"
+            aria-label="搜索工具"
+            placeholder="搜索工具或任务，如：压缩图片、转 CSV、断行"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          {!!results.tasks.length && (
+            <section className="home-block" aria-label="常见任务">
+              <h2>常见任务</h2>
+              <div className="task-chips">
+                {results.tasks.map((task) => (
+                  <a key={task.id} className="task-chip" href={task.hash}>
+                    {task.title}
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+          {!query && !!favorites.length && (
+            <section className="home-block" aria-label="常用工具">
+              <h2>常用工具</h2>
+              <div className="task-chips">
+                {favorites.map((id) => {
+                  const tool = tools.find((item) => item.id === id)
+                  if (!tool) return null
+                  return (
+                    <a key={id} className="task-chip is-favorite" href={`#/${id}`}>
+                      <Star size={13} fill="currentColor" />
+                      {tool.title}
+                    </a>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+          {!query && !!recent.length && (
+            <section className="home-block" aria-label="最近使用">
+              <h2>最近使用</h2>
+              <div className="task-chips">
+                {recent.map((id) => {
+                  const tool = tools.find((item) => item.id === id)
+                  return tool ? (
+                    <a key={id} className="task-chip" href={`#/${id}`}>
+                      {tool.title}
+                    </a>
+                  ) : null
+                })}
+              </div>
+            </section>
+          )}
+          {results.tools.length ? (
+            <div className="tool-grid">
+              {results.tools.map(({ id, title, description, icon: Icon, tags }) => {
+                const favorite = favorites.includes(id)
+                return (
+                  <div key={id} className="tool-card-wrap">
+                    <a className="tool-card" href={`#/${id}`}>
+                      <span className={`hub-icon hub-${id}`}>
+                        <Icon size={22} />
+                      </span>
+                      <div>
+                        <h2>
+                          {title}
+                          <ArrowUpRight size={16} />
+                        </h2>
+                        <p>{description}</p>
+                        <div className="tool-tags">
+                          {tags.map((tag) => (
+                            <span key={tag}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </a>
+                    <button
+                      type="button"
+                      className={`tool-favorite${favorite ? ' is-favorite' : ''}`}
+                      aria-pressed={favorite}
+                      aria-label={`${favorite ? '取消收藏' : '收藏'}${title}`}
+                      onClick={() => setFavorites(toggleFavoriteTool(localStorage, id, toolIds))}
+                    >
+                      <Star size={15} fill={favorite ? 'currentColor' : 'none'} />
+                    </button>
                   </div>
-                </div>
-              </a>
-            ))}
-          </div>
+                )
+              })}
+            </div>
+          ) : !results.tasks.length ? (
+            <p className="home-empty">没有找到匹配的工具，换个关键词试试。</p>
+          ) : null}
         </main>
       )}
       {visited.text && (
@@ -207,6 +334,20 @@ export default function App() {
         <div hidden={route !== 'rename'}>
           <Suspense fallback={<main className="main-content">正在加载重命名工具…</main>}>
             <RenameTool active={route === 'rename'} />
+          </Suspense>
+        </div>
+      )}
+      {visited.compare && (
+        <div hidden={route !== 'compare'}>
+          <Suspense fallback={<main className="main-content">正在加载表格对比工具…</main>}>
+            <CompareTool active={route === 'compare'} />
+          </Suspense>
+        </div>
+      )}
+      {visited.table && (
+        <div hidden={route !== 'table'}>
+          <Suspense fallback={<main className="main-content">正在加载表格处理工具…</main>}>
+            <TableTool active={route === 'table'} />
           </Suspense>
         </div>
       )}
