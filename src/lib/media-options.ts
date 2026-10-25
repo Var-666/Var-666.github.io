@@ -22,3 +22,18 @@ export function pdfPageNumbers(value: string, total: number): number[] {
   }
   return [...pages].sort((a, b) => a - b)
 }
+
+export type PdfSheetSize = 'a4' | 'a3' | 'letter'
+
+/** jsPDF 页面类型的毫米尺寸（jsPDF 以 pt 渲染：a4 595.28×841.89、a3 841.89×1190.55、letter 612×792） */
+export function pdfSheetGeometry(size: PdfSheetSize, orientation: 'portrait' | 'landscape') {
+  const sheets: Record<PdfSheetSize, [number, number]> = {
+    a4: [210, 297],
+    a3: [297, 420],
+    letter: [215.9, 279.4],
+  }
+  const [short, long] = sheets[size]
+  return orientation === 'portrait'
+    ? { widthMm: short, heightMm: long }
+    : { widthMm: long, heightMm: short }
+}

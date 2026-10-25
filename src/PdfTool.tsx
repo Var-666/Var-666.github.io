@@ -18,7 +18,23 @@ import { Button } from '@/components/ui/button'
 import { openPdf } from './lib/file-convert'
 import { validateQueueFiles } from './lib/file-queue'
 import { pdfPageNumbers } from './lib/media-options'
-import { loadOrganizablePdf, organizePdf, type PdfPageEntry } from './lib/pdf-organize'
+import {
+  loadOrganizablePdf,
+  organizePdf,
+  organizePdfSegments,
+  splitSegments,
+  type PdfPageEntry,
+  type SplitMode,
+} from './lib/pdf-organize'
+import { verifyPdfBlob } from './lib/convert-report'
+import { packOutputs } from './lib/file-media'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import PdfPreview from './PdfPreview'
 
 type Source = {
@@ -126,12 +142,21 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
   const [dragging, setDragging] = useState(false)
   const [result, setResult] = useState('')
   const [previewId, setPreviewId] = useState<string | null>(null)
+  const [splitMode, setSplitMode] = useState<'each' | 'every' | 'ranges'>('each')
+  const [splitSize, setSplitSize] = useState('5')
+  const [splitRanges, setSplitRanges] = useState('')
+  const [splitOutput, setSplitOutput] = useState<{
+    url: string
+    name: string
+    parts: number
+  } | null>(null)
   useEffect(() => {
     if (!active) setPreviewId(null)
   }, [active])
   const input = useRef<HTMLInputElement>(null)
   const tasks = useRef(new Set<PDFDocumentLoadingTask>())
   const resultUrl = useRef('')
+  const urls = useRef(new Set<string>())
   const running = useRef(false)
   const mounted = useRef(true)
   const moving = useRef<string | null>(null)
@@ -139,9 +164,12 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
   useEffect(() => {
     mounted.current = true
     const current = tasks.current
+    const currentUrls = urls.current
     return () => {
       mounted.current = false
       URL.revokeObjectURL(resultUrl.current)
+      for (const url of currentUrls) URL.revokeObjectURL(url)
+      currentUrls.clear()
       for (const task of current) void task.destroy().catch(() => {})
       current.clear()
     }
@@ -150,6 +178,13 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
     URL.revokeObjectURL(resultUrl.current)
     resultUrl.current = ''
     setResult('')
+    setSplitOutput((previous) => {
+      if (previous) {
+        URL.revokeObjectURL(previous.url)
+        urls.current.delete(previous.url)
+      }
+      return null
+    })
   }
   const commit = (next: PdfPageEntry[]) => {
     if (running.current) return
@@ -253,6 +288,53 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
       setResult(resultUrl.current)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '导出失败，请减少页面后重试。')
+    } finally {
+      running.current = false
+      if (mounted.current) {
+        setBusy(false)
+        setMessage('')
+      }
+    }
+  }
+  const splitExport = async () => {
+    if (running.current) return
+    const selectedPages = pages.filter((page) => page.selected)
+    if (!selectedPages.length) return
+    running.current = true
+    setBusy(true)
+    setMessage('正在拆分')
+    invalidate()
+    try {
+      const split: SplitMode =
+        splitMode === 'every'
+          ? { mode: 'every', size: Number(splitSize) }
+          : splitMode === 'ranges'
+            ? { mode: 'ranges', ranges: splitRanges }
+            : { mode: 'each' }
+      const segments = splitSegments(split, selectedPages.length)
+      const outputs = await organizePdfSegments(
+        new Map(sources.map((source) => [source.id, source.document])),
+        selectedPages,
+        segments,
+      )
+      // 每份输出用 pdf-lib 重新打开验证，失败仅提示、不阻止下载
+      for (const output of outputs) {
+        const verify = await verifyPdfBlob(output.blob)
+        if (!verify.ok) toast.error(`${output.name}：重新打开验证失败，请下载后核对。`)
+      }
+      if (!mounted.current) return
+      const packed =
+        outputs.length === 1
+          ? outputs[0]
+          : await packOutputs(
+              outputs.map((output) => ({ name: output.name, blob: output.blob })),
+              '拆分结果.zip',
+            )
+      const url = URL.createObjectURL(packed.blob)
+      urls.current.add(url)
+      setSplitOutput({ url, name: packed.name, parts: outputs.length })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '拆分失败，请检查页码段后重试。')
     } finally {
       running.current = false
       if (mounted.current) {
@@ -540,6 +622,72 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
             </Button>
           </div>
         </div>
+        {pages.length > 1 && (
+          <div className="split-row">
+            <label className="split-field">
+              拆分方式
+              <Select
+                value={splitMode}
+                disabled={busy || !selected}
+                onValueChange={(value) => {
+                  setSplitMode(value as typeof splitMode)
+                  setSplitOutput(null)
+                }}
+              >
+                <SelectTrigger aria-label="拆分方式">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="each">每页一个文件</SelectItem>
+                  <SelectItem value="every">每 N 页一个文件</SelectItem>
+                  <SelectItem value="ranges">按页码段</SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            {splitMode === 'every' && (
+              <label className="split-field">
+                每份页数
+                <input
+                  className="page-range"
+                  aria-label="每份页数"
+                  disabled={busy || !selected}
+                  value={splitSize}
+                  onChange={(event) => {
+                    setSplitSize(event.target.value)
+                    setSplitOutput(null)
+                  }}
+                />
+              </label>
+            )}
+            {splitMode === 'ranges' && (
+              <label className="split-field">
+                页码段（按当前排序，每页恰属一段）
+                <input
+                  className="page-range"
+                  aria-label="拆分页码段"
+                  disabled={busy || !selected}
+                  placeholder="如 1-3,4-6"
+                  value={splitRanges}
+                  onChange={(event) => {
+                    setSplitRanges(event.target.value)
+                    setSplitOutput(null)
+                  }}
+                />
+              </label>
+            )}
+            <Button variant="outline" disabled={busy || !selected} onClick={splitExport}>
+              拆分导出 ({selected} 页)
+            </Button>
+            {splitOutput && (
+              <Button variant="outline" asChild>
+                <a href={splitOutput.url} download={splitOutput.name}>
+                  <ArrowDownToLine size={14} />
+                  下载 {splitOutput.name}（{splitOutput.parts} 份）
+                </a>
+              </Button>
+            )}
+          </div>
+        )}
       </section>
       {active && previewPage && previewSource && (
         <PdfPreview

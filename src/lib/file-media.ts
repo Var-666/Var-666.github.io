@@ -1,5 +1,18 @@
 import { openPdf, outputName, type OutputFile } from './file-convert'
-import { pdfPageNumbers } from './media-options'
+import { pdfPageNumbers, pdfSheetGeometry, type PdfSheetSize } from './media-options'
+
+export type ImagesToPdfOptions = {
+  size: PdfSheetSize
+  orientation: 'portrait' | 'landscape'
+  /** contain=完整显示（留白），cover=填满页面（超出部分在页面边缘外，不可见） */
+  fit: 'contain' | 'cover'
+}
+
+export const defaultImagesToPdfOptions: ImagesToPdfOptions = {
+  size: 'a4',
+  orientation: 'portrait',
+  fit: 'contain',
+}
 
 export async function packOutputs(outputs: OutputFile[], name: string): Promise<OutputFile> {
   const { zipSync } = await import('fflate')
@@ -112,9 +125,16 @@ export async function pdfToImages(
 export async function imagesToPdf(
   files: File[],
   progress: (message: string) => void,
+  options: ImagesToPdfOptions = defaultImagesToPdfOptions,
 ): Promise<OutputFile> {
   const { jsPDF } = await import('jspdf')
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true })
+  const pdf = new jsPDF({
+    unit: 'mm',
+    format: options.size,
+    orientation: options.orientation,
+    compress: true,
+  })
+  const { widthMm, heightMm } = pdfSheetGeometry(options.size, options.orientation)
   const canvas = document.createElement('canvas')
   try {
     for (const [index, file] of files.entries()) {
@@ -125,12 +145,18 @@ export async function imagesToPdf(
       try {
         if (bitmap.width * bitmap.height > 24_000_000)
           throw new Error(`${file.name} 超过 2400 万像素，请先缩小。`)
-        // shortcut: rasterize photos at A4 144 DPI; use a dedicated archival workflow for print masters.
-        const scale = Math.min(
-          1,
-          ((190 / 25.4) * 144) / bitmap.width,
-          ((277 / 25.4) * 144) / bitmap.height,
+        // shortcut: rasterize photos at 144 DPI cap; use a dedicated archival workflow for print masters.
+        const contentWidthMm = widthMm - 20
+        const contentHeightMm = heightMm - 20
+        const fitScale = Math.min(
+          ((contentWidthMm / 25.4) * 144) / bitmap.width,
+          ((contentHeightMm / 25.4) * 144) / bitmap.height,
         )
+        const fillScale = Math.max(
+          ((widthMm / 25.4) * 144) / bitmap.width,
+          ((heightMm / 25.4) * 144) / bitmap.height,
+        )
+        const scale = Math.min(1, options.fit === 'cover' ? fillScale : fitScale)
         canvas.width = Math.max(1, Math.round(bitmap.width * scale))
         canvas.height = Math.max(1, Math.round(bitmap.height * scale))
         const context = canvas.getContext('2d')
@@ -139,16 +165,18 @@ export async function imagesToPdf(
         context.fillRect(0, 0, canvas.width, canvas.height)
         context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
         if (index) pdf.addPage()
-        const fit = Math.min(190 / canvas.width, 277 / canvas.height)
+        const pageWidthPx = (widthMm / 25.4) * 72
+        const pageHeightPx = (heightMm / 25.4) * 72
+        const fit = Math.min(pageWidthPx / canvas.width, pageHeightPx / canvas.height)
         const width = canvas.width * fit
         const height = canvas.height * fit
         pdf.addImage(
           canvas.toDataURL('image/jpeg', 0.92),
           'JPEG',
-          (210 - width) / 2,
-          (297 - height) / 2,
-          width,
-          height,
+          (widthMm - (width * 25.4) / 72) / 2,
+          (heightMm - (height * 25.4) / 72) / 2,
+          (width * 25.4) / 72,
+          (height * 25.4) / 72,
         )
       } finally {
         bitmap.close()
