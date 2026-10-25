@@ -10,6 +10,8 @@ import type { WorkBook, WorkSheet } from 'xlsx'
 // 集中管理的处理上限：xlsx 可能在很小的体积里包含海量单元格，不能只看文件大小
 export const excelLimits = {
   maxFileBytes: 10 * 1024 * 1024,
+  /** 解压总量上限：百万格以内的合法工作簿 XML 远小于此，超限按压缩炸弹拒绝 */
+  maxUnzipBytes: 256 * 1024 * 1024,
   maxRows: 100_000,
   maxCols: 1_024,
   maxCells: 1_000_000,
@@ -22,7 +24,7 @@ export type SheetData = {
   rows: string[][]
   /** 有公式但没有缓存计算结果的单元格数量 */
   missingFormulaValues: number
-  /** 存储为数值且 ≥1e15（超过 Excel 15 位有效数字精度）的单元格数量 */
+  /** 存储为数值且超出 Excel 15 位有效数字精度的单元格数量 */
   precisionLoss: number
 }
 export type WorkbookData = {
@@ -41,18 +43,37 @@ function sheetRange(XLSX: typeof import('xlsx'), sheet: WorkSheet) {
   return (sheet['!ref'] && XLSX.utils.decode_range(sheet['!ref'])) || null
 }
 
-/** 读取工作簿：校验体积、解析结构与各表尺寸；损坏或不支持的文件给出可理解的错误 */
+/** 校验 zip 结构并返回中央目录声明的解压后总大小（含 ZIP64）；不解压任何条目 */
+export function unzipTotalSize(bytes: Uint8Array): number {
+  let total = 0
+  // filter 恒为 false：只累加各条目声明的 originalSize，不解压；结构损坏时 unzipSync 仍会抛错
+  unzipSync(bytes, {
+    filter: (file) => {
+      total += file.originalSize
+      return false
+    },
+  })
+  return total
+}
+
+/** 读取工作簿：校验体积与解压总量、解析结构与各表尺寸；损坏或不支持的文件给出可理解的错误 */
 export async function loadWorkbook(file: FileLike): Promise<WorkbookData> {
   if (!file.size || file.size > excelLimits.maxFileBytes)
     throw new Error(`文件不能为空，且单个不超过 ${excelLimits.maxFileBytes / 1024 / 1024} MB`)
-  const XLSX = await loadSheetJs()
   const bytes = new Uint8Array(await file.arrayBuffer())
-  // xlsx 是 zip 包：先校验结构，避免 SheetJS 把残缺输入容错成垃圾数据
+  // xlsx 是 zip 包：先校验结构，避免 SheetJS 把残缺输入容错成垃圾数据；
+  // 10 MB 压缩体可能解压出数 GB，必须在解析前按声明的解压总量拒绝压缩炸弹
+  let unzipTotal: number
   try {
-    unzipSync(bytes)
+    unzipTotal = unzipTotalSize(bytes)
   } catch {
     throw new Error('无法读取 Excel 文件，请确认是有效的 .xlsx 工作簿（暂不支持旧版 .xls）。')
   }
+  if (unzipTotal > excelLimits.maxUnzipBytes)
+    throw new Error(
+      `文件解压后超过 ${excelLimits.maxUnzipBytes / 1024 / 1024} MB，超出处理上限，请确认文件完好或拆分后重试。`,
+    )
+  const XLSX = await loadSheetJs()
   let workbook: WorkBook
   try {
     workbook = XLSX.read(bytes, { type: 'array' })
@@ -85,6 +106,22 @@ export async function loadWorkbook(file: FileLike): Promise<WorkbookData> {
   }
 }
 
+/** 最短往返十进制表示（String(number)，至多 17 位）里的有效数字位数 */
+function significantDigits(value: number): number {
+  const mantissa = String(value).split('e')[0].replace('-', '')
+  const start = mantissa.search(/[1-9]/)
+  if (start === -1) return 0
+  let end = mantissa.length
+  while (end > start && mantissa[end - 1] === '0') end--
+  return end - start
+}
+
+/** 超出 Excel 15 位有效数字精度：≥1e15 的整数第 16 位起会被 Excel 截成 0（尾部的零可能正是
+ *  被破坏的原始数字）；小于该阈值但有效数字超过 15 位的数值也无法被 Excel 完整呈现 */
+function beyondExcelPrecision(value: number): boolean {
+  return Math.abs(value) >= 1e15 || significantDigits(value) > 15
+}
+
 /** 把工作表物化为显示值矩阵；先做尺寸上限防护，再逐格读取并裁掉末尾空行空列 */
 function readSheet(XLSX: typeof import('xlsx'), name: string, sheet: WorkSheet): SheetData {
   const range = sheetRange(XLSX, sheet)
@@ -115,7 +152,11 @@ function readSheet(XLSX: typeof import('xlsx'), name: string, sheet: WorkSheet):
         line.push('')
         continue
       }
-      if (cell.t === 'n' && Number.isFinite(cell.v as number) && Math.abs(cell.v as number) >= 1e15)
+      if (
+        cell.t === 'n' &&
+        Number.isFinite(cell.v as number) &&
+        beyondExcelPrecision(cell.v as number)
+      )
         precisionLoss++
       // cell.w 是按数字格式渲染后的显示值：000000 格式的前导零、日期显示形式都在这里
       line.push(cell.w ?? (cell.v === undefined || cell.v === null ? '' : String(cell.v)))
@@ -144,14 +185,14 @@ export function sheetNotices(sheet: SheetData): string[] {
     )
   if (sheet.precisionLoss)
     notices.push(
-      `${sheet.precisionLoss} 个数值超过 15 位有效数字，Excel 存储时可能已丢失精度，导出的是工作簿中的现有值。`,
+      `${sheet.precisionLoss} 个数值超出 Excel 的 15 位有效数字精度，存储时可能已失真；转换按 Excel 显示值导出，无法恢复原始数字。`,
     )
   return notices
 }
 
 /** 空表头 / 重复表头生成唯一稳定的备用列名，并通过 notices说明处理方式 */
 function uniqueHeaders(headers: string[], notices: string[]) {
-  const seen = new Map<string, number>()
+  const seen = new Set<string>()
   let emptyCount = 0
   let duplicateCount = 0
   const result = headers.map((header, index) => {
@@ -160,13 +201,14 @@ function uniqueHeaders(headers: string[], notices: string[]) {
       emptyCount++
       name = `列${index + 1}`
     }
-    const count = seen.get(name) ?? 0
-    seen.set(name, count + 1)
-    if (count) {
+    if (seen.has(name)) {
       duplicateCount++
-      name = `${name}(${count + 1})`
-      seen.set(name, 1)
+      // 候选后缀名可能撞上原始表头（如 订单号、订单号(2)、订单号），须逐一试探到无人使用
+      let suffix = 2
+      while (seen.has(`${name}(${suffix})`)) suffix++
+      name = `${name}(${suffix})`
     }
+    seen.add(name)
     return name
   })
   if (emptyCount) notices.push(`${emptyCount} 个空表头已按「列N」命名。`)
