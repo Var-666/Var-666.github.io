@@ -13,6 +13,7 @@ import {
   matrixToExcelFile,
   csvFileToExcel,
   excelLimits,
+  matricesToExcelFile,
   unzipTotalSize,
 } from './file-excel'
 import { markdownTables } from './file-text'
@@ -338,4 +339,41 @@ test('重复转换同一矩阵输出一致', async () => {
     Buffer.from(await first.blob.arrayBuffer()),
     Buffer.from(await second.blob.arrayBuffer()),
   )
+})
+
+test('matricesToExcelFile 导出多工作表且内容与命名正确', async () => {
+  const output = await matricesToExcelFile(
+    [
+      {
+        name: '新增记录',
+        rows: [
+          ['编号', '名称'],
+          ['A04', '丁'],
+        ],
+      },
+      {
+        name: '修改明细',
+        rows: [
+          ['主键', '变化列', '旧值', '新值'],
+          ['A01', '数量', '1', '10'],
+        ],
+      },
+    ],
+    '对比结果',
+  )
+  assert.equal(output.name, '对比结果.xlsx')
+  const workbook = XLSX.read(new Uint8Array(await output.blob.arrayBuffer()), { type: 'array' })
+  assert.deepEqual(workbook.SheetNames, ['1-新增记录', '2-修改明细'])
+  const added = workbook.Sheets['1-新增记录']
+  assert.equal(added['A1'].v, '编号')
+  assert.equal(added['A2'].v, 'A04')
+  assert.equal(added['A2'].t, 's', '编号按文本写入，保留前导零语义')
+  const changed = workbook.Sheets['2-修改明细']
+  assert.deepEqual(
+    ['主键', '变化列', '旧值', '新值'].map(
+      (_, i) => changed[XLSX.utils.encode_cell({ r: 0, c: i })].v,
+    ),
+    ['主键', '变化列', '旧值', '新值'],
+  )
+  assert.equal(changed['D2'].v, '10')
 })

@@ -265,6 +265,47 @@ function sheetNameFrom(fileName: string): string {
 
 export type CsvToExcelOptions = { detectNumbers: boolean }
 
+/** 依据显示宽度估算列宽（全角字符计 2），便于直接阅读 */
+function matrixColumnWidths(rows: string[][]) {
+  return (rows[0] ?? []).map((_, index) =>
+    Math.min(
+      50,
+      Math.max(
+        8,
+        ...rows.slice(0, 200).map((row) => {
+          const value = row[index] ?? ''
+          let width = 0
+          for (const char of value) width += char.charCodeAt(0) > 0xff ? 2 : 1
+          return width
+        }),
+      ),
+    ),
+  )
+}
+
+/** 生成多工作表 xlsx（全部按文本写入，不识别数字，避免编号类内容失真） */
+export async function matricesToExcelFile(
+  sheets: { name: string; rows: string[][] }[],
+  fileName: string,
+): Promise<OutputFile> {
+  const XLSX = await loadSheetJs()
+  const workbook = XLSX.utils.book_new()
+  sheets.forEach((sheet, index) => {
+    // 序号前缀保证工作表名唯一，长度与非法字符由 sheetNameFrom 统一处理
+    const name = sheetNameFrom(`${index + 1}-${sheet.name}`)
+    const ws = XLSX.utils.aoa_to_sheet(sheet.rows)
+    ws['!cols'] = matrixColumnWidths(sheet.rows).map((width) => ({ wch: width }))
+    XLSX.utils.book_append_sheet(workbook, ws, name)
+  })
+  const bytes = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
+  return {
+    blob: new Blob([bytes], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }),
+    name: outputName(fileName, 'xlsx'),
+  }
+}
+
 /** 生成 xlsx：默认全部按文本写入（保留前导零与长编号），开启识别时仅转换安全数字。
  *  字符串一律写入文本单元格，不会变成公式。 */
 export async function matrixToExcelFile(
@@ -279,22 +320,7 @@ export async function matrixToExcelFile(
       )
     : rows
   const sheet = XLSX.utils.aoa_to_sheet(data)
-  // 依据显示宽度设置列宽，便于直接阅读
-  const widths = (rows[0] ?? []).map((_, index) =>
-    Math.min(
-      50,
-      Math.max(
-        8,
-        ...rows.slice(0, 200).map((row) => {
-          const value = row[index] ?? ''
-          let width = 0
-          for (const char of value) width += char.charCodeAt(0) > 0xff ? 2 : 1
-          return width
-        }),
-      ),
-    ),
-  )
-  sheet['!cols'] = widths.map((width) => ({ wch: width }))
+  sheet['!cols'] = matrixColumnWidths(rows).map((width) => ({ wch: width }))
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, sheet, sheetNameFrom(fileName))
   const bytes = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
