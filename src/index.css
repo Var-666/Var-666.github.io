@@ -1881,6 +1881,241 @@ a {
   padding: 12px;
   font-size: 12px;
 }
+/* Excel 转换：选项、工作表面板与数据预览 */
+.number-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  color: var(--gray);
+  cursor: pointer;
+}
+.number-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.number-toggle small {
+  font-size: 9px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+.excel-panel {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--background);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.excel-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--gray);
+}
+.excel-panel-head strong {
+  font-size: 12px;
+  color: var(--ink);
+  font-weight: 550;
+}
+.excel-sheet-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.excel-sheet-select [data-slot] {
+  min-width: 150px;
+  max-width: 260px;
+  height: 28px;
+  font-size: 11px;
+}
+.excel-sheet-info {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.excel-error {
+  font-size: 11px;
+  color: var(--destructive);
+  margin: 0;
+}
+.excel-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.matrix-scroll {
+  overflow: auto;
+  max-height: 264px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  scrollbar-width: thin;
+}
+.matrix-table {
+  display: table;
+  min-width: 100%;
+  font-size: 11px;
+}
+.matrix-row {
+  display: table-row;
+}
+.matrix-head .matrix-cell {
+  position: sticky;
+  top: 0;
+  background: var(--subtle);
+  font-weight: 550;
+  color: var(--ink);
+}
+.matrix-cell {
+  display: table-cell;
+  padding: 5px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gray);
+  font-variant-numeric: tabular-nums;
+}
+.matrix-row:last-child .matrix-cell {
+  border-bottom: 0;
+}
+.matrix-cell.is-number {
+  color: var(--primary);
+  text-align: right;
+}
+.matrix-meta {
+  font-size: 9px;
+  color: var(--muted-foreground);
+}
+.matrix-notice {
+  font-size: 10px;
+  color: #a06a00;
+  background: color-mix(in srgb, #f5c518 14%, transparent);
+  border-radius: 6px;
+  padding: 5px 9px;
+  margin: 0;
+}
+.dark .matrix-notice {
+  color: #e8c268;
+  background: color-mix(in srgb, #f5c518 10%, transparent);
+}
+/* Word / PDF 互转：结果详情、质量提示与预览 */
+.file-row-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.convert-detail {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--subtle);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.convert-detail-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.convert-detail-metrics b {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.convert-issue {
+  font-size: 11px;
+  color: var(--gray);
+  background: var(--background);
+  border-radius: 6px;
+  padding: 6px 9px;
+  margin: 0;
+}
+.convert-issue.warning {
+  color: #8a5a00;
+  background: color-mix(in srgb, #f5c518 16%, transparent);
+}
+.dark .convert-issue.warning {
+  color: #e8c268;
+}
+.detail-toggle {
+  height: 28px;
+  font-size: 11px;
+  padding: 0 8px;
+  flex-shrink: 0;
+}
+.pdf-result-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pdf-preview-canvas {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 120px;
+}
+.pdf-preview-canvas canvas {
+  max-width: 100%;
+  height: auto;
+}
+.pdf-preview-loading {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.pdf-preview-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--gray);
+}
+.pdf-preview-nav button {
+  height: 26px;
+  font-size: 11px;
+}
+.text-result-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.text-result-preview pre {
+  margin: 0;
+  max-height: 300px;
+  overflow: auto;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  scrollbar-width: thin;
+}
+.text-result-note {
+  font-size: 9px;
+  color: var(--muted-foreground);
+}
 .file-order {
   display: flex;
   align-items: center;

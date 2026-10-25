@@ -3,6 +3,23 @@ import { Lexer, walkTokens, type Tokens } from 'marked'
 import { markdownInlineToText, markdownToText } from './markdown'
 
 export type TextConversion = 'markdown' | 'csv-json' | 'json-csv' | 'csv-markdown'
+
+// 表格 → Markdown 的统一转义与拼装：CSV / TSV 与 Excel 导出共用，避免两套行为
+export function markdownTableFromMatrix(headers: string[], rows: string[][]): string {
+  if (!headers?.length) throw new Error('表格不能为空。')
+  const cell = (value: string) =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\\/g, '\\\\')
+      .replace(/([*_[\]`~])/g, '\\$1')
+      .replace(/\|/g, '&#124;')
+      .replace(/\r\n|\r|\n/g, '<br>')
+  const row = (values: string[]) => `| ${values.map(cell).join(' | ')} |`
+  return [row(headers), row(headers.map(() => '---')), ...rows.map(row)].join('\n')
+}
+
 export function convertFileText(
   text: string,
   mode: TextConversion,
@@ -21,17 +38,7 @@ export function convertFileText(
       if (!headers?.length || !text.trim()) throw new Error('表格不能为空。')
       if (rows.some((row) => row.length !== headers.length))
         throw new Error('表格各行列数必须一致。')
-      const cell = (value: string) =>
-        value
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/\\/g, '\\\\')
-          .replace(/([*_[\]`~])/g, '\\$1')
-          .replace(/\|/g, '&#124;')
-          .replace(/\r\n|\r|\n/g, '<br>')
-      const row = (values: string[]) => `| ${values.map(cell).join(' | ')} |`
-      return [row(headers), row(headers.map(() => '---')), ...rows.map(row)].join('\n')
+      return markdownTableFromMatrix(headers, rows)
     }
     if (!headers?.length || headers.some((header) => !header.trim()))
       throw new Error('CSV 第一行需要填写列名。')

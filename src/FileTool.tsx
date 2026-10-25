@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDownToLine,
   ArrowUp,
@@ -23,10 +23,43 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { PDFDocumentLoadingTask, RenderTask } from 'pdfjs-dist'
 import { toast } from 'sonner'
+import { Switch } from '@/components/ui/switch'
 import { validateQueueFiles } from './lib/file-queue'
 import { convertFileText, markdownTables, type TextConversion } from './lib/file-text'
-import { convertImage, outputName, pdfToWord, wordToPdf, type OutputFile } from './lib/file-convert'
+import {
+  convertImage,
+  openPdf,
+  outputName,
+  pdfToWord,
+  wordToPdf,
+  type OutputFile,
+  type PdfToWordResult,
+  type WordToPdfResult,
+} from './lib/file-convert'
+import {
+  pdfToWordReport,
+  previewFailureIssue,
+  verifyDocxBlob,
+  verifyPdfBlob,
+  wordToPdfReport,
+  type ConvertReport,
+} from './lib/convert-report'
+import { previewLayout } from './lib/pdf-preview'
+import {
+  csvFileToExcel,
+  jsonHeaderNotices,
+  loadWorkbook,
+  parseCsvMatrix,
+  sheetNotices,
+  sheetToCsv,
+  sheetToJson,
+  sheetToMarkdown,
+  isSafeNumberText,
+  type WorkbookData,
+} from './lib/file-excel'
+import { cn } from '@/lib/utils'
 
 import { imagesToPdf, packOutputs, pdfToImages } from './lib/file-media'
 import type { ImageSize } from './lib/media-options'
@@ -82,6 +115,34 @@ const modes = {
     hint: 'Markdown 文件 · 单个 2 MB · UTF-8 编码',
     note: '提取文档中的 Markdown 表格，多张表格打包为 ZIP；疑似公式添加单引号保护。',
   },
+  'excel-csv': {
+    category: 'table',
+    title: 'Excel → CSV',
+    accept: '.xlsx',
+    hint: 'XLSX 工作簿 · 单个 10 MB · 单表最多 10 万行 × 1024 列',
+    note: '按单元格显示值导出：保留文本单元格原值、数字格式渲染的前导零与日期显示形式；公式取缓存结果。CSV 含 BOM 并对疑似公式加保护。',
+  },
+  'excel-json': {
+    category: 'table',
+    title: 'Excel → JSON',
+    accept: '.xlsx',
+    hint: 'XLSX 工作簿 · 单个 10 MB · 单表最多 10 万行 × 1024 列',
+    note: '第一行作为字段名，单元格保留显示文本；空表头按「列N」、重复表头加序号后缀，预览中会提示。不保留样式、公式与合并单元格。',
+  },
+  'excel-md': {
+    category: 'table',
+    title: 'Excel → Markdown',
+    accept: '.xlsx',
+    hint: 'XLSX 工作簿 · 单个 10 MB · 单表最多 10 万行 × 1024 列',
+    note: '首行作为表头；竖线、换行等特殊字符安全转义，与表格 → Markdown 使用同一套规则。',
+  },
+  'csv-excel': {
+    category: 'table',
+    title: 'CSV → Excel',
+    accept: '.csv',
+    hint: '逗号分隔 CSV · 单个 2 MB · UTF-8 编码',
+    note: '默认全部按文本写入 .xlsx，保留前导零与长编号；可开启「尝试识别数字」，只转换无前导零、非科学计数的明确数字。',
+  },
   'pdf-image': {
     category: 'office',
     title: 'PDF → 图片',
@@ -94,14 +155,14 @@ const modes = {
     title: 'Word → PDF',
     accept: '.docx',
     hint: 'DOCX 文档 · 单个 10 MB · 最多输出 50 页',
-    note: '导出图片版 A4 PDF，文字无法选中。复杂分页、字体和表格可能变化，建议核对结果；不支持旧版 .doc。',
+    note: '在浏览器中渲染 Word 页面并生成图片型 A4 PDF：适合浏览与视觉交付，文字无法选择、复制或搜索；字体、分页与复杂排版可能变化，建议核对预览；不支持旧版 .doc。',
   },
   'pdf-word': {
     category: 'office',
     title: 'PDF → Word',
     accept: '.pdf',
     hint: '文字型 PDF · 单个 10 MB · 最多 50 页',
-    note: '提取文字生成可编辑 DOCX，不保留图片、表格和原排版。不支持扫描件或加密 PDF。',
+    note: '提取 PDF 中的文字生成可编辑 DOCX：不保留图片、表格、页眉页脚与原排版；扫描件无法提取文字（需要 OCR），加密与含无文字页的文件会被拒绝，避免遗漏内容。',
   },
 } as const
 const categories = [
@@ -118,6 +179,9 @@ type Row = {
   status: 'waiting' | 'working' | 'done' | 'error'
   message?: string
   output?: OutputFile & { url: string }
+  report?: ConvertReport
+  detail?: { kind: 'pdf'; file: File } | { kind: 'text'; text: string }
+  showDetail?: boolean
 }
 const sizeLabel = (size: number) =>
   size < 1024 * 1024
@@ -126,6 +190,15 @@ const sizeLabel = (size: number) =>
 
 export default function FileTool({ active = true }: { active?: boolean }) {
   const [mode, setMode] = useState<Mode>('image')
+  const isExcelRead = mode === 'excel-csv' || mode === 'excel-json' || mode === 'excel-md'
+  const [excel, setExcel] = useState<{ file: File; workbook: WorkbookData } | null>(null)
+  const [sheetName, setSheetName] = useState('')
+  const [detectNumbers, setDetectNumbers] = useState(false)
+  const [csvPreview, setCsvPreview] = useState<{
+    file: File
+    rows: string[][]
+    notices: string[]
+  } | null>(null)
   const [format, setFormat] = useState<'png' | 'jpeg' | 'webp'>('png')
   const [imageSize, setImageSize] = useState<ImageSize>('original')
   const [pdfFormat, setPdfFormat] = useState<'png' | 'jpeg'>('png')
@@ -158,6 +231,9 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     setRows([])
     setMerged(null)
     setTablePaste('')
+    setExcel(null)
+    setSheetName('')
+    setCsvPreview(null)
   }
   const chooseMode = (next: Mode) => {
     if (next !== mode && !running.current && !packing) {
@@ -173,17 +249,37 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       previous.map((row) => ({ id: row.id, file: row.file, status: 'waiting' })),
     )
   }
+  const markPreviewError = (id: string) => {
+    setRows((previous) =>
+      previous.map((row) =>
+        row.id === id && row.report && row.report.status !== 'preview-error'
+          ? {
+              ...row,
+              report: {
+                status: 'preview-error',
+                issues: [...row.report.issues, previewFailureIssue],
+                metrics: row.report.metrics,
+              },
+            }
+          : row,
+      ),
+    )
+  }
   const removeRow = (row: Row) => {
     if (running.current || packing) return
     if (row.output) {
       URL.revokeObjectURL(row.output.url)
       urls.current.delete(row.output.url)
     }
-    if (mode === 'image-pdf') clearOutputs()
+    if (mode === 'image-pdf' || isExcelRead) clearOutputs()
     setRows((previous) => previous.filter((item) => item.id !== row.id))
   }
   const addFiles = (files: File[]) => {
     if (running.current || packing || !files.length) return
+    if (isExcelRead && rows.length + files.length > 1) {
+      toast.error('一次转换一个工作簿，请先移除当前文件')
+      return
+    }
     const limit = modes[mode].category === 'image' ? 20 : modes[mode].category === 'office' ? 10 : 2
     try {
       validateQueueFiles(
@@ -230,6 +326,79 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     window.addEventListener('paste', pasted)
     return () => window.removeEventListener('paste', pasted)
   })
+  // Excel 读取模式：工作簿只解析一次，结果缓存；失败时保留文件并显示原因
+  useEffect(() => {
+    if (!isExcelRead) return
+    const row = rows[0]
+    if (rows.length !== 1 || !row || row.status === 'error') {
+      setExcel(null)
+      setSheetName('')
+      return
+    }
+    if (excel?.file === row.file) return
+    let cancelled = false
+    setExcel(null)
+    setSheetName('')
+    loadWorkbook(row.file)
+      .then((workbook) => {
+        if (cancelled) return
+        setExcel({ file: row.file, workbook })
+        setSheetName(workbook.sheets[0]?.name ?? '')
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setRows((previous) =>
+          previous.map((item) =>
+            item.id === row.id
+              ? {
+                  ...item,
+                  status: 'error',
+                  message: error instanceof Error ? error.message : '无法读取工作簿',
+                }
+              : item,
+          ),
+        )
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [rows, mode, excel, isExcelRead])
+  // CSV → Excel：解析第一个文件用于预览（数字识别在渲染时应用）
+  useEffect(() => {
+    if (mode !== 'csv-excel') return
+    const row = rows[0]
+    if (!row || row.status === 'error') {
+      setCsvPreview(null)
+      return
+    }
+    if (csvPreview?.file === row.file) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const text = new TextDecoder('utf-8', { fatal: true }).decode(await row.file.arrayBuffer())
+        const parsed = parseCsvMatrix(text)
+        if (!cancelled)
+          setCsvPreview({ file: row.file, rows: parsed.rows, notices: parsed.notices })
+      } catch (error) {
+        if (cancelled) return
+        setCsvPreview(null)
+        setRows((previous) =>
+          previous.map((item) =>
+            item.id === row.id
+              ? {
+                  ...item,
+                  status: 'error',
+                  message: error instanceof Error ? error.message : '读取失败，请检查文件与编码。',
+                }
+              : item,
+          ),
+        )
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [rows, mode, csvPreview])
   const moveRow = (id: string, to: number) => {
     if (running.current || packing || to < 0 || to >= rows.length) return
     clearOutputs()
@@ -306,6 +475,29 @@ export default function FileTool({ active = true }: { active?: boolean }) {
             )
           else if (mode === 'pdf-word') output = await pdfToWord(row.file, progress)
           else if (mode === 'word-pdf') output = await wordToPdf(row.file, progress)
+          else if (isExcelRead) {
+            if (!excel) throw new Error('工作簿尚未读取完成，请稍候再试。')
+            const sheet = excel.workbook.sheet(sheetName)
+            const base = `${excel.file.name.replace(/\.[^.]+$/, '')}-${sheet.name.replace(/[/\\?%*:|"<>]/g, ' ')}`
+            if (mode === 'excel-csv')
+              output = {
+                blob: new Blob(['\uFEFF', sheetToCsv(sheet)], { type: 'text/csv;charset=utf-8' }),
+                name: outputName(base, 'csv'),
+              }
+            else if (mode === 'excel-json')
+              output = {
+                blob: new Blob([sheetToJson(sheet).text], {
+                  type: 'application/json;charset=utf-8',
+                }),
+                name: outputName(base, 'json'),
+              }
+            else
+              output = {
+                blob: new Blob([sheetToMarkdown(sheet)], { type: 'text/markdown;charset=utf-8' }),
+                name: outputName(base, 'md'),
+              }
+          } else if (mode === 'csv-excel')
+            output = await csvFileToExcel(row.file, { detectNumbers })
           else {
             const source = new TextDecoder('utf-8', { fatal: true }).decode(
               await row.file.arrayBuffer(),
@@ -345,9 +537,37 @@ export default function FileTool({ active = true }: { active?: boolean }) {
             throw new Error('输出总大小超过 100 MB，请减少文件数量。')
           bytes += output.blob.size
           if (!mounted.current) break
+          let report: ConvertReport | undefined
+          let detail: Row['detail']
+          if (mode === 'word-pdf' && 'pages' in output) {
+            progress('正在校验输出')
+            const result = output as WordToPdfResult
+            report = wordToPdfReport({
+              pages: result.pages,
+              sections: result.sections,
+              failedSections: result.failedSections,
+              bytes: result.blob.size,
+              verify: await verifyPdfBlob(result.blob),
+            })
+            detail = {
+              kind: 'pdf',
+              file: new File([result.blob], result.name, { type: 'application/pdf' }),
+            }
+          } else if (mode === 'pdf-word' && 'chars' in output) {
+            progress('正在校验输出')
+            const result = output as PdfToWordResult
+            report = pdfToWordReport({
+              pages: result.pages,
+              chars: result.chars,
+              paragraphs: result.paragraphs,
+              bytes: result.blob.size,
+              docxValid: await verifyDocxBlob(result.blob),
+            })
+            detail = { kind: 'text', text: result.text }
+          }
           const url = URL.createObjectURL(output.blob)
           urls.current.add(url)
-          update({ status: 'done', message: undefined, output: { ...output, url } })
+          update({ status: 'done', message: undefined, output: { ...output, url }, report, detail })
         } catch (error) {
           update({
             status: 'error',
@@ -390,6 +610,19 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       setPacking(false)
     }
   }
+  // 选中的工作表在渲染时物化（内部有缓存，同一工作表只解析一次）
+  const excelPreview = useMemo(() => {
+    if (!isExcelRead || !excel || !sheetName) return null
+    try {
+      const data = excel.workbook.sheet(sheetName)
+      const notices = [...sheetNotices(data)]
+      if (mode === 'excel-json') notices.push(...jsonHeaderNotices(data.rows[0] ?? []))
+      return { data, notices }
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : '无法读取工作表', notices: [] }
+    }
+  }, [excel, sheetName, mode, isExcelRead])
+  const excelPending = isExcelRead && !!rows.length && !excel
   const done = rows.filter((row) => row.status === 'done').length
   return (
     <main className="main-content file-tool">
@@ -562,6 +795,25 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                 </label>
               </div>
             )}
+            {mode === 'csv-excel' && (
+              <div className="image-options excel-options">
+                <label className="number-toggle">
+                  <Switch
+                    aria-label="尝试识别数字"
+                    checked={detectNumbers}
+                    disabled={busy || packing}
+                    onCheckedChange={(value) => {
+                      clearOutputs()
+                      setDetectNumbers(value)
+                    }}
+                  />
+                  <span>
+                    尝试识别数字
+                    <small>仅转换无前导零、非科学计数的普通数字；编号与长整数保持文本</small>
+                  </span>
+                </label>
+              </div>
+            )}
             <button
               type="button"
               className={`file-drop ${dragging ? 'is-dragging' : ''}`}
@@ -627,99 +879,213 @@ export default function FileTool({ active = true }: { active?: boolean }) {
             {!!rows.length && (
               <div className="file-queue">
                 {rows.map((row, index) => (
-                  <div
-                    key={row.id}
-                    className="file-row"
-                    onDragOver={(event) => {
-                      if (mode === 'image-pdf' && moving.current) event.preventDefault()
-                    }}
-                    onDrop={(event) => {
-                      if (!moving.current) return
-                      event.preventDefault()
-                      moveRow(moving.current, index)
-                      moving.current = null
-                    }}
-                  >
-                    {mode === 'image-pdf' && (
-                      <div className="file-order">
+                  <div key={row.id} className="file-row-group">
+                    <div
+                      className="file-row"
+                      onDragOver={(event) => {
+                        if (mode === 'image-pdf' && moving.current) event.preventDefault()
+                      }}
+                      onDrop={(event) => {
+                        if (!moving.current) return
+                        event.preventDefault()
+                        moveRow(moving.current, index)
+                        moving.current = null
+                      }}
+                    >
+                      {mode === 'image-pdf' && (
+                        <div className="file-order">
+                          <span
+                            draggable={!busy && !packing}
+                            aria-label={`拖动排序 ${row.file.name}`}
+                            title="拖动排序，或使用下方箭头"
+                            onDragStart={(event) => {
+                              moving.current = row.id
+                              event.dataTransfer.setData('text/plain', row.id)
+                              event.dataTransfer.effectAllowed = 'move'
+                            }}
+                            onDragEnd={() => {
+                              moving.current = null
+                            }}
+                          >
+                            <GripVertical size={14} />
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`上移 ${row.file.name}`}
+                            disabled={busy || packing || index === 0}
+                            onClick={() => moveRow(row.id, index - 1)}
+                          >
+                            <ArrowUp size={13} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`下移 ${row.file.name}`}
+                            disabled={busy || packing || index === rows.length - 1}
+                            onClick={() => moveRow(row.id, index + 1)}
+                          >
+                            <ArrowDown size={13} />
+                          </Button>
+                        </div>
+                      )}
+                      <div className={`file-state state-${row.status}`}>
+                        {row.status === 'working' ? (
+                          <LoaderCircle className="animate-spin" size={18} />
+                        ) : row.status === 'done' ? (
+                          <Check size={18} />
+                        ) : row.status === 'error' ? (
+                          <X size={18} />
+                        ) : (
+                          <FileUp size={18} />
+                        )}
+                      </div>
+                      <div className="file-details">
+                        <strong>{row.file.name}</strong>
                         <span
-                          draggable={!busy && !packing}
-                          aria-label={`拖动排序 ${row.file.name}`}
-                          title="拖动排序，或使用下方箭头"
-                          onDragStart={(event) => {
-                            moving.current = row.id
-                            event.dataTransfer.setData('text/plain', row.id)
-                            event.dataTransfer.effectAllowed = 'move'
-                          }}
-                          onDragEnd={() => {
-                            moving.current = null
-                          }}
+                          className={row.status === 'error' ? 'file-error' : ''}
+                          role={row.status === 'error' ? 'alert' : 'status'}
                         >
-                          <GripVertical size={14} />
+                          {row.message ||
+                            (row.output
+                              ? `${row.output.name} · ${sizeLabel(row.output.blob.size)}${
+                                  row.report?.status === 'notes'
+                                    ? ' · 有注意事项'
+                                    : row.report?.status === 'preview-error'
+                                      ? ' · 预览失败'
+                                      : ''
+                                }`
+                              : sizeLabel(row.file.size))}
                         </span>
+                      </div>
+                      {row.output && row.report && (
                         <Button
                           variant="ghost"
-                          size="icon"
-                          aria-label={`上移 ${row.file.name}`}
-                          disabled={busy || packing || index === 0}
-                          onClick={() => moveRow(row.id, index - 1)}
+                          size="sm"
+                          className="detail-toggle"
+                          disabled={busy || packing}
+                          onClick={() =>
+                            setRows((previous) =>
+                              previous.map((item) =>
+                                item.id === row.id
+                                  ? { ...item, showDetail: !item.showDetail }
+                                  : item,
+                              ),
+                            )
+                          }
                         >
-                          <ArrowUp size={13} />
+                          {row.showDetail ? '收起详情' : '结果详情'}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`下移 ${row.file.name}`}
-                          disabled={busy || packing || index === rows.length - 1}
-                          onClick={() => moveRow(row.id, index + 1)}
-                        >
-                          <ArrowDown size={13} />
+                      )}
+                      {row.output && (
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={row.output.url} download={row.output.name}>
+                            <ArrowDownToLine size={14} />
+                            下载
+                          </a>
                         </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="remove-file"
+                        aria-label={`移除 ${row.file.name}`}
+                        disabled={busy || packing}
+                        onClick={() => removeRow(row)}
+                      >
+                        <X size={15} />
+                      </Button>
+                    </div>
+                    {row.showDetail && row.report && (
+                      <div className="convert-detail">
+                        <div className="convert-detail-metrics">
+                          {row.report.metrics.map((metric) => (
+                            <span key={metric.label}>
+                              {metric.label} <b>{metric.value}</b>
+                            </span>
+                          ))}
+                        </div>
+                        {row.report.issues.map((issue) => (
+                          <p
+                            key={issue.text}
+                            className={
+                              issue.level === 'warning' ? 'convert-issue warning' : 'convert-issue'
+                            }
+                          >
+                            {issue.text}
+                          </p>
+                        ))}
+                        {row.detail?.kind === 'pdf' && (
+                          <PdfResultPreview
+                            file={row.detail.file}
+                            onError={() => markPreviewError(row.id)}
+                          />
+                        )}
+                        {row.detail?.kind === 'text' && (
+                          <TextResultPreview text={row.detail.text} />
+                        )}
                       </div>
                     )}
-                    <div className={`file-state state-${row.status}`}>
-                      {row.status === 'working' ? (
-                        <LoaderCircle className="animate-spin" size={18} />
-                      ) : row.status === 'done' ? (
-                        <Check size={18} />
-                      ) : row.status === 'error' ? (
-                        <X size={18} />
-                      ) : (
-                        <FileUp size={18} />
-                      )}
-                    </div>
-                    <div className="file-details">
-                      <strong>{row.file.name}</strong>
-                      <span
-                        className={row.status === 'error' ? 'file-error' : ''}
-                        role={row.status === 'error' ? 'alert' : 'status'}
-                      >
-                        {row.message ||
-                          (row.output
-                            ? `${row.output.name} · ${sizeLabel(row.output.blob.size)}`
-                            : sizeLabel(row.file.size))}
-                      </span>
-                    </div>
-                    {row.output && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={row.output.url} download={row.output.name}>
-                          <ArrowDownToLine size={14} />
-                          下载
-                        </a>
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="remove-file"
-                      aria-label={`移除 ${row.file.name}`}
-                      disabled={busy || packing}
-                      onClick={() => removeRow(row)}
-                    >
-                      <X size={15} />
-                    </Button>
                   </div>
                 ))}
+              </div>
+            )}
+            {mode === 'csv-excel' && csvPreview && (
+              <div className="excel-panel">
+                <div className="excel-panel-head">
+                  <strong>预览：{csvPreview.file.name}</strong>
+                  <span>
+                    {detectNumbers ? '识别出的数字将按数值写入，其余为文本' : '全部按文本写入'}
+                  </span>
+                </div>
+                <MatrixPreview
+                  rows={csvPreview.rows}
+                  notices={csvPreview.notices}
+                  markNumbers={detectNumbers}
+                />
+              </div>
+            )}
+            {isExcelRead && excel && (
+              <div className="excel-panel">
+                <div className="excel-panel-head">
+                  <label className="excel-sheet-select">
+                    工作表
+                    <Select
+                      value={sheetName}
+                      disabled={busy || packing}
+                      onValueChange={(value) => {
+                        clearOutputs()
+                        setSheetName(value)
+                      }}
+                    >
+                      <SelectTrigger aria-label="选择工作表">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {excel.workbook.sheets.map((sheet) => (
+                          <SelectItem key={sheet.name} value={sheet.name}>
+                            {sheet.name}（{sheet.rows} 行 × {sheet.cols} 列）
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <span className="excel-sheet-info">
+                    {excel.file.name} · {sizeLabel(excel.file.size)} →{' '}
+                    {mode === 'excel-csv'
+                      ? 'CSV'
+                      : mode === 'excel-json'
+                        ? 'JSON'
+                        : 'Markdown 表格'}
+                  </span>
+                </div>
+                {excelPreview?.error ? (
+                  <p className="excel-error" role="alert">
+                    {excelPreview.error}
+                  </p>
+                ) : excelPreview?.data ? (
+                  <MatrixPreview rows={excelPreview.data.rows} notices={excelPreview.notices} />
+                ) : null}
               </div>
             )}
             {merged && (
@@ -753,7 +1119,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                   </Button>
                 )}
                 <Button
-                  disabled={!rows.length || busy || packing || done === rows.length}
+                  disabled={!rows.length || busy || packing || done === rows.length || excelPending}
                   onClick={run}
                 >
                   {busy ? <LoaderCircle className="animate-spin" size={14} /> : <Check size={14} />}
@@ -765,5 +1131,189 @@ export default function FileTool({ active = true }: { active?: boolean }) {
         </TabsContent>
       </Tabs>
     </main>
+  )
+}
+// 数据预览：仅渲染有限行与列，避免大表生成海量 DOM
+function MatrixPreview({
+  rows,
+  notices,
+  markNumbers = false,
+}: {
+  rows: string[][]
+  notices: string[]
+  markNumbers?: boolean
+}) {
+  if (!rows.length) return <p className="excel-error">没有可读取的数据。</p>
+  const shown = rows.slice(0, 21)
+  const totalCols = rows[0]?.length ?? 0
+  return (
+    <div className="excel-preview">
+      <div className="matrix-scroll">
+        <div className="matrix-table" role="table" aria-label="数据预览（前 20 行）">
+          {shown.map((row, index) => (
+            <div className={cn('matrix-row', index === 0 && 'matrix-head')} role="row" key={index}>
+              {row.slice(0, 50).map((cell, col) => (
+                <span
+                  className={cn(
+                    'matrix-cell',
+                    markNumbers && index > 0 && isSafeNumberText(cell) && 'is-number',
+                  )}
+                  role="cell"
+                  key={col}
+                  title={cell || undefined}
+                >
+                  {cell}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="matrix-meta">
+        共 {rows.length.toLocaleString()} 行 × {totalCols} 列
+        {rows.length > 20 ? ' · 预览前 20 行' : ''}
+        {totalCols > 50 ? ' · 仅显示前 50 列' : ''} · 首行样式仅便于阅读
+      </div>
+      {notices.map((notice) => (
+        <p className="matrix-notice" key={notice}>
+          {notice}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+const textPreviewLimit = 80_000
+// PDF → Word：预览即实际写入 DOCX 的文本，超长截断显示
+function TextResultPreview({ text }: { text: string }) {
+  const clipped = text.length > textPreviewLimit
+  return (
+    <div className="text-result-preview">
+      <pre>{clipped ? text.slice(0, textPreviewLimit) : text}</pre>
+      <span className="text-result-note">
+        以上为写入 Word 的实际文字
+        {clipped ? `，内容较长仅显示前 ${textPreviewLimit / 10000} 万字符，完整内容请下载查看` : ''}
+      </span>
+    </div>
+  )
+}
+
+// Word → PDF：逐页懒渲染结果预览，与下载文件同源；失败只提示预览问题，不影响下载
+function PdfResultPreview({ file, onError }: { file: File; onError: () => void }) {
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [failed, setFailed] = useState('')
+  const [loading, setLoading] = useState(true)
+  const canvas = useRef<HTMLCanvasElement>(null)
+  const holder = useRef<HTMLDivElement>(null)
+  const session = useRef<{ loader?: PDFDocumentLoadingTask; task?: RenderTask }>({})
+  const errorRef = useRef(onError)
+  useEffect(() => {
+    errorRef.current = onError
+  })
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    openPdf(file)
+      .then(async (task) => {
+        const pdf = await task.promise
+        if (cancelled) {
+          await task.destroy()
+          return
+        }
+        session.current.loader = task
+        setTotal(pdf.numPages)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFailed('预览生成失败，转换文件本身已生成，可下载后查看。')
+          errorRef.current()
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+      session.current.task?.cancel()
+      void session.current.loader?.destroy().catch(() => undefined)
+      session.current = {}
+    }
+  }, [file])
+  useEffect(() => {
+    let cancelled = false
+    const loader = session.current.loader
+    const target = canvas.current
+    if (!loader || !target || !page || failed) return
+    setLoading(true)
+    void (async () => {
+      try {
+        const pdf = await loader?.promise
+        if (!pdf) throw new Error('preview closed')
+        const pdfPage = await pdf.getPage(page)
+        if (cancelled) return
+        const base = pdfPage.getViewport({ scale: 1 })
+        const available = Math.max(280, (holder.current?.clientWidth || 560) - 16)
+        const layout = previewLayout(
+          base.width,
+          base.height,
+          available,
+          760,
+          null,
+          window.devicePixelRatio || 1,
+        )
+        const context = target.getContext('2d')
+        if (!context) throw new Error('canvas')
+        target.width = layout.width
+        target.height = layout.height
+        target.style.width = `${layout.cssWidth}px`
+        target.style.height = `${layout.cssHeight}px`
+        const viewport = pdfPage.getViewport({ scale: layout.renderScale })
+        session.current.task?.cancel()
+        const task = pdfPage.render({ canvas: target, canvasContext: context, viewport })
+        session.current.task = task
+        await task.promise
+        pdfPage.cleanup()
+      } catch (error) {
+        if (cancelled) return
+        if (!(error instanceof Error && error.name === 'RenderingCancelledException')) {
+          setFailed('页面渲染失败，转换文件本身已生成，可下载后查看。')
+          errorRef.current()
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [page, total, failed])
+  if (failed) return <p className="convert-issue warning">{failed}</p>
+  return (
+    <div className="pdf-result-preview" ref={holder}>
+      <div className="pdf-preview-canvas">
+        {loading && <span className="pdf-preview-loading">正在渲染预览…</span>}
+        <canvas ref={canvas} aria-label={`转换结果预览 第 ${page} 页`} />
+      </div>
+      <div className="pdf-preview-nav">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 1 || loading}
+          onClick={() => setPage((value) => value - 1)}
+        >
+          上一页
+        </Button>
+        <span>{total ? `第 ${page} / ${total} 页` : '读取中…'}</span>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page >= total || loading}
+          onClick={() => setPage((value) => value + 1)}
+        >
+          下一页
+        </Button>
+      </div>
+    </div>
   )
 }

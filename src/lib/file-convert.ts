@@ -2,6 +2,18 @@ import { findWhitespaceCut } from './page-break'
 import { imageDimensions, type ImageSize } from './media-options'
 
 export type OutputFile = { blob: Blob; name: string }
+export type WordToPdfResult = OutputFile & {
+  pages: number
+  sections: number
+  failedSections: number
+}
+export type PdfToWordResult = OutputFile & {
+  pages: number
+  chars: number
+  paragraphs: number
+  /** 实际写入 DOCX 的文本（页与页之间以空行分隔），预览直接使用 */
+  text: string
+}
 export const outputName = (name: string, extension: string) =>
   `${name.replace(/.*[\\/]/, '').replace(/\.[^.]+$/, '') || '转换结果'}.${extension}`
 
@@ -62,13 +74,14 @@ export async function openPdf(file: File) {
 export async function pdfToWord(
   file: File,
   progress: (message: string) => void,
-): Promise<OutputFile> {
+): Promise<PdfToWordResult> {
   const task = await openPdf(file)
   try {
     const pdf = await task.promise
     if (pdf.numPages > 50) throw new Error('一次最多转换 50 页 PDF，请先拆分。')
     const { Document, Packer, Paragraph, PageBreak, TextRun } = await import('docx')
     const paragraphs = []
+    const pageTexts: string[] = []
     let total = 0
     let emptyPages = 0
     for (let page = 1; page <= pdf.numPages; page++) {
@@ -88,6 +101,7 @@ export async function pdfToWord(
       }
       pageText += line
       if (!pageText.trim()) emptyPages++
+      pageTexts.push(pageText.trim())
       for (const value of pageText.split('\n'))
         paragraphs.push(new Paragraph({ children: [new TextRun(value)] }))
       total += pageText.trim().length
@@ -100,7 +114,14 @@ export async function pdfToWord(
         `有 ${emptyPages} 页没有可提取文字，可能含扫描页。为避免遗漏，请先用 OCR 处理后再转换。`,
       )
     const blob = await Packer.toBlob(new Document({ sections: [{ children: paragraphs }] }))
-    return { blob, name: outputName(file.name, 'docx') }
+    return {
+      blob,
+      name: outputName(file.name, 'docx'),
+      pages: pdf.numPages,
+      chars: total,
+      paragraphs: paragraphs.length - (pdf.numPages - 1),
+      text: pageTexts.join('\n\n'),
+    }
   } catch (error) {
     if (error instanceof Error && error.name === 'PasswordException')
       throw new Error('PDF 已加密，请解密后重试。', { cause: error })
@@ -114,7 +135,7 @@ export async function pdfToWord(
 export async function wordToPdf(
   file: File,
   progress: (message: string) => void,
-): Promise<OutputFile> {
+): Promise<WordToPdfResult> {
   const [{ renderAsync }, { default: html2canvas }, { jsPDF }, { unzipSync }] = await Promise.all([
     import('docx-preview'),
     import('html2canvas'),
@@ -175,6 +196,7 @@ export async function wordToPdf(
     if (!sections.length || sections.length > 50) throw new Error('文档为空或超过 50 个分页。')
     const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true })
     let pageCount = 0
+    let failedSections = 0
     for (let i = 0; i < sections.length; i++) {
       progress(`正在渲染第 ${i + 1} / ${sections.length} 个文档分节`)
       const section = sections[i]
@@ -182,55 +204,78 @@ export async function wordToPdf(
       const height = section.scrollHeight
       if (!width || width * height > 12_000_000 || height > 16000)
         throw new Error('文档单个分节过长，请在 Word 中添加分页后再转换。')
-      const canvas = await html2canvas(section, {
-        scale: 1.5,
-        backgroundColor: '#ffffff',
-        logging: false,
-        useCORS: false,
-        imageTimeout: 2000,
-        height,
-      })
-      const pageHeight = Math.round((canvas.width * 841.89) / 595.28)
-      const sourceContext = canvas.getContext('2d')
-      if (!sourceContext) throw new Error('无法读取 PDF 渲染页面。')
-      for (let y = 0; y < canvas.height;) {
-        let sliceHeight = Math.min(pageHeight, canvas.height - y)
-        if (y + pageHeight < canvas.height) {
-          const scanHeight = Math.min(80, pageHeight - 1)
-          const band = sourceContext.getImageData(
+      try {
+        const canvas = await html2canvas(section, {
+          scale: 1.5,
+          backgroundColor: '#ffffff',
+          logging: false,
+          useCORS: false,
+          imageTimeout: 2000,
+          height,
+        })
+        const pageHeight = Math.round((canvas.width * 841.89) / 595.28)
+        const sourceContext = canvas.getContext('2d')
+        if (!sourceContext) throw new Error('无法读取 PDF 渲染页面。')
+        for (let y = 0; y < canvas.height;) {
+          let sliceHeight = Math.min(pageHeight, canvas.height - y)
+          if (y + pageHeight < canvas.height) {
+            const scanHeight = Math.min(80, pageHeight - 1)
+            const band = sourceContext.getImageData(
+              0,
+              y + pageHeight - scanHeight,
+              canvas.width,
+              scanHeight,
+            )
+            // shortcut: images and ruled tables may have no blank row; use layout-aware pagination for those.
+            const cut = findWhitespaceCut(band.data, canvas.width, scanHeight)
+            if (cut !== null) sliceHeight = pageHeight - scanHeight + cut
+          }
+          if (++pageCount > 50) throw new Error('转换结果超过 50 页，请拆分文档。')
+          if (pageCount > 1) pdf.addPage()
+          const slice = document.createElement('canvas')
+          slice.width = canvas.width
+          slice.height = sliceHeight
+          const context = slice.getContext('2d')
+          if (!context) throw new Error('无法创建 PDF 页面。')
+          context.drawImage(
+            canvas,
             0,
-            y + pageHeight - scanHeight,
-            canvas.width,
-            scanHeight,
+            y,
+            slice.width,
+            slice.height,
+            0,
+            0,
+            slice.width,
+            slice.height,
           )
-          // shortcut: images and ruled tables may have no blank row; use layout-aware pagination for those.
-          const cut = findWhitespaceCut(band.data, canvas.width, scanHeight)
-          if (cut !== null) sliceHeight = pageHeight - scanHeight + cut
+          pdf.addImage(
+            slice.toDataURL('image/jpeg', 0.94),
+            'JPEG',
+            0,
+            0,
+            595.28,
+            (slice.height * 595.28) / slice.width,
+          )
+          y += sliceHeight
+          slice.width = 0
+          slice.height = 0
         }
-        if (++pageCount > 50) throw new Error('转换结果超过 50 页，请拆分文档。')
-        if (pageCount > 1) pdf.addPage()
-        const slice = document.createElement('canvas')
-        slice.width = canvas.width
-        slice.height = sliceHeight
-        const context = slice.getContext('2d')
-        if (!context) throw new Error('无法创建 PDF 页面。')
-        context.drawImage(canvas, 0, y, slice.width, slice.height, 0, 0, slice.width, slice.height)
-        pdf.addImage(
-          slice.toDataURL('image/jpeg', 0.94),
-          'JPEG',
-          0,
-          0,
-          595.28,
-          (slice.height * 595.28) / slice.width,
-        )
-        y += sliceHeight
-        slice.width = 0
-        slice.height = 0
+        canvas.width = 0
+        canvas.height = 0
+      } catch (error) {
+        // 硬性上限继续中止；单个分节的渲染失败记数并跳过，最终在报告里提示
+        if (error instanceof Error && error.message.includes('超过 50 页')) throw error
+        failedSections++
       }
-      canvas.width = 0
-      canvas.height = 0
     }
-    return { blob: pdf.output('blob'), name: outputName(file.name, 'pdf') }
+    if (!pageCount) throw new Error('没有页面完成渲染，请检查文档内容后重试。')
+    return {
+      blob: pdf.output('blob'),
+      name: outputName(file.name, 'pdf'),
+      pages: pageCount,
+      sections: sections.length,
+      failedSections,
+    }
   } finally {
     frame.remove()
   }
