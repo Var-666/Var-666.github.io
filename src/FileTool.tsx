@@ -46,6 +46,24 @@ import type { ImageSize, PdfSheetSize } from './lib/media-options'
 import { Textarea } from '@/components/ui/textarea'
 import { categories, modeKeys, modes, type Mode } from './file-tool/modes'
 import { sizeLabel, type Row } from './file-tool/types'
+import { readFileOptions, saveFileOptions, type FileOptionSchema } from './lib/storage'
+
+// 参数记忆的 schema：只存选项值（枚举 / 数值 / 布尔），永不存文件内容
+const fileOptionSchema: FileOptionSchema = {
+  format: (value) => value === 'png' || value === 'jpeg' || value === 'webp',
+  imageSize: (value) =>
+    value === 'original' || value === '1920' || value === '1280' || value === 'half',
+  quality: (value) => typeof value === 'number' && value >= 10 && value <= 100,
+  compressTarget: (value) => ['100', '200', '500', '1000'].includes(value as string),
+  compressFormat: (value) => value === 'jpeg' || value === 'webp',
+  pdfFormat: (value) => value === 'png' || value === 'jpeg',
+  pdfLayout: (value) => value === 'pages' || value === 'long',
+  mergeSize: (value) => value === 'a4' || value === 'a3' || value === 'letter',
+  mergeOrientation: (value) => value === 'portrait' || value === 'landscape',
+  mergeFit: (value) => value === 'contain' || value === 'cover',
+  pages: (value) => typeof value === 'string' && value.length <= 50,
+  detectNumbers: (value) => typeof value === 'boolean',
+}
 import { FileQueue } from './file-tool/FileQueue'
 import { CsvExcelPreview, ExcelPreview } from './file-tool/ExcelPreview'
 
@@ -56,29 +74,44 @@ const modeFromHash = (): Mode | null => {
 }
 
 export default function FileTool({ active = true }: { active?: boolean }) {
+  const savedOptions = useRef(readFileOptions(localStorage, fileOptionSchema))
+  const savedOption = <K extends string | number | boolean>(key: string, fallback: K): K =>
+    (savedOptions.current[key] as K | undefined) ?? fallback
   const [mode, setMode] = useState<Mode>(() => modeFromHash() ?? 'image')
   const isExcelRead = mode === 'excel-csv' || mode === 'excel-json' || mode === 'excel-md'
   const [excel, setExcel] = useState<{ file: File; workbook: WorkbookData } | null>(null)
   const [sheetName, setSheetName] = useState('')
-  const [detectNumbers, setDetectNumbers] = useState(false)
   const [csvPreview, setCsvPreview] = useState<{
     file: File
     rows: string[][]
     notices: string[]
   } | null>(null)
-  const [format, setFormat] = useState<'png' | 'jpeg' | 'webp'>('png')
-  const [imageSize, setImageSize] = useState<ImageSize>('original')
-  const [compressTarget, setCompressTarget] = useState<'100' | '200' | '500' | '1000'>('200')
-  const [compressFormat, setCompressFormat] = useState<'jpeg' | 'webp'>('jpeg')
-  const [pdfFormat, setPdfFormat] = useState<'png' | 'jpeg'>('png')
-  const [pdfLayout, setPdfLayout] = useState<'pages' | 'long'>('pages')
-  const [mergeSize, setMergeSize] = useState<PdfSheetSize>('a4')
-  const [mergeOrientation, setMergeOrientation] = useState<'portrait' | 'landscape'>('portrait')
-  const [mergeFit, setMergeFit] = useState<'contain' | 'cover'>('contain')
-  const [pages, setPages] = useState('')
+  const [format, setFormat] = useState<'png' | 'jpeg' | 'webp'>(() => savedOption('format', 'png'))
+  const [imageSize, setImageSize] = useState<ImageSize>(() => savedOption('imageSize', 'original'))
+  const [quality, setQuality] = useState(() => savedOption<number>('quality', 90))
+  const [compressTarget, setCompressTarget] = useState<'100' | '200' | '500' | '1000'>(() =>
+    savedOption('compressTarget', '200'),
+  )
+  const [compressFormat, setCompressFormat] = useState<'jpeg' | 'webp'>(() =>
+    savedOption('compressFormat', 'jpeg'),
+  )
+  const [pdfFormat, setPdfFormat] = useState<'png' | 'jpeg'>(() => savedOption('pdfFormat', 'png'))
+  const [pdfLayout, setPdfLayout] = useState<'pages' | 'long'>(() =>
+    savedOption('pdfLayout', 'pages'),
+  )
+  const [mergeSize, setMergeSize] = useState<PdfSheetSize>(() => savedOption('mergeSize', 'a4'))
+  const [mergeOrientation, setMergeOrientation] = useState<'portrait' | 'landscape'>(() =>
+    savedOption('mergeOrientation', 'portrait'),
+  )
+  const [mergeFit, setMergeFit] = useState<'contain' | 'cover'>(() =>
+    savedOption('mergeFit', 'contain'),
+  )
+  const [pages, setPages] = useState(() => savedOption<string>('pages', ''))
+  const [detectNumbers, setDetectNumbers] = useState(() =>
+    savedOption<boolean>('detectNumbers', false),
+  )
   const [tablePaste, setTablePaste] = useState('')
   const [merged, setMerged] = useState<(OutputFile & { url: string }) | null>(null)
-  const [quality, setQuality] = useState(90)
   const [rows, setRows] = useState<Row[]>([])
   const [busy, setBusy] = useState(false)
   const [packing, setPacking] = useState(false)
@@ -96,6 +129,43 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       current.clear()
     }
   }, [])
+  // 参数记忆：选项变化后 300ms 写入本地（只存选项值，不存文件内容）
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveFileOptions(
+        localStorage,
+        {
+          format,
+          imageSize,
+          quality,
+          compressTarget,
+          compressFormat,
+          pdfFormat,
+          pdfLayout,
+          mergeSize,
+          mergeOrientation,
+          mergeFit,
+          pages,
+          detectNumbers,
+        },
+        fileOptionSchema,
+      )
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [
+    format,
+    imageSize,
+    quality,
+    compressTarget,
+    compressFormat,
+    pdfFormat,
+    pdfLayout,
+    mergeSize,
+    mergeOrientation,
+    mergeFit,
+    pages,
+    detectNumbers,
+  ])
   const reset = () => {
     for (const url of urls.current) URL.revokeObjectURL(url)
     urls.current.clear()

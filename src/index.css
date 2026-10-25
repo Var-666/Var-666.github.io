@@ -3297,3 +3297,67 @@ a {
   color: var(--muted-foreground);
   user-select: none;
 }
+
+/* 文本工具：自定义预设 */
+.user-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.user-preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--ink);
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.user-preset-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.user-preset-manager {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+.user-preset-manager h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.user-preset-save {
+  display: flex;
+  gap: 10px;
+}
+.user-preset-save input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--input);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--ink);
+  font: inherit;
+}
+.user-preset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+}
+.user-preset-row > div {
+  display: flex;
+  gap: 6px;
+}
+.user-preset-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}

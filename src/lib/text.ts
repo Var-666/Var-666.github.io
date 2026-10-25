@@ -207,6 +207,29 @@ function repairParagraphs(text: string, mode: RepairMode): { text: string; count
   }
   return { text: output.join(''), count }
 }
+/** 枚举型选项的合法取值；其余键均为布尔 */
+const enumOptionValues: Partial<Record<keyof Options, readonly string[]>> = {
+  blankLines: ['keep', 'single', 'remove'],
+  repairMode: ['conservative', 'standard'],
+}
+
+/** 未知数据 → 合法 Options：只接受已知键与合法取值，其余回退默认；用于读取本地存储的用户数据 */
+export function sanitizeOptions(value: unknown): Options {
+  if (!value || typeof value !== 'object') return { ...baseOptions }
+  const input = value as Record<string, unknown>
+  const merged: Record<string, unknown> = { ...baseOptions }
+  for (const key of Object.keys(baseOptions)) {
+    const allowed = enumOptionValues[key as keyof Options]
+    const incoming = input[key]
+    if (allowed) {
+      if (typeof incoming === 'string' && allowed.includes(incoming)) merged[key] = incoming
+    } else if (typeof incoming === 'boolean') {
+      merged[key] = incoming
+    }
+  }
+  return merged as Options
+}
+
 export function processText(source: string, options: Options): ProcessResult {
   let text = source.replace(/\r\n?/g, '\n').replace(/^\uFEFF/, '')
   const changes: Change[] = []

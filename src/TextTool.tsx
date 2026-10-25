@@ -18,6 +18,7 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Star,
   Trash2,
   Type,
   WandSparkles,
@@ -45,6 +46,12 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { TextBatchOps } from './text-tool/TextBatchOps'
 import {
+  deleteUserPreset,
+  readUserPresets,
+  saveUserPreset,
+  type StoredUserPreset,
+} from './lib/storage'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -56,6 +63,7 @@ import {
   presets,
   baseOptions,
   textStats,
+  sanitizeOptions,
   KEEP_BREAK_MARK,
   type Options,
   type Preset,
@@ -194,6 +202,10 @@ export default function TextTool({ active }: { active: boolean }) {
   const [importing, setImporting] = useState(false)
   const [diff, setDiff] = useState<DiffHunk[] | null>(null)
   const [recordsOpen, setRecordsOpen] = useState(false)
+  const [userPresets, setUserPresets] = useState<StoredUserPreset[]>(() =>
+    readUserPresets(localStorage, Object.keys(presets), sanitizeOptions),
+  )
+  const [presetName, setPresetName] = useState('')
   const sourceOverlay = useRef<HTMLDivElement>(null)
   const resultOverlay = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -291,6 +303,26 @@ export default function TextTool({ active }: { active: boolean }) {
     setSettings((previous) => ({ ...previous, options: { ...previous.options, [key]: value } }))
   const choosePreset = (key: Preset) =>
     setSettings({ preset: key, options: { ...presets[key].options } })
+  const applyUserPreset = (entry: StoredUserPreset) => {
+    setSettings({ preset: entry.preset as Preset, options: sanitizeOptions(entry.options) })
+    toast.success(`已应用自定义预设「${entry.name}」`)
+  }
+  const saveCurrentUserPreset = () => {
+    const name = presetName.trim() || `我的预设 ${userPresets.length + 1}`
+    setUserPresets(
+      saveUserPreset(
+        localStorage,
+        { name, preset, options },
+        Object.keys(presets),
+        sanitizeOptions,
+      ),
+    )
+    setPresetName('')
+    toast.success(`已保存自定义预设「${name}」`)
+  }
+  const removeUserPreset = (id: string) => {
+    setUserPresets(deleteUserPreset(localStorage, id, Object.keys(presets), sanitizeOptions))
+  }
   const replaceSource = (text: string) => {
     fileRequest.current++
     setImporting(false)
@@ -523,6 +555,22 @@ export default function TextTool({ active }: { active: boolean }) {
               )
             })}
           </div>
+          {!!userPresets.length && (
+            <div className="user-presets" aria-label="自定义预设">
+              {userPresets.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className="user-preset-chip"
+                  aria-label={`应用自定义预设 ${entry.name}`}
+                  onClick={() => applyUserPreset(entry)}
+                >
+                  <Star size={12} />
+                  {entry.name}
+                </button>
+              ))}
+            </div>
+          )}
         </section>
         <section id="workspace" className="workbench" aria-label="文本整理工作台">
           <div className="rules-bar">
@@ -1033,6 +1081,47 @@ export default function TextTool({ active }: { active: boolean }) {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
+          </div>
+          <div className="user-preset-manager">
+            <h3>自定义预设</h3>
+            <div className="user-preset-save">
+              <input
+                aria-label="预设名称"
+                placeholder="预设名称，如：日报清理"
+                maxLength={30}
+                value={presetName}
+                onChange={(event) => setPresetName(event.target.value)}
+              />
+              <Button variant="outline" size="sm" onClick={saveCurrentUserPreset}>
+                保存当前规则
+              </Button>
+            </div>
+            {userPresets.map((entry) => (
+              <div className="user-preset-row" key={entry.id}>
+                <span>{entry.name}</span>
+                <div>
+                  <Button variant="outline" size="sm" onClick={() => applyUserPreset(entry)}>
+                    应用
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`删除自定义预设 ${entry.name}`}
+                    onClick={() => {
+                      removeUserPreset(entry.id)
+                      toast.success(`已删除「${entry.name}」`)
+                    }}
+                  >
+                    删除
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {!userPresets.length && (
+              <p className="user-preset-empty">
+                把当前场景与规则组合保存为预设，之后一键应用（只保存规则，不保存正文）。
+              </p>
+            )}
           </div>
           <div className="dialog-footer">
             <Button

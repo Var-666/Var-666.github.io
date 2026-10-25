@@ -1,20 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { unzipSync } from 'fflate'
 
-async function downloadBytes(page: import('@playwright/test').Page): Promise<Buffer> {
-  const link = page.locator('a[download]')
-  await expect(link).toBeVisible()
-  const href = await link.getAttribute('href')
-  const base64 = await page.evaluate(async (url) => {
-    const buffer = await (await fetch(url)).arrayBuffer()
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (const byte of bytes) binary += String.fromCharCode(byte)
-    return btoa(binary)
-  }, href)
-  return Buffer.from(base64, 'base64')
-}
-
 test('批量文件处理：应用当前规则、坏编码隔离、ZIP 内容核对', async ({ page }) => {
   await page.goto('/#/text')
   await expect(page.getByRole('heading', { name: '文本整理' })).toBeVisible()
