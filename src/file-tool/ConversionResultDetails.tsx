@@ -64,6 +64,12 @@ function PdfResultPreview({ file, onError }: { file: File; onError: () => void }
   const holder = useRef<HTMLDivElement>(null)
   const session = useRef<{ loader?: PDFDocumentLoadingTask; task?: RenderTask }>({})
   const errorRef = useRef(onError)
+  // 失败与卸载共用：立即取消渲染、销毁文档并清空引用，不等问题面板关闭
+  const teardown = () => {
+    session.current.task?.cancel()
+    void session.current.loader?.destroy().catch(() => undefined)
+    session.current = {}
+  }
   useEffect(() => {
     errorRef.current = onError
   })
@@ -84,6 +90,7 @@ function PdfResultPreview({ file, onError }: { file: File; onError: () => void }
         if (!cancelled) {
           setFailed('预览生成失败，转换文件本身已生成，可下载后查看。')
           errorRef.current()
+          teardown()
         }
       })
       .finally(() => {
@@ -91,9 +98,7 @@ function PdfResultPreview({ file, onError }: { file: File; onError: () => void }
       })
     return () => {
       cancelled = true
-      session.current.task?.cancel()
-      void session.current.loader?.destroy().catch(() => undefined)
-      session.current = {}
+      teardown()
     }
   }, [file])
   useEffect(() => {
@@ -135,6 +140,7 @@ function PdfResultPreview({ file, onError }: { file: File; onError: () => void }
         if (!(error instanceof Error && error.name === 'RenderingCancelledException')) {
           setFailed('页面渲染失败，转换文件本身已生成，可下载后查看。')
           errorRef.current()
+          teardown()
         }
       } finally {
         if (!cancelled) setLoading(false)
