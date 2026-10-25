@@ -34,3 +34,7 @@ dist-ssr
 
 # Generated local PDF.js resources
 /public/pdf-assets/
+
+# Playwright 本地产物
+playwright-report/
+test-results/

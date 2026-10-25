@@ -38,6 +38,17 @@ export default tseslint.config(
     },
   },
   {
+    // Playwright 端到端测试运行在 Node 侧，不受 react-hooks 规则约束
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+    extends: [],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
+  {
     files: ['public/sw.js'],
     languageOptions: {
       globals: { ...globals.browser, ...globals.serviceworker },

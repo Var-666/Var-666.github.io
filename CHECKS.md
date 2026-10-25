@@ -169,3 +169,19 @@ PDF 断行修复仍为规则推测，复杂排版可能需要人工调整。该�
 - 切换模式：同类别内从 CSV → JSON 切到 Excel → CSV 时队列被清空（chooseMode → reset 路径）。
 - 错误与恢复：重复列名 CSV（订单号、订单号(2)、订单号）在 CSV → JSON 模式被拒——「CSV 列名不能重复。」（`file-text.ts` 既有设计，与本轮改动无关；Excel → JSON 则是加序号去重，两条路径语义不一致，留作后续统一决策）；损坏 xlsx 报「无法读取 Excel 文件…」；149 字节、中央目录声明 256 MB+1 的伪造 zip 即时报「文件解压后超过 256 MB…」（解压预检查在 UI 端到端生效，未加载 SheetJS）；移除问题文件后重新导入正常工作簿可继续转换（恢复闭环）。
 - 未覆盖：图片 / Word / PDF 模式（本轮聚焦表格与错误路径）、真实拖拽与剪贴板粘贴事件、Safari / Firefox 与真实手机。
+
+## 质量基线：可重复回归与稳定版标准 · 2026-10-25
+
+把上一节的手工浏览器回归沉淀为可重复执行的 Playwright 套件并接入 CI；统一表头语义；PDF 资源释放完成全路径复查。全站 124 项单测、4 项 e2e、tsc、lint、format、build 通过。
+
+- Playwright 端到端：新增 `e2e/file-tool.spec.ts` 4 项用例——CSV → JSON 重复表头去重并在队列提示、Excel → CSV 工作表选择 / 精度提示 / 导出内容核对 / 切表后旧下载失效、损坏文件与压缩炸弹即拒绝且移除后可恢复、切换转换方式清空队列。夹具全部内存构造（xlsx 用 SheetJS 生成、炸弹只伪造中央目录声明大小），下载内容经页内 fetch(blob) 逐字节断言。`npm run test:e2e` 运行，webServer 自动构建并以 vite preview 服务产物；本地 4/4 通过约 6 秒。
+- CI 门禁：deploy.yml 新增 e2e job（npm ci → `playwright install --with-deps chromium` → `playwright test`，失败上传报告工件），Pages 发布依赖 e2e 通过。lint 范围纳入 e2e 与 playwright.config.ts。
+- 表头语义统一：`uniqueHeaders` 下沉至 file-text.ts（file-excel 已依赖 file-text，反向会造成循环依赖），CSV → JSON 从「列名不能重复」硬拒绝改为与 Excel → JSON 完全一致——空表头按「列N」、重复表头取首个空闲序号后缀、原始表头一律保留原名；`convertFileText` 返回 `{ text, notices }`，处理提示显示在文件队列行下方，csv-json 模式说明同步更新；行数与表头不一致仍拒绝。
+- PDF 资源释放复查（结论：无剩余缺口）：`pdfToWord` / `pdfToImages` 在 finally 中 destroy 任务并清零画布；PdfTool 加载失败即销毁、移除页面销毁对应任务、卸载全量清理；PdfPreview 渲染失败清理 canvas；转换结果预览失败即 teardown（上一轮修复）。
+- 稳定版完成标准（每个工具全部达标即称稳定版，不再无限打磨）：
+  1. 正常输入处理正确，单元 + 端到端回归覆盖关键路径；
+  2. 错误输入有可理解的提示，且不阻断后续操作（可移除、可重试）；
+  3. 导出文件与预览一致（下载内容逐字节核对，而非仅核对链接出现）；
+  4. 连续操作不残留旧结果、不泄漏资源（对象 URL / worker / canvas / PDF 任务生命周期）；
+  5. 桌面 Chromium 自动化通过，Safari / Firefox / 真实手机对核心流程至少人工核对一次。
+- 当前缺口（如实记录）：第 5 条的 Safari / Firefox / 真实手机与断网启动未系统验证；文本 / PDF 整理 / 批量重命名尚无 Playwright 用例（文件转换先行，作为模板）；压缩包防护按声明大小拦截，恶意低报元数据的边界已注释声明，不视为绝对安全。
