@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
+import { deflateSync } from 'node:zlib'
 
 // 夹具全部在内存中构造：xlsx 用项目内 SheetJS 生成，压缩炸弹只伪造中央目录声明的解压大小
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -44,6 +45,57 @@ async function downloadText(page: Page): Promise<{ name: string; text: string }>
   // blob URL 直接在页面里取回，核对下载内容而不仅是链接出现
   const text = await page.evaluate(async (url) => await (await fetch(url)).text(), href)
   return { name, text }
+}
+
+async function downloadBytes(page: Page): Promise<{ name: string; size: number }> {
+  const link = page.locator('a[download]')
+  await expect(link).toBeVisible()
+  const href = await link.getAttribute('href')
+  const name = (await link.getAttribute('download')) ?? ''
+  const size = await page.evaluate(
+    async (url) => (await (await fetch(url)).arrayBuffer()).byteLength,
+    href,
+  )
+  return { name, size }
+}
+
+// 内存构造一张确定性伪噪声 PNG（难以压缩，保证压缩流程有实际工作量）
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
+  let c = n
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+  return c >>> 0
+})
+function pngChunk(type: string, data: Buffer): Buffer {
+  const body = Buffer.concat([Buffer.from(type, 'ascii'), data])
+  let crc = 0xffffffff
+  for (const byte of body) crc = CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8)
+  const length = Buffer.alloc(4)
+  length.writeUInt32BE(data.length)
+  const checksum = Buffer.alloc(4)
+  checksum.writeUInt32BE((crc ^ 0xffffffff) >>> 0)
+  return Buffer.concat([length, body, checksum])
+}
+function buildNoisyPng(width = 320, height = 320): Buffer {
+  const stride = width * 3 + 1
+  const raw = Buffer.alloc(stride * height)
+  let seed = 0x2f6e2b1
+  for (let y = 0; y < height; y++) {
+    for (let x = 1; x < stride; x++) {
+      seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff
+      raw[y * stride + x] = (seed >>> 16) & 0xff
+    }
+  }
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(width, 0)
+  ihdr.writeUInt32BE(height, 4)
+  ihdr[8] = 8 // 位深
+  ihdr[9] = 2 // 8 位 RGB
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', deflateSync(raw, { level: 6 })),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ])
 }
 
 test.beforeEach(async ({ page }) => {
@@ -96,6 +148,22 @@ test('损坏文件与压缩炸弹被即拒绝，移除后可恢复转换', async
   await expect(page.getByRole('combobox', { name: '选择工作表' })).toContainText('明细')
   await page.getByRole('button', { name: '开始转换' }).click()
   expect((await downloadText(page)).name).toBe('数据-明细.csv')
+})
+
+test('图片压缩：指定目标大小，输出真实达标并显示前后对比', async ({ page }) => {
+  await page.getByRole('button', { name: '图片压缩' }).click()
+  await page.getByRole('combobox', { name: '目标大小' }).click()
+  await page.getByRole('option', { name: '100 KB' }).click()
+  const png = buildNoisyPng()
+  await upload(page, '噪声.png', png, 'image/png')
+  await page.getByRole('button', { name: '开始转换' }).click()
+  const { name, size } = await downloadBytes(page)
+  expect(name).toBe('噪声.jpg')
+  expect(size).toBeGreaterThan(0)
+  expect(size).toBeLessThanOrEqual(100 * 1024)
+  await expect(
+    page.locator('.matrix-notice').filter({ hasText: /KB → .* · 320×320 · 质量 \d+%/ }),
+  ).toBeVisible()
 })
 
 test('切换转换方式清空队列并复位按钮', async ({ page }) => {

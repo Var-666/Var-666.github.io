@@ -14,7 +14,14 @@ export const modes = {
     title: '图片 → PDF',
     accept: '.png,.jpg,.jpeg,.webp',
     hint: 'PNG / JPG / WebP · 单张 20 MB，最多 2400 万像素',
-    note: '按队列顺序，每张图片一页 A4，四周留白、透明背景填白；按 144 DPI 上限缩放，使用 JPG 编码。可拖动或用箭头排序。',
+    note: '按队列顺序，每张图片一页，页面尺寸可选 A4 / A3 / Letter、纵向或横向，适配方式可选完整显示（留白）或填满页面（超出部分不可见）；透明背景填白，按 144 DPI 上限缩放并使用 JPG 编码。可拖动或用箭头排序。',
+  },
+  'image-compress': {
+    category: 'image',
+    title: '图片压缩',
+    accept: '.png,.jpg,.jpeg,.webp',
+    hint: 'PNG / JPG / WebP · 单张 20 MB，最多 2400 万像素',
+    note: '指定目标大小（如 100 KB）：优先降低编码质量，仍超限时按比例缩小尺寸（最低到原图 25%）；无法达标时如实显示实际大小，不会假装成功。JPG 透明区域填白；输出为 JPG 或 WebP。',
   },
   markdown: {
     category: 'text',

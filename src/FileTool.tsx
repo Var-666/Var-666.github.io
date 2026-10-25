@@ -41,15 +41,22 @@ import {
 } from './lib/file-excel'
 
 import { imagesToPdf, packOutputs, pdfToImages } from './lib/file-media'
-import type { ImageSize } from './lib/media-options'
+import { compressImageFile } from './lib/image-compress'
+import type { ImageSize, PdfSheetSize } from './lib/media-options'
 import { Textarea } from '@/components/ui/textarea'
 import { categories, modeKeys, modes, type Mode } from './file-tool/modes'
 import { sizeLabel, type Row } from './file-tool/types'
 import { FileQueue } from './file-tool/FileQueue'
 import { CsvExcelPreview, ExcelPreview } from './file-tool/ExcelPreview'
 
+// 首页任务入口通过 #/files?mode=xxx 直达具体转换方式；非法值回退默认图片互转
+const modeFromHash = (): Mode | null => {
+  const param = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('mode')
+  return param && modeKeys.includes(param as Mode) ? (param as Mode) : null
+}
+
 export default function FileTool({ active = true }: { active?: boolean }) {
-  const [mode, setMode] = useState<Mode>('image')
+  const [mode, setMode] = useState<Mode>(() => modeFromHash() ?? 'image')
   const isExcelRead = mode === 'excel-csv' || mode === 'excel-json' || mode === 'excel-md'
   const [excel, setExcel] = useState<{ file: File; workbook: WorkbookData } | null>(null)
   const [sheetName, setSheetName] = useState('')
@@ -61,8 +68,13 @@ export default function FileTool({ active = true }: { active?: boolean }) {
   } | null>(null)
   const [format, setFormat] = useState<'png' | 'jpeg' | 'webp'>('png')
   const [imageSize, setImageSize] = useState<ImageSize>('original')
+  const [compressTarget, setCompressTarget] = useState<'100' | '200' | '500' | '1000'>('200')
+  const [compressFormat, setCompressFormat] = useState<'jpeg' | 'webp'>('jpeg')
   const [pdfFormat, setPdfFormat] = useState<'png' | 'jpeg'>('png')
   const [pdfLayout, setPdfLayout] = useState<'pages' | 'long'>('pages')
+  const [mergeSize, setMergeSize] = useState<PdfSheetSize>('a4')
+  const [mergeOrientation, setMergeOrientation] = useState<'portrait' | 'landscape'>('portrait')
+  const [mergeFit, setMergeFit] = useState<'contain' | 'cover'>('contain')
   const [pages, setPages] = useState('')
   const [tablePaste, setTablePaste] = useState('')
   const [merged, setMerged] = useState<(OutputFile & { url: string }) | null>(null)
@@ -100,6 +112,17 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       setMode(next)
     }
   }
+  // 从首页任务入口带着 ?mode= 返回本工具时应用一次深链（工具已挂载、hash 变化不触发重建）
+  useEffect(() => {
+    if (!active) return
+    const next = modeFromHash()
+    if (next && next !== mode && !running.current && !packing) {
+      reset()
+      setMode(next)
+    }
+    // 仅在进入工具时读取一次地址参数，不追踪 mode/running/packing
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active])
   const clearOutputs = () => {
     setMerged(null)
     for (const url of urls.current) URL.revokeObjectURL(url)
@@ -162,7 +185,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     ])
   }
   useEffect(() => {
-    if (!active || (mode !== 'image' && mode !== 'image-pdf')) return
+    if (!active || (mode !== 'image' && mode !== 'image-pdf' && mode !== 'image-compress')) return
     const pasted = (event: ClipboardEvent) => {
       if (
         event.target instanceof HTMLElement &&
@@ -290,6 +313,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
               if (mounted.current)
                 setRows((previous) => previous.map((row) => ({ ...row, message })))
             },
+            { size: mergeSize, orientation: mergeOrientation, fit: mergeFit },
           )
           if (output.blob.size > 100 * 1024 * 1024)
             throw new Error('输出超过 100 MB，请减少图片数量。')
@@ -331,7 +355,20 @@ export default function FileTool({ active = true }: { active?: boolean }) {
           let rowNotices: string[] | undefined
           if (mode === 'image')
             output = await convertImage(row.file, format, quality / 100, imageSize)
-          else if (mode === 'pdf-image')
+          else if (mode === 'image-compress') {
+            const compressed = await compressImageFile(row.file, {
+              targetBytes: Number(compressTarget) * 1024,
+              format: compressFormat,
+              size: imageSize,
+            })
+            output = compressed
+            rowNotices = [
+              `${sizeLabel(compressed.originalBytes)} → ${sizeLabel(compressed.blob.size)} · ${compressed.width}×${compressed.height} · 质量 ${Math.round(compressed.quality * 100)}%` +
+                (compressed.metTarget
+                  ? ''
+                  : `；未能压到 ${compressTarget} KB，以上为可达成的最小结果`),
+            ]
+          } else if (mode === 'pdf-image')
             output = await pdfToImages(
               row.file,
               { pages, format: pdfFormat, layout: pdfLayout },
@@ -602,6 +639,133 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                 </div>
               )}
             </div>
+            {mode === 'image-compress' && (
+              <div className="image-options">
+                <label>
+                  目标大小
+                  <Select
+                    disabled={busy || packing}
+                    value={compressTarget}
+                    onValueChange={(value) => {
+                      clearOutputs()
+                      setCompressTarget(value as typeof compressTarget)
+                    }}
+                  >
+                    <SelectTrigger aria-label="目标大小">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="100">100 KB</SelectItem>
+                      <SelectItem value="200">200 KB</SelectItem>
+                      <SelectItem value="500">500 KB</SelectItem>
+                      <SelectItem value="1000">1 MB</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label>
+                  输出格式
+                  <Select
+                    disabled={busy || packing}
+                    value={compressFormat}
+                    onValueChange={(value) => {
+                      clearOutputs()
+                      setCompressFormat(value as typeof compressFormat)
+                    }}
+                  >
+                    <SelectTrigger aria-label="压缩输出格式">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="jpeg">JPG</SelectItem>
+                      <SelectItem value="webp">WebP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label>
+                  尺寸上限
+                  <Select
+                    disabled={busy || packing}
+                    value={imageSize}
+                    onValueChange={(value) => {
+                      clearOutputs()
+                      setImageSize(value as ImageSize)
+                    }}
+                  >
+                    <SelectTrigger aria-label="尺寸上限">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="original">原尺寸</SelectItem>
+                      <SelectItem value="1920">宽度 ≤ 1920</SelectItem>
+                      <SelectItem value="1280">宽度 ≤ 1280</SelectItem>
+                      <SelectItem value="half">缩放 50%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+              </div>
+            )}
+            {mode === 'image-pdf' && (
+              <div className="image-options pdf-options">
+                <label>
+                  页面尺寸
+                  <Select
+                    disabled={busy || packing}
+                    value={mergeSize}
+                    onValueChange={(value) => {
+                      clearOutputs()
+                      setMergeSize(value as PdfSheetSize)
+                    }}
+                  >
+                    <SelectTrigger aria-label="页面尺寸">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="a4">A4（210 × 297 mm）</SelectItem>
+                      <SelectItem value="a3">A3（297 × 420 mm）</SelectItem>
+                      <SelectItem value="letter">Letter（215.9 × 279.4 mm）</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label>
+                  方向
+                  <Select
+                    disabled={busy || packing}
+                    value={mergeOrientation}
+                    onValueChange={(value) => {
+                      clearOutputs()
+                      setMergeOrientation(value as typeof mergeOrientation)
+                    }}
+                  >
+                    <SelectTrigger aria-label="页面方向">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="portrait">纵向</SelectItem>
+                      <SelectItem value="landscape">横向</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label>
+                  适配
+                  <Select
+                    disabled={busy || packing}
+                    value={mergeFit}
+                    onValueChange={(value) => {
+                      clearOutputs()
+                      setMergeFit(value as typeof mergeFit)
+                    }}
+                  >
+                    <SelectTrigger aria-label="图片适配">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="contain">完整显示（留白）</SelectItem>
+                      <SelectItem value="cover">填满页面</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+              </div>
+            )}
             {mode === 'pdf-image' && (
               <div className="image-options pdf-options">
                 <label>
