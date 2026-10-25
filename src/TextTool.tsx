@@ -43,6 +43,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { TextBatchOps } from './text-tool/TextBatchOps'
 import {
   Select,
   SelectContent,
@@ -949,6 +950,7 @@ export default function TextTool({ active }: { active: boolean }) {
             </>
           )}
         </section>
+        <TextBatchOps source={source} onApply={replaceSource} processOptions={options} />
       </main>
       <input
         type="file"
