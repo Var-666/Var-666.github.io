@@ -14,6 +14,7 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
 test('首页：工具卡片单列可达，任务入口完整显示', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: '全部工具' })).toBeVisible()
+  await page.getByRole('button', { name: '更多任务', exact: true }).click()
   await expect(page.getByRole('link', { name: /比较两份表格差异/ })).toBeVisible()
   for (const title of [
     '文本整理',
@@ -37,7 +38,7 @@ test('文件工具：压缩模式选项换行展示，队列长文件名不断�
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     'base64',
   )
-  await page.setInputFiles('input[type=file]', {
+  await page.setInputFiles('input[aria-label="选择待转换文件"]', {
     name: '一个特别特别特别长的中文文件名用来测试换行行为是否正常.png',
     mimeType: 'image/png',
     buffer: png,

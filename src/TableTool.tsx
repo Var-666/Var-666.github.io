@@ -1,3 +1,4 @@
+import { useTransferReceiver } from './lib/tool-transfer'
 import { TextEncodingSelect } from './components/TextEncodingSelect'
 import { readTextFile, type TextEncoding, type DecodedText } from './lib/text-encoding'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -57,13 +58,12 @@ export default function TableTool({ active }: { active: boolean }) {
   const urls = useRef(new Set<string>())
 
   useEffect(() => {
-    if (!active) return
     const current = urls.current
     return () => {
       for (const url of current) URL.revokeObjectURL(url)
       current.clear()
     }
-  }, [active])
+  }, [])
 
   const headers = useMemo(() => tables[0]?.headers ?? [], [tables])
   const addFiles = async (files: File[]) => {
@@ -101,6 +101,9 @@ export default function TableTool({ active }: { active: boolean }) {
     }
   }
 
+  useTransferReceiver('table', active && !busy, (request) => {
+    void addFiles(request.files ?? [])
+  })
   // 选项列取「已选列；不在当前表头时回退第一列」，UI 显示与实际处理使用同一取值
   const effectiveDedupeColumn = headers.includes(dedupeColumn) ? dedupeColumn : (headers[0] ?? '')
   const effectiveFilterColumn = headers.includes(filterColumn) ? filterColumn : (headers[0] ?? '')

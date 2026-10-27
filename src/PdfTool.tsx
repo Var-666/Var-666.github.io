@@ -1,3 +1,4 @@
+import { useTransferReceiver } from './lib/tool-transfer'
 import { useEffect, useRef, useState } from 'react'
 import type { PDFDocument } from 'pdf-lib'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
@@ -264,6 +265,9 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
       }
     }
   }
+  useTransferReceiver('pdf', active && !busy, (request) => {
+    void addFiles(request.files ?? [])
+  })
   const move = (id: string, to: number) => {
     if (running.current || to < 0 || to >= pages.length) return
     const next = [...pages]

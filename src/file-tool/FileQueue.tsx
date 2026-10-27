@@ -1,3 +1,4 @@
+import { ContinueWith } from '@/components/ContinueWith'
 // 转换文件队列：排序（图片合并模式）、逐文件状态、下载、移除与结果详情开关
 import { useRef } from 'react'
 import {
@@ -127,6 +128,13 @@ export function FileQueue({
               >
                 {row.showDetail ? '收起详情' : '结果详情'}
               </Button>
+            )}
+            {row.output && (
+              <ContinueWith
+                outputs={[row.output]}
+                text={row.detail?.kind === 'text' ? row.detail.text : undefined}
+                disabled={busy || packing}
+              />
             )}
             {row.output && (
               <Button variant="outline" size="sm" asChild>

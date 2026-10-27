@@ -1,3 +1,5 @@
+import { useTransferReceiver, type ToolTransfer } from './lib/tool-transfer'
+import { ConfirmImport } from './components/ConfirmImport'
 import { TextEncodingSelect } from './components/TextEncodingSelect'
 import { readTextFile, type TextEncoding, type DecodedText } from './lib/text-encoding'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -57,6 +59,10 @@ function matrixFromRows(name: string, rows: string[][]): TableMatrix {
 }
 
 export default function CompareTool({ active }: { active: boolean }) {
+  const [incomingTransfer, setIncomingTransfer] = useState<ToolTransfer | null>(null)
+  useEffect(() => {
+    if (!active) setIncomingTransfer(null)
+  }, [active])
   const [left, setLeft] = useState<SideState>(emptySide)
   const [right, setRight] = useState<SideState>(emptySide)
   const [keyColumn, setKeyColumn] = useState('')
@@ -69,13 +75,12 @@ export default function CompareTool({ active }: { active: boolean }) {
   const urls = useRef(new Set<string>())
 
   useEffect(() => {
-    if (!active) return
     const current = urls.current
     return () => {
       for (const url of current) URL.revokeObjectURL(url)
       current.clear()
     }
-  }, [active])
+  }, [])
 
   const loadFile = async (
     side: Side,
@@ -109,6 +114,21 @@ export default function CompareTool({ active }: { active: boolean }) {
     }
   }
 
+  const applyTransfer = async (request: ToolTransfer) => {
+    const files = request.files ?? []
+    if (files.length > 1) {
+      await loadFile('left', files[0])
+      await loadFile('right', files[1])
+    } else await loadFile(!left.file ? 'left' : !right.file ? 'right' : 'left', files[0])
+  }
+  useTransferReceiver('compare', active && !busy && !incomingTransfer, (request) => {
+    if (
+      ((request.files?.length ?? 0) > 1 && (left.file || right.file)) ||
+      (left.file && right.file)
+    )
+      setIncomingTransfer(request)
+    else void applyTransfer(request)
+  })
   const selectSheet = (side: Side, sheetName: string) => {
     const patch = (next: Partial<SideState>) =>
       side === 'left' ? setLeft((p) => ({ ...p, ...next })) : setRight((p) => ({ ...p, ...next }))
@@ -270,6 +290,19 @@ export default function CompareTool({ active }: { active: boolean }) {
 
   return (
     <main className="main-content compare-tool">
+      <ConfirmImport
+        open={active && !!incomingTransfer}
+        description={
+          incomingTransfer?.files?.length === 1
+            ? '旧表将被新文件替换，新表保留。'
+            : '当前两份表格与未下载结果将被新任务替换。'
+        }
+        onCancel={() => setIncomingTransfer(null)}
+        onAccept={() => {
+          if (incomingTransfer) void applyTransfer(incomingTransfer)
+          setIncomingTransfer(null)
+        }}
+      />
       <section className="intro">
         <h1>表格对比</h1>
       </section>

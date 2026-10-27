@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { ToolTransferProvider } from './ToolTransferProvider'
 import { migrateStorage } from './lib/storage'
 import './index.css'
 import { installPreloadRecovery } from './lib/preload-recovery'
@@ -11,7 +12,9 @@ migrateStorage(window.localStorage)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <ToolTransferProvider>
+      <App />
+    </ToolTransferProvider>
   </React.StrictMode>,
 )
 

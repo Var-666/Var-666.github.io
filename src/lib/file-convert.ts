@@ -71,16 +71,12 @@ export async function openPdf(file: File) {
   })
 }
 
-export async function pdfToWord(
-  file: File,
-  progress: (message: string) => void,
-): Promise<PdfToWordResult> {
+export async function pdfToText(file: File, progress: (message: string) => void) {
   const task = await openPdf(file)
   try {
     const pdf = await task.promise
     if (pdf.numPages > 50) throw new Error('一次最多转换 50 页 PDF，请先拆分。')
-    const { Document, Packer, Paragraph, PageBreak, TextRun } = await import('docx')
-    const paragraphs = []
+    const pageLines: string[][] = []
     const pageTexts: string[] = []
     let total = 0
     let emptyPages = 0
@@ -90,7 +86,6 @@ export async function pdfToWord(
       const content = await pdfPage.getTextContent()
       let line = ''
       let pageText = ''
-      if (page > 1) paragraphs.push(new Paragraph({ children: [new PageBreak()] }))
       for (const item of content.items) {
         if (!('str' in item)) continue
         line += item.str
@@ -102,8 +97,7 @@ export async function pdfToWord(
       pageText += line
       if (!pageText.trim()) emptyPages++
       pageTexts.push(pageText.trim())
-      for (const value of pageText.split('\n'))
-        paragraphs.push(new Paragraph({ children: [new TextRun(value)] }))
+      pageLines.push(pageText.split('\n'))
       total += pageText.trim().length
       if (total > 1_000_000) throw new Error('PDF 文字量超过 100 万字符，请拆分后转换。')
       pdfPage.cleanup()
@@ -113,13 +107,11 @@ export async function pdfToWord(
       throw new Error(
         `有 ${emptyPages} 页没有可提取文字，可能含扫描页。为避免遗漏，请先用 OCR 处理后再转换。`,
       )
-    const blob = await Packer.toBlob(new Document({ sections: [{ children: paragraphs }] }))
     return {
-      blob,
-      name: outputName(file.name, 'docx'),
       pages: pdf.numPages,
       chars: total,
-      paragraphs: paragraphs.length - (pdf.numPages - 1),
+      paragraphs: pageLines.reduce((sum, lines) => sum + lines.length, 0),
+      pageLines,
       text: pageTexts.join('\n\n'),
     }
   } catch (error) {
@@ -128,6 +120,27 @@ export async function pdfToWord(
     throw error
   } finally {
     await task.destroy()
+  }
+}
+
+export async function pdfToWord(
+  file: File,
+  progress: (message: string) => void,
+): Promise<PdfToWordResult> {
+  const extracted = await pdfToText(file, progress)
+  const { Document, Packer, Paragraph, PageBreak, TextRun } = await import('docx')
+  const paragraphs = extracted.pageLines.flatMap((lines, index) => [
+    ...(index ? [new Paragraph({ children: [new PageBreak()] })] : []),
+    ...lines.map((line) => new Paragraph({ children: [new TextRun(line)] })),
+  ])
+  const blob = await Packer.toBlob(new Document({ sections: [{ children: paragraphs }] }))
+  return {
+    blob,
+    name: outputName(file.name, 'docx'),
+    pages: extracted.pages,
+    chars: extracted.chars,
+    paragraphs: extracted.paragraphs,
+    text: extracted.text,
   }
 }
 

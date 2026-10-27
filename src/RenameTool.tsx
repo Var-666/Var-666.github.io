@@ -1,3 +1,4 @@
+import { useTransferReceiver } from './lib/tool-transfer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDown,
@@ -90,6 +91,9 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
       ...incoming.map((file) => ({ id: crypto.randomUUID(), file })),
     ])
   }
+  useTransferReceiver('rename', active && !packing, (request) => {
+    void addFiles(request.files ?? [])
+  })
   const move = (index: number, offset: number) => {
     if (running.current || index + offset < 0 || index + offset >= files.length) return
     invalidate()

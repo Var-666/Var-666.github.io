@@ -34,7 +34,7 @@ const dupHeadersCsv = Buffer.from(
 )
 
 async function upload(page: Page, name: string, buffer: Buffer, mimeType: string) {
-  await page.setInputFiles('input[type=file]', { name, mimeType, buffer })
+  await page.setInputFiles('input[aria-label="选择待转换文件"]', { name, mimeType, buffer })
 }
 
 async function downloadText(page: Page): Promise<{ name: string; text: string }> {

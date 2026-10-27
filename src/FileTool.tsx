@@ -1,3 +1,6 @@
+import { useToolTransfer, useTransferReceiver, type ToolTransfer } from './lib/tool-transfer'
+import { ConfirmImport } from './components/ConfirmImport'
+import { ContinueWith } from './components/ContinueWith'
 import { readTextFile, encodingNotices, type TextEncoding } from './lib/text-encoding'
 import { TextEncodingSelect } from './components/TextEncodingSelect'
 import { useEffect, useRef, useState } from 'react'
@@ -76,6 +79,11 @@ const modeFromHash = (): Mode | null => {
 }
 
 export default function FileTool({ active = true }: { active?: boolean }) {
+  const transfers = useToolTransfer()
+  const [incomingTransfer, setIncomingTransfer] = useState<ToolTransfer | null>(null)
+  useEffect(() => {
+    if (!active) setIncomingTransfer(null)
+  }, [active])
   const savedOptions = useRef(readFileOptions(localStorage, fileOptionSchema))
   const savedOption = <K extends string | number | boolean>(key: string, fallback: K): K =>
     (savedOptions.current[key] as K | undefined) ?? fallback
@@ -183,19 +191,9 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     if (next !== mode && !running.current && !packing) {
       reset()
       setMode(next)
+      window.history.replaceState(null, '', `#/files?mode=${next}`)
     }
   }
-  // 从首页任务入口带着 ?mode= 返回本工具时应用一次深链（工具已挂载、hash 变化不触发重建）
-  useEffect(() => {
-    if (!active) return
-    const next = modeFromHash()
-    if (next && next !== mode && !running.current && !packing) {
-      reset()
-      setMode(next)
-    }
-    // 仅在进入工具时读取一次地址参数，不追踪 mode/running/packing
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active])
   const clearOutputs = () => {
     setMerged(null)
     for (const url of urls.current) URL.revokeObjectURL(url)
@@ -257,6 +255,60 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       ...files.map((file) => ({ id: crypto.randomUUID(), file, status: 'waiting' as const })),
     ])
   }
+  const applyTransfer = (request: ToolTransfer) => {
+    const next = request.mode ?? mode,
+      files = request.files ?? []
+    if (next === mode) {
+      addFiles(files)
+      return
+    }
+    try {
+      const limit =
+        modes[next].category === 'image' ? 20 : modes[next].category === 'office' ? 10 : 2
+      validateQueueFiles([], files, modes[next].accept, limit)
+      if (next.startsWith('excel-') && files.length > 1) throw new Error('一次转换一个工作簿。')
+      reset()
+      setMode(next)
+      setRows(files.map((file) => ({ id: crypto.randomUUID(), file, status: 'waiting' })))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '文件无法导入')
+    }
+  }
+  useTransferReceiver('files', active && !busy && !packing && !incomingTransfer, (request) => {
+    if (request.mode && request.mode !== mode && rows.length) setIncomingTransfer(request)
+    else applyTransfer(request)
+  })
+  useEffect(() => {
+    const changed = () => {
+      if (
+        !active ||
+        !/^#\/?files(?:\?|$)/.test(window.location.hash) ||
+        transfers?.pending?.target === 'files' ||
+        incomingTransfer
+      )
+        return
+      const next = modeFromHash()
+      if (!next || next === mode) return
+      if (running.current || packing) {
+        toast.info('正在处理，请完成后再切换转换方式')
+        window.history.replaceState(null, '', `#/files?mode=${mode}`)
+        return
+      }
+      const request: ToolTransfer = {
+        id: crypto.randomUUID(),
+        target: 'files',
+        mode: next,
+        files: [],
+      }
+      if (rows.length) setIncomingTransfer(request)
+      else applyTransfer(request)
+    }
+    changed()
+    window.addEventListener('hashchange', changed)
+    return () => window.removeEventListener('hashchange', changed)
+    // Re-check URL intent on route/readiness changes, not on unrelated queue previews.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, mode, rows.length, busy, packing, transfers?.pending?.id, incomingTransfer])
   useEffect(() => {
     if (!active || (mode !== 'image' && mode !== 'image-pdf' && mode !== 'image-compress')) return
     const pasted = (event: ClipboardEvent) => {
@@ -608,6 +660,18 @@ export default function FileTool({ active = true }: { active?: boolean }) {
   const done = rows.filter((row) => row.status === 'done').length
   return (
     <main className="main-content file-tool">
+      <ConfirmImport
+        open={active && !!incomingTransfer}
+        description="切换转换方式会替换当前文件队列和未下载结果。"
+        onCancel={() => {
+          setIncomingTransfer(null)
+          window.location.hash = `#/files?mode=${mode}`
+        }}
+        onAccept={() => {
+          if (incomingTransfer) applyTransfer(incomingTransfer)
+          setIncomingTransfer(null)
+        }}
+      />
       <section className="intro">
         <h1>文件格式转换</h1>
       </section>
@@ -1041,6 +1105,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                     下载 PDF
                   </a>
                 </Button>
+                <ContinueWith outputs={[merged]} disabled={busy || packing} />
               </div>
             )}
             <div className="conversion-actions">
@@ -1049,6 +1114,12 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                 清空
               </Button>
               <div>
+                {done > 1 && mode !== 'image-pdf' && (
+                  <ContinueWith
+                    outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
+                    disabled={busy || packing}
+                  />
+                )}
                 {done > 1 && mode !== 'image-pdf' && (
                   <Button variant="outline" disabled={busy || packing} onClick={zip}>
                     {packing ? (

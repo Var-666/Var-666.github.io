@@ -1,3 +1,4 @@
+import { useTransferReceiver } from './lib/tool-transfer'
 import { readTextFile, type TextEncoding, type DecodedText } from './lib/text-encoding'
 import { TextEncodingSelect } from './components/TextEncodingSelect'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
@@ -296,7 +297,12 @@ export default function TextTool({ active }: { active: boolean }) {
   }, [settings])
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
-      if (active && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      if (
+        active &&
+        event.shiftKey &&
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === 'k'
+      ) {
         event.preventDefault()
         setAdvancedOpen((value) => !value)
       }
@@ -394,6 +400,38 @@ export default function TextTool({ active }: { active: boolean }) {
       if (id === fileRequest.current) setImporting(false)
     }
   }
+  useTransferReceiver('text', active && !importing, (request) => {
+    if (request.preset) choosePreset(request.preset)
+    if (request.text !== undefined) {
+      if (replaceSource(request.text)) toast.success('已接收文字，可撤销返回原文')
+      return
+    }
+    const file = request.files?.[0]
+    if (!file) return
+    if (!/\.pdf$/i.test(file.name)) {
+      void importFile(file)
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('PDF 单个不超过 10 MB')
+      return
+    }
+    const id = ++fileRequest.current
+    setImporting(true)
+    void import('./lib/file-convert')
+      .then((module) => module.pdfToText(file, () => {}))
+      .then((result) => {
+        if (id === fileRequest.current && replaceSource(result.text))
+          toast.success('已提取 PDF 文字，可继续修复断行')
+      })
+      .catch((error) => {
+        if (id === fileRequest.current)
+          toast.error(error instanceof Error ? error.message : 'PDF 文字提取失败')
+      })
+      .finally(() => {
+        if (id === fileRequest.current) setImporting(false)
+      })
+  })
   const paste = async () => {
     const id = ++fileRequest.current
     setImporting(false)
@@ -718,7 +756,7 @@ export default function TextTool({ active }: { active: boolean }) {
             >
               <Settings2 size={14} />
               <span>全部设置</span>
-              <span className="shortcut">⌘ K</span>
+              <span className="shortcut">⌘ ⇧ K</span>
             </Button>
           </div>
           <Tabs value={mobileTab} onValueChange={setMobileTab} className="mobile-tabs">
@@ -1027,7 +1065,12 @@ export default function TextTool({ active }: { active: boolean }) {
             </>
           )}
         </section>
-        <TextBatchOps source={source} onApply={replaceSource} processOptions={options} />
+        <TextBatchOps
+          active={active}
+          source={source}
+          onApply={replaceSource}
+          processOptions={options}
+        />
       </main>
       <input
         type="file"

@@ -1,3 +1,4 @@
+import { useTransferReceiver } from '@/lib/tool-transfer'
 import { TextEncodingSelect } from '@/components/TextEncodingSelect'
 import type { TextEncoding } from '@/lib/text-encoding'
 // 文本「更多操作」：批量替换、列表处理、格式转换与批量文件处理。
@@ -54,10 +55,12 @@ const clip = (text: string) =>
     : text
 
 export function TextBatchOps({
+  active = true,
   source,
   onApply,
   processOptions,
 }: {
+  active?: boolean
   source: string
   /** 返回是否写入成功（超长会被拒绝） */
   onApply: (text: string) => boolean
@@ -118,6 +121,28 @@ export function TextBatchOps({
     if (onApply(text)) toast.success(`已应用到原文：${label}`)
   }
 
+  const addBatchFiles = (incoming: File[]) => {
+    try {
+      validateBatchTextFiles(batchItems.length, incoming)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '文件无法添加')
+      return
+    }
+    setBatchItems((previous) => [
+      ...previous,
+      ...incoming.map((file) => ({
+        id: crypto.randomUUID(),
+        name: file.name,
+        status: 'waiting' as const,
+        originalBytes: file.size,
+      })),
+    ])
+    batchFiles.current.push(...incoming)
+  }
+  useTransferReceiver('text-batch', active && !batchRunning, (request) => {
+    setOpen(true)
+    addBatchFiles(request.files ?? [])
+  })
   return (
     <section className="text-ops" aria-label="更多操作">
       <button
@@ -388,23 +413,8 @@ export function TextBatchOps({
                   className="sr-only"
                   aria-label="添加批量文本文件"
                   onChange={(event) => {
-                    const incoming = Array.from(event.target.files || [])
-                    try {
-                      validateBatchTextFiles(batchItems.length, incoming)
-                    } catch (error) {
-                      toast.error(error instanceof Error ? error.message : '文件无法添加')
-                      return
-                    }
-                    setBatchItems((previous) => [
-                      ...previous,
-                      ...incoming.map((file) => ({
-                        id: crypto.randomUUID(),
-                        name: file.name,
-                        status: 'waiting' as const,
-                        originalBytes: file.size,
-                      })),
-                    ])
-                    batchFiles.current.push(...incoming)
+                    addBatchFiles(Array.from(event.target.files || []))
+                    event.target.value = ''
                   }}
                 />
                 <Button

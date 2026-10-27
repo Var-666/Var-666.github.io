@@ -1,18 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  ArrowLeft,
-  ArrowRightLeft,
-  ArrowUpRight,
-  FileText,
-  Files,
-  FileStack,
-  PencilLine,
-  Table2,
-  LayoutGrid,
-  Moon,
-  Star,
-  Sun,
-} from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, LayoutGrid, Moon, Star, Sun } from 'lucide-react'
 import { Toaster } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { readThemePreference } from './lib/theme'
@@ -26,6 +13,8 @@ import {
 import { searchHome } from './lib/home-search'
 import { ToolLoader } from './ToolLoader'
 import { OfflineStatus } from './OfflineStatus'
+import { tools } from './lib/tools'
+import { SiteUtilities, HomeFileDrop } from './SiteUtilities'
 
 const loadTextTool = () => import('./TextTool')
 const loadFileTool = () => import('./FileTool')
@@ -33,68 +22,6 @@ const loadPdfTool = () => import('./PdfTool')
 const loadRenameTool = () => import('./RenameTool')
 const loadCompareTool = () => import('./CompareTool')
 const loadTableTool = () => import('./TableTool')
-const tools = [
-  {
-    id: 'text',
-    title: '文本整理',
-    description: '清理、去重、PDF 断行修复、中文排版',
-    icon: FileText,
-    tags: ['文字', 'Markdown'],
-    keywords: ['文本', '文字', '清理', '去重', '断行', '空格', '排版', '差异'],
-  },
-  {
-    id: 'files',
-    title: '文件格式转换',
-    description: '图片、文本、表格与办公文档转换',
-    icon: Files,
-    tags: ['PNG / JPG / WebP', 'CSV / JSON', 'Word / PDF'],
-    keywords: [
-      '转换',
-      '图片',
-      '压缩',
-      '表格',
-      'Excel',
-      'xlsx',
-      'CSV',
-      'JSON',
-      'Markdown',
-      'Word',
-      'PDF',
-    ],
-  },
-  {
-    id: 'compare',
-    title: '表格对比',
-    description: '按主键比较两份 CSV / Excel 的差异',
-    icon: ArrowRightLeft,
-    tags: ['新增 / 删除 / 修改', '导出差异'],
-    keywords: ['对比', '比较', '差异', '核对', '表格', 'CSV', 'Excel', '主键'],
-  },
-  {
-    id: 'table',
-    title: '表格批量处理',
-    description: '合并、去重、筛选、拆分多份 CSV',
-    icon: Table2,
-    tags: ['同结构合并', '按列拆分'],
-    keywords: ['合并', '去重', '筛选', '拆分', '清洗', 'CSV', '表格'],
-  },
-  {
-    id: 'pdf',
-    title: 'PDF 页面整理',
-    description: '合并、提取、删除、旋转与页面排序',
-    icon: FileStack,
-    tags: ['保留页面图文', '按页整理'],
-    keywords: ['PDF', '合并', '提取', '拆分', '删除', '旋转', '排序', '页面'],
-  },
-  {
-    id: 'rename',
-    title: '批量重命名',
-    description: '统一编号、替换文字、添加前后缀',
-    icon: PencilLine,
-    tags: ['实时预览', 'ZIP 下载'],
-    keywords: ['重命名', '改名', '文件名', '编号', '前缀', '后缀', '批量'],
-  },
-]
 const toolIds = tools.map((tool) => tool.id)
 type Route = 'home' | 'text' | 'files' | 'compare' | 'table' | 'pdf' | 'rename'
 const routes = new Set(['text', 'files', 'compare', 'table', 'pdf', 'rename'])
@@ -107,6 +34,7 @@ const readRoute = (): Route => {
 export default function App() {
   const [route, setRoute] = useState(readRoute)
   const [query, setQuery] = useState('')
+  const [showAllTasks, setShowAllTasks] = useState(false)
   const [favorites, setFavorites] = useState<string[]>(() =>
     readFavoriteTools(localStorage, toolIds),
   )
@@ -191,6 +119,7 @@ export default function App() {
               本地处理
             </span>
             <OfflineStatus />
+            <SiteUtilities route={route} />
             <span className="header-divider" />
             <Button
               variant="ghost"
@@ -219,6 +148,7 @@ export default function App() {
             <h1>全部工具</h1>
             <span className="tool-count">{tools.length} 个工具</span>
           </section>
+          <HomeFileDrop />
           <input
             className="home-search"
             type="search"
@@ -230,13 +160,24 @@ export default function App() {
           {!!results.tasks.length && (
             <section className="home-block" aria-label="常见任务">
               <h2>常见任务</h2>
-              <div className="task-chips">
+              <div
+                className={`task-chips home-task-chips${showAllTasks || query ? ' is-expanded' : ''}`}
+              >
                 {results.tasks.map((task) => (
                   <a key={task.id} className="task-chip" href={task.hash}>
                     {task.title}
                   </a>
                 ))}
               </div>
+              {!query && results.tasks.length > 5 && (
+                <button
+                  className="more-tasks"
+                  aria-expanded={showAllTasks}
+                  onClick={() => setShowAllTasks((value) => !value)}
+                >
+                  {showAllTasks ? '收起任务' : '更多任务'}
+                </button>
+              )}
             </section>
           )}
           {!query && !!favorites.length && (

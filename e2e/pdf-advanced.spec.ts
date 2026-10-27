@@ -68,7 +68,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('按页码段拆分导出 ZIP，逐份核对页数与内容归属', async ({ page }) => {
-  await page.setInputFiles('input[type=file]', {
+  await page.setInputFiles('input[aria-label="选择需要整理的 PDF"]', {
     name: '三页.pdf',
     mimeType: 'application/pdf',
     buffer: await buildPdf(3),
@@ -93,7 +93,7 @@ test('按页码段拆分导出 ZIP，逐份核对页数与内容归属', async (
 })
 
 test('每 N 页拆分：3 页按每 2 页拆成 2 份，修改设置后旧下载失效', async ({ page }) => {
-  await page.setInputFiles('input[type=file]', {
+  await page.setInputFiles('input[aria-label="选择需要整理的 PDF"]', {
     name: '三页.pdf',
     mimeType: 'application/pdf',
     buffer: await buildPdf(3),
@@ -114,7 +114,7 @@ test('每 N 页拆分：3 页按每 2 页拆成 2 份，修改设置后旧下载
 test('图片合成 PDF：A3 横向页面尺寸写入输出', async ({ page }) => {
   await page.goto('/#/files')
   await page.getByRole('button', { name: '图片 → PDF' }).click()
-  await page.setInputFiles('input[type=file]', {
+  await page.setInputFiles('input[aria-label="选择待转换文件"]', {
     name: '图.png',
     mimeType: 'image/png',
     buffer: buildPng(),
