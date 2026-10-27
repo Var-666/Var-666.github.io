@@ -1081,47 +1081,47 @@ export default function TextTool({ active }: { active: boolean }) {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-          </div>
-          <div className="user-preset-manager">
-            <h3>自定义预设</h3>
-            <div className="user-preset-save">
-              <input
-                aria-label="预设名称"
-                placeholder="预设名称，如：日报清理"
-                maxLength={30}
-                value={presetName}
-                onChange={(event) => setPresetName(event.target.value)}
-              />
-              <Button variant="outline" size="sm" onClick={saveCurrentUserPreset}>
-                保存当前规则
-              </Button>
-            </div>
-            {userPresets.map((entry) => (
-              <div className="user-preset-row" key={entry.id}>
-                <span>{entry.name}</span>
-                <div>
-                  <Button variant="outline" size="sm" onClick={() => applyUserPreset(entry)}>
-                    应用
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`删除自定义预设 ${entry.name}`}
-                    onClick={() => {
-                      removeUserPreset(entry.id)
-                      toast.success(`已删除「${entry.name}」`)
-                    }}
-                  >
-                    删除
-                  </Button>
-                </div>
+            <div className="user-preset-manager">
+              <h3>自定义预设</h3>
+              <div className="user-preset-save">
+                <input
+                  aria-label="预设名称"
+                  placeholder="预设名称，如：日报清理"
+                  maxLength={30}
+                  value={presetName}
+                  onChange={(event) => setPresetName(event.target.value)}
+                />
+                <Button variant="outline" size="sm" onClick={saveCurrentUserPreset}>
+                  保存当前规则
+                </Button>
               </div>
-            ))}
-            {!userPresets.length && (
-              <p className="user-preset-empty">
-                把当前场景与规则组合保存为预设，之后一键应用（只保存规则，不保存正文）。
-              </p>
-            )}
+              {userPresets.map((entry) => (
+                <div className="user-preset-row" key={entry.id}>
+                  <span>{entry.name}</span>
+                  <div>
+                    <Button variant="outline" size="sm" onClick={() => applyUserPreset(entry)}>
+                      应用
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`删除自定义预设 ${entry.name}`}
+                      onClick={() => {
+                        removeUserPreset(entry.id)
+                        toast.success(`已删除「${entry.name}」`)
+                      }}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {!userPresets.length && (
+                <p className="user-preset-empty">
+                  把当前场景与规则组合保存为预设，之后一键应用（只保存规则，不保存正文）。
+                </p>
+              )}
+            </div>
           </div>
           <div className="dialog-footer">
             <Button
