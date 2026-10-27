@@ -85,6 +85,9 @@ for (const width of [1440, 800, 390]) {
 test('编辑器断点两侧持续保持一致，导航不挤压主题按钮', async ({ page }) => {
   await page.goto('/#/text')
   await expect(page.getByRole('textbox', { name: '原始文本', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '离线就绪', exact: true })).toBeVisible({
+    timeout: 20_000,
+  })
   for (const width of [650, 651, 900, 901, 950, 1100, 1101]) {
     await page.setViewportSize({ width, height: 844 })
     expect(

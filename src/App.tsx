@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRightLeft,
@@ -24,13 +24,15 @@ import {
   toggleFavoriteTool,
 } from './lib/storage'
 import { searchHome } from './lib/home-search'
+import { ToolLoader } from './ToolLoader'
+import { OfflineStatus } from './OfflineStatus'
 
-const TextTool = lazy(() => import('./TextTool'))
-const FileTool = lazy(() => import('./FileTool'))
-const PdfTool = lazy(() => import('./PdfTool'))
-const RenameTool = lazy(() => import('./RenameTool'))
-const CompareTool = lazy(() => import('./CompareTool'))
-const TableTool = lazy(() => import('./TableTool'))
+const loadTextTool = () => import('./TextTool')
+const loadFileTool = () => import('./FileTool')
+const loadPdfTool = () => import('./PdfTool')
+const loadRenameTool = () => import('./RenameTool')
+const loadCompareTool = () => import('./CompareTool')
+const loadTableTool = () => import('./TableTool')
 const tools = [
   {
     id: 'text',
@@ -188,6 +190,7 @@ export default function App() {
               <span />
               本地处理
             </span>
+            <OfflineStatus />
             <span className="header-divider" />
             <Button
               variant="ghost"
@@ -311,44 +314,62 @@ export default function App() {
       )}
       {visited.text && (
         <div hidden={route !== 'text'}>
-          <Suspense fallback={<main className="main-content">正在加载文本工具…</main>}>
-            <TextTool active={route === 'text'} />
-          </Suspense>
+          <ToolLoader
+            load={loadTextTool}
+            active={route === 'text'}
+            title="文本整理"
+            loading="正在加载文本工具…"
+          />
         </div>
       )}
       {visited.files && (
         <div hidden={route !== 'files'}>
-          <Suspense fallback={<main className="main-content">正在加载文件工具…</main>}>
-            <FileTool active={route === 'files'} />
-          </Suspense>
+          <ToolLoader
+            load={loadFileTool}
+            active={route === 'files'}
+            title="文件格式转换"
+            loading="正在加载文件工具…"
+          />
         </div>
       )}
       {visited.pdf && (
         <div hidden={route !== 'pdf'}>
-          <Suspense fallback={<main className="main-content">正在加载 PDF 工具…</main>}>
-            <PdfTool active={route === 'pdf'} />
-          </Suspense>
+          <ToolLoader
+            load={loadPdfTool}
+            active={route === 'pdf'}
+            title="PDF 页面整理"
+            loading="正在加载 PDF 工具…"
+          />
         </div>
       )}
       {visited.rename && (
         <div hidden={route !== 'rename'}>
-          <Suspense fallback={<main className="main-content">正在加载重命名工具…</main>}>
-            <RenameTool active={route === 'rename'} />
-          </Suspense>
+          <ToolLoader
+            load={loadRenameTool}
+            active={route === 'rename'}
+            title="批量重命名"
+            loading="正在加载重命名工具…"
+          />
         </div>
       )}
       {visited.compare && (
         <div hidden={route !== 'compare'}>
-          <Suspense fallback={<main className="main-content">正在加载表格对比工具…</main>}>
-            <CompareTool active={route === 'compare'} />
-          </Suspense>
+          <ToolLoader
+            load={loadCompareTool}
+            active={route === 'compare'}
+            title="表格对比"
+            loading="正在加载表格对比工具…"
+          />
         </div>
       )}
       {visited.table && (
         <div hidden={route !== 'table'}>
-          <Suspense fallback={<main className="main-content">正在加载表格处理工具…</main>}>
-            <TableTool active={route === 'table'} />
-          </Suspense>
+          <ToolLoader
+            load={loadTableTool}
+            active={route === 'table'}
+            title="表格批量处理"
+            loading="正在加载表格处理工具…"
+          />
         </div>
       )}
       <Toaster position="bottom-center" theme={dark ? 'dark' : 'light'} richColors closeButton />

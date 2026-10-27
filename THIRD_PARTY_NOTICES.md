@@ -36,3 +36,9 @@ SOFTWARE.
 - fflate: MIT, https://github.com/101arrowz/fflate
 
 The distributed packages retain their own copyright and license notices.
+
+## SheetJS CE
+
+- Version: 0.20.3, Apache-2.0 (see `vendor/XLSX-LICENSE.txt`; the archive retains upstream notices).
+- Official source: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+- The unchanged official archive is included at `vendor/xlsx-0.20.3.tgz` so CI does not depend on that CDN being available. Its SHA-512 matches the pre-existing npm lockfile: `oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==`.

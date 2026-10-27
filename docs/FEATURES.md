@@ -82,7 +82,11 @@ README 是产品介绍；这里按工具列出完整的能力边界、文件大�
 
 `dist/` 是标准静态网站产物，可以部署在支持 HTTPS 的静态托管或自己的服务器上。剪贴板接口需要 HTTPS 或 localhost，权限不足时会提示使用键盘复制粘贴。
 
-离线与安装：生产构建注册 Service Worker（`public/sw.js`），导航请求网络优先保证拿到新版本，其余同源资源 stale-while-revalidate；访问过的工具在断网后仍可打开，也可安装到桌面 / 主屏幕（`manifest.webmanifest`）。开发模式不注册，避免干扰热更新。
+离线与安装：生产构建注册 Service Worker。`postbuild` 根据构建内容生成版本及完整预缓存清单（含懒加载工具、转换依赖和 PDF 中文字体），安装先缓存核心入口，页面空闲时补齐全部资源；顶栏显示进度、失败重试与「离线就绪」。首次准备需约 7.5 MB 本地缓存，完成后未访问过的工具也能断网使用。缓存写入失败不会妨碍在线操作。可安装到桌面 / 主屏幕（`manifest.webmanifest`），开发模式不注册。
+
+- 导航请求网络优先，仅成功 HTML 能更新离线入口；带哈希资源与本地 PDF 资源命中缓存直接返回，其他静态资源后台更新。新 SW 激活只清理本站旧版本缓存，保留其他应用缓存。构建时同步生成 sitemap 的 lastmod。
+- 每个工具独立处理加载失败，显示重试、刷新与返回首页；重试不清空其他工具草稿。旧分块失效时，仅在用户尚未操作且在线的情况下最多自动刷新一次；已有操作时保留当前页面，让用户自行决定何时刷新。刷新/关闭仍会清空当前文件和正文。
+- SheetJS 0.20.3 官方原始 tarball 保存在 vendor/，SHA-512 与既有 lockfile 一致；npm 安装无需请求 SheetJS CDN。来源与许可证见 THIRD_PARTY_NOTICES。
 
 SEO 与安全：`robots.txt` 与 `sitemap.xml` 随构建发布；页面带 canonical、Open Graph、Twitter 卡片与 JSON-LD 描述。因为使用 hash 路由且 GitHub Pages 对路径路由返回 404 状态，各工具页不单独进站点地图，搜索引擎只收录首页。`index.html` 内置 CSP，脚本仅允许同源且不含 `unsafe-eval`。
 

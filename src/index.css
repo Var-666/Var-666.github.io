@@ -3336,3 +3336,41 @@ a {
   font-size: 13px;
   color: var(--muted-foreground);
 }
+
+.tool-load-error h1 {
+  font-size: 20px;
+}
+.tool-load-error p {
+  color: var(--gray);
+  font-size: 13px;
+}
+.tool-load-error > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.tool-load-error a {
+  color: var(--primary);
+  font-size: 13px;
+}
+.header-actions .offline-status {
+  width: auto;
+  height: 30px;
+  margin-left: 8px;
+  border: 0;
+  background: transparent;
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--gray);
+  white-space: nowrap;
+}
+@media (max-width: 650px) {
+  .header-actions:has(.offline-status) .local-indicator {
+    display: none;
+  }
+  .header-actions .offline-status {
+    margin-left: 0;
+    font-size: 10px;
+  }
+}
