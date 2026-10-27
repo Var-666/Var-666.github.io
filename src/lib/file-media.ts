@@ -26,7 +26,11 @@ export async function packOutputs(outputs: OutputFile[], name: string): Promise<
     files[output.name] = new Uint8Array(await output.blob.arrayBuffer())
   }
   const data = zipSync(files, { level: 0 })
-  return { name, blob: new Blob([data as Uint8Array<ArrayBuffer>], { type: 'application/zip' }) }
+  return {
+    name,
+    blob: new Blob([data as Uint8Array<ArrayBuffer>], { type: 'application/zip' }),
+    parts: outputs,
+  }
 }
 
 async function canvasBlob(canvas: HTMLCanvasElement, format: 'png' | 'jpeg') {

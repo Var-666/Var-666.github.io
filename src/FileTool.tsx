@@ -1,3 +1,4 @@
+import { OutputActions } from './components/OutputActions'
 import { useToolTransfer, useTransferReceiver, type ToolTransfer } from './lib/tool-transfer'
 import { ConfirmImport } from './components/ConfirmImport'
 import { ContinueWith } from './components/ContinueWith'
@@ -1107,6 +1108,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                   </a>
                 </Button>
                 <ContinueWith outputs={[merged]} disabled={busy || packing} />
+                <OutputActions outputs={[merged]} disabled={busy || packing} />
               </div>
             )}
             <div className="conversion-actions">
@@ -1115,6 +1117,12 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                 清空
               </Button>
               <div>
+                {done > 1 && mode !== 'image-pdf' && (
+                  <OutputActions
+                    outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
+                    disabled={busy || packing}
+                  />
+                )}
                 {done > 1 && mode !== 'image-pdf' && (
                   <ContinueWith
                     outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}

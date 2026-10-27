@@ -1,3 +1,5 @@
+import { OutputActions } from './components/OutputActions'
+import type { OutputFile } from './lib/file-convert'
 import { useTransferReceiver } from './lib/tool-transfer'
 import { useEffect, useRef, useState } from 'react'
 import type { PDFDocument } from 'pdf-lib'
@@ -141,7 +143,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
   const [message, setMessage] = useState('')
   const [range, setRange] = useState('')
   const [dragging, setDragging] = useState(false)
-  const [result, setResult] = useState('')
+  const [result, setResult] = useState<(OutputFile & { url: string }) | null>(null)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [splitMode, setSplitMode] = useState<'each' | 'every' | 'ranges'>('each')
   const [splitSize, setSplitSize] = useState('5')
@@ -150,6 +152,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
     url: string
     name: string
     parts: number
+    output: OutputFile
   } | null>(null)
   useEffect(() => {
     if (!active) setPreviewId(null)
@@ -178,7 +181,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
   const invalidate = () => {
     URL.revokeObjectURL(resultUrl.current)
     resultUrl.current = ''
-    setResult('')
+    setResult(null)
     setSplitOutput((previous) => {
       if (previous) {
         URL.revokeObjectURL(previous.url)
@@ -289,7 +292,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
       )
       if (!mounted.current) return
       resultUrl.current = URL.createObjectURL(blob)
-      setResult(resultUrl.current)
+      setResult({ blob, name: '整理后的文档.pdf', url: resultUrl.current })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '导出失败，请减少页面后重试。')
     } finally {
@@ -336,7 +339,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
             )
       const url = URL.createObjectURL(packed.blob)
       urls.current.add(url)
-      setSplitOutput({ url, name: packed.name, parts: outputs.length })
+      setSplitOutput({ url, name: packed.name, parts: outputs.length, output: packed })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '拆分失败，请检查页码段后重试。')
     } finally {
@@ -608,9 +611,10 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
             清空
           </Button>
           <div>
+            {result && <OutputActions outputs={[result]} disabled={busy} />}
             {result && (
               <Button variant="outline" asChild>
-                <a href={result} download="整理后的文档.pdf">
+                <a href={result.url} download="整理后的文档.pdf">
                   <ArrowDownToLine size={14} />
                   下载 PDF
                 </a>
@@ -682,6 +686,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
             <Button variant="outline" disabled={busy || !selected} onClick={splitExport}>
               拆分导出 ({selected} 页)
             </Button>
+            {splitOutput && <OutputActions outputs={[splitOutput.output]} disabled={busy} />}
             {splitOutput && (
               <Button variant="outline" asChild>
                 <a href={splitOutput.url} download={splitOutput.name}>

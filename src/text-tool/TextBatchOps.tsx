@@ -1,3 +1,4 @@
+import { OutputActions } from '@/components/OutputActions'
 import { useTransferReceiver } from '@/lib/tool-transfer'
 import { TextEncodingSelect } from '@/components/TextEncodingSelect'
 import type { TextEncoding } from '@/lib/text-encoding'
@@ -45,7 +46,7 @@ import {
 import type { Options } from '@/lib/text'
 import { packOutputs } from '@/lib/file-media'
 
-type UiBatchItem = BatchTextItem & { url?: string }
+type UiBatchItem = BatchTextItem & { url?: string; blob?: Blob }
 const batchPreviewLimit = 600
 
 const previewLimit = 2000
@@ -79,7 +80,6 @@ export function TextBatchOps({
   const [batchZip, setBatchZip] = useState<{ url: string; name: string } | null>(null)
   const batchInput = useRef<HTMLInputElement>(null)
   const batchFiles = useRef<File[]>([])
-  const batchBlobs = useRef(new Map<string, Blob>())
   const batchUrls = useRef(new Set<string>())
   useEffect(
     () => () => {
@@ -380,7 +380,6 @@ export function TextBatchOps({
                   setBatchEncoding(value)
                   for (const url of batchUrls.current) URL.revokeObjectURL(url)
                   batchUrls.current.clear()
-                  batchBlobs.current.clear()
                   setBatchZip(null)
                   setBatchItems((previous) =>
                     previous.map((item) => ({
@@ -455,7 +454,6 @@ export function TextBatchOps({
                             })
                             const url = URL.createObjectURL(blob)
                             batchUrls.current.add(url)
-                            batchBlobs.current.set(id, blob)
                             setBatchItems((previous) =>
                               previous.map((item) =>
                                 item.id === id
@@ -470,6 +468,7 @@ export function TextBatchOps({
                                         0,
                                       ),
                                       url,
+                                      blob,
                                     }
                                   : item,
                               ),
@@ -502,6 +501,19 @@ export function TextBatchOps({
                   )}
                   开始处理
                 </Button>
+                <OutputActions
+                  outputs={batchItems.flatMap((item) =>
+                    item.status === 'done' && item.blob
+                      ? [
+                          {
+                            name: batchTextOutputName(item.name),
+                            blob: item.blob!,
+                          },
+                        ]
+                      : [],
+                  )}
+                  disabled={batchRunning}
+                />
                 {batchItems.filter((item) => item.status === 'done').length > 1 &&
                   (batchZip ? (
                     <Button variant="outline" size="sm" asChild>
@@ -518,13 +530,13 @@ export function TextBatchOps({
                       disabled={batchRunning}
                       onClick={async () => {
                         const done = batchItems.filter(
-                          (item) => item.status === 'done' && batchBlobs.current.has(item.id),
+                          (item) => item.status === 'done' && item.blob,
                         )
                         try {
                           const output = await packOutputs(
                             done.map((item) => ({
                               name: batchTextOutputName(item.name),
-                              blob: batchBlobs.current.get(item.id)!,
+                              blob: item.blob!,
                             })),
                             '批量整理结果.zip',
                           )
@@ -548,7 +560,6 @@ export function TextBatchOps({
                     onClick={() => {
                       setBatchItems([])
                       batchFiles.current = []
-                      batchBlobs.current.clear()
                       setBatchZip((previous) => {
                         if (previous) {
                           URL.revokeObjectURL(previous.url)
@@ -626,7 +637,6 @@ export function TextBatchOps({
                             setBatchItems((previous) =>
                               previous.filter((entry) => entry.id !== item.id),
                             )
-                            batchBlobs.current.delete(item.id)
                           }}
                         >
                           <X size={14} />

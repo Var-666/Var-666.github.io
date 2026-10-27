@@ -1,3 +1,4 @@
+import { OutputActions } from './components/OutputActions'
 import { useTransferReceiver, type ToolTransfer } from './lib/tool-transfer'
 import { ConfirmImport } from './components/ConfirmImport'
 import { TextEncodingSelect } from './components/TextEncodingSelect'
@@ -490,6 +491,7 @@ export default function CompareTool({ active }: { active: boolean }) {
                 >
                   导出 CSV（ZIP 三个文件）
                 </Button>
+                {output && <OutputActions outputs={[output]} disabled={busy} />}
                 {output && (
                   <Button size="sm" variant="outline" asChild>
                     <a href={output.url} download={output.name}>

@@ -3569,3 +3569,29 @@ a {
   color: var(--gray);
   font-size: 12px;
 }
+
+.output-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+@media (max-width: 650px) {
+  .file-row.has-output {
+    flex-wrap: wrap;
+  }
+  .file-row.has-output .file-details {
+    flex-basis: calc(100% - 80px);
+  }
+  .file-row.has-output .file-row-actions {
+    flex-basis: 100%;
+  }
+}

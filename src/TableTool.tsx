@@ -1,3 +1,4 @@
+import { OutputActions } from './components/OutputActions'
 import { useTransferReceiver } from './lib/tool-transfer'
 import { TextEncodingSelect } from './components/TextEncodingSelect'
 import { readTextFile, type TextEncoding, type DecodedText } from './lib/text-encoding'
@@ -510,6 +511,7 @@ export default function TableTool({ active }: { active: boolean }) {
                 options.splitBy ? (format === 'csv' ? '（ZIP）' : '（多工作表）') : ''
               }`}
             </Button>
+            {output && <OutputActions outputs={[output]} disabled={busy} />}
             {output && (
               <Button size="sm" variant="outline" asChild>
                 <a href={output.url} download={output.name}>

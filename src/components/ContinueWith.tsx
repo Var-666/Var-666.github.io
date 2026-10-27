@@ -1,3 +1,4 @@
+import { outputParts } from '@/lib/output-save'
 import { Button } from './ui/button'
 import { useToolTransfer } from '@/lib/tool-transfer'
 import type { OutputFile } from '@/lib/file-convert'
@@ -19,7 +20,7 @@ export function ContinueWith({
       disabled={disabled}
       onClick={() =>
         context.openIntake({
-          files: outputs.map(
+          files: outputParts(outputs).map(
             (output) => new File([output.blob], output.name, { type: output.blob.type }),
           ),
           text,

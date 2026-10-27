@@ -1,3 +1,4 @@
+import { OutputActions } from '@/components/OutputActions'
 import { ContinueWith } from '@/components/ContinueWith'
 // 转换文件队列：排序（图片合并模式）、逐文件状态、下载、移除与结果详情开关
 import { useRef } from 'react'
@@ -41,7 +42,7 @@ export function FileQueue({
       {rows.map((row, index) => (
         <div key={row.id} className="file-row-group">
           <div
-            className="file-row"
+            className={`file-row${row.output ? ' has-output' : ''}`}
             onDragOver={(event) => {
               if (mode === 'image-pdf' && moving.current) event.preventDefault()
             }}
@@ -118,42 +119,45 @@ export function FileQueue({
                     : sizeLabel(row.file.size))}
               </span>
             </div>
-            {row.output && row.report && (
+            <div className="file-row-actions">
+              {row.output && row.report && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="detail-toggle"
+                  disabled={busy || packing}
+                  onClick={() => onToggleDetail(row.id)}
+                >
+                  {row.showDetail ? '收起详情' : '结果详情'}
+                </Button>
+              )}
+              {row.output && (
+                <ContinueWith
+                  outputs={[row.output]}
+                  text={row.detail?.kind === 'text' ? row.detail.text : undefined}
+                  disabled={busy || packing}
+                />
+              )}
+              {row.output && <OutputActions outputs={[row.output]} disabled={busy || packing} />}
+              {row.output && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={row.output.url} download={row.output.name}>
+                    <ArrowDownToLine size={14} />
+                    下载
+                  </a>
+                </Button>
+              )}
               <Button
                 variant="ghost"
-                size="sm"
-                className="detail-toggle"
+                size="icon"
+                className="remove-file"
+                aria-label={`移除 ${row.file.name}`}
                 disabled={busy || packing}
-                onClick={() => onToggleDetail(row.id)}
+                onClick={() => onRemove(row)}
               >
-                {row.showDetail ? '收起详情' : '结果详情'}
+                <X size={15} />
               </Button>
-            )}
-            {row.output && (
-              <ContinueWith
-                outputs={[row.output]}
-                text={row.detail?.kind === 'text' ? row.detail.text : undefined}
-                disabled={busy || packing}
-              />
-            )}
-            {row.output && (
-              <Button variant="outline" size="sm" asChild>
-                <a href={row.output.url} download={row.output.name}>
-                  <ArrowDownToLine size={14} />
-                  下载
-                </a>
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="remove-file"
-              aria-label={`移除 ${row.file.name}`}
-              disabled={busy || packing}
-              onClick={() => onRemove(row)}
-            >
-              <X size={15} />
-            </Button>
+            </div>
           </div>
           {row.notices?.map((notice) => (
             <p className="matrix-notice" key={notice}>

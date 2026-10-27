@@ -1,3 +1,4 @@
+import { OutputActions } from './components/OutputActions'
 import { useTransferReceiver } from './lib/tool-transfer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -424,6 +425,15 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
             清空
           </Button>
           <div>
+            {!!files.length && !errors && (
+              <OutputActions
+                outputs={files.map((entry, index) => ({
+                  name: preview[index].name,
+                  blob: entry.file,
+                }))}
+                disabled={packing}
+              />
+            )}
             {result && (
               <Button variant="outline" asChild>
                 <a href={result} download="重命名文件.zip">

@@ -1,3 +1,4 @@
+import { OutputActions } from './components/OutputActions'
 import { useTransferReceiver } from './lib/tool-transfer'
 import { readTextFile, type TextEncoding, type DecodedText } from './lib/text-encoding'
 import { TextEncodingSelect } from './components/TextEncodingSelect'
@@ -482,6 +483,13 @@ export default function TextTool({ active }: { active: boolean }) {
     setTimeout(() => URL.revokeObjectURL(url), 1000)
     toast.success('已开始下载 TXT 文件')
   }
+  const textOutput = useMemo(
+    () => ({
+      name: `理文-${new Date().toISOString().slice(0, 10)}.txt`,
+      blob: new Blob(['\uFEFF', result.text], { type: 'text/plain;charset=utf-8' }),
+    }),
+    [result.text],
+  )
   const sourceStats = useMemo(() => textStats(source), [source])
   const resultStats = useMemo(() => textStats(result.text), [result.text])
   const changeCount = result.changes.reduce((total, change) => total + change.count, 0)
@@ -906,6 +914,7 @@ export default function TextTool({ active }: { active: boolean }) {
                   <span className="preview-label">实时预览</span>
                 </div>
                 <div className="editor-tools">
+                  {ready && <OutputActions outputs={[textOutput]} shareOnly />}
                   <IconButton label="下载 TXT 文件" disabled={!ready} onClick={download}>
                     <ArrowDownToLine size={16} />
                   </IconButton>

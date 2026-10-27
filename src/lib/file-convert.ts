@@ -1,7 +1,7 @@
 import { findWhitespaceCut } from './page-break'
 import { imageDimensions, type ImageSize } from './media-options'
 
-export type OutputFile = { blob: Blob; name: string }
+export type OutputFile = { blob: Blob; name: string; parts?: OutputFile[] }
 export type WordToPdfResult = OutputFile & {
   pages: number
   sections: number
