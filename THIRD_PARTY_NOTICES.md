@@ -34,6 +34,7 @@ SOFTWARE.
 - jsPDF: MIT, https://github.com/parallax/jsPDF
 - html2canvas: MIT, https://github.com/niklasvh/html2canvas
 - fflate: MIT, https://github.com/101arrowz/fflate
+- exifr 7.1.3: MIT, https://github.com/MikeKovarik/exifr (EXIF date parsing, loaded on demand)
 
 The distributed packages retain their own copyright and license notices.
 

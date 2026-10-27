@@ -1,5 +1,16 @@
+import { applyReplaceRules } from './text-ops'
+import { formatRenameDate, type RenameDateFormat, type RenameFileMeta } from './rename-metadata'
+
 export type RenameOptions = {
   base: string
+  regex: boolean
+  caseSensitive: boolean
+  caseMode: 'keep' | 'lower' | 'upper' | 'title'
+  extensionMode: 'keep' | 'lower' | 'upper' | 'remove' | 'custom'
+  customExtension: string
+  dateSource: 'none' | 'modified' | 'exif'
+  datePosition: 'prefix' | 'suffix' | 'replace'
+  dateFormat: RenameDateFormat
   find: string
   replace: string
   prefix: string
@@ -17,6 +28,14 @@ export type RenameOptions = {
 
 export const defaultRenameOptions: RenameOptions = {
   base: '',
+  regex: false,
+  caseSensitive: true,
+  caseMode: 'keep',
+  extensionMode: 'keep',
+  customExtension: '',
+  dateSource: 'none',
+  datePosition: 'prefix',
+  dateFormat: 'date',
   find: '',
   replace: '',
   prefix: '',
@@ -44,20 +63,70 @@ export function renamePreview(
   names: string[],
   options: RenameOptions,
   overrides: (string | undefined)[] = [],
+  metadata: RenameFileMeta[] = [],
 ) {
   const rows = names.map((original, index) => {
     const dot = original.lastIndexOf('.')
-    const extension = dot > 0 ? original.slice(dot) : ''
+    let extension = dot > 0 ? original.slice(dot) : ''
+    if (options.extensionMode === 'lower') extension = extension.toLowerCase()
+    else if (options.extensionMode === 'upper') extension = extension.toUpperCase()
+    else if (options.extensionMode === 'remove') extension = ''
+    else if (options.extensionMode === 'custom')
+      extension = '.' + options.customExtension.trim().replace(/^\./, '')
+    const override = overrides[index]?.trim()
+    let ruleError = ''
     let base = options.base || (dot > 0 ? original.slice(0, dot) : original)
-    if (options.find) base = base.split(options.find).join(options.replace)
+    if (!override && options.find) {
+      try {
+        base = applyReplaceRules(base, [
+          {
+            find: options.find,
+            replace: options.replace,
+            regex: options.regex,
+            caseSensitive: options.caseSensitive,
+          },
+        ]).text
+      } catch (error) {
+        ruleError = error instanceof Error ? error.message : '替换规则无效。'
+      }
+    }
+    if (!override && options.dateSource !== 'none') {
+      const date = formatRenameDate(
+        options.dateSource === 'modified' ? metadata[index]?.modified : metadata[index]?.shotAt,
+        options.dateFormat,
+      )
+      if (!date)
+        ruleError =
+          options.dateSource === 'exif'
+            ? '缺少拍摄时间，请读取照片时间或改用修改时间。'
+            : '修改时间无效，请检查文件来源。'
+      else
+        base =
+          options.datePosition === 'replace'
+            ? date
+            : options.datePosition === 'prefix'
+              ? `${date}_${base}`
+              : `${base}_${date}`
+    }
     const number = options.numbered
       ? `_${String(options.start + index).padStart(options.digits, '0')}`
       : ''
-    const stem = cleanupStem(`${options.prefix}${base}${number}${options.suffix}`, options.cleanup)
-    const override = overrides[index]?.trim()
+    let stem = cleanupStem(`${options.prefix}${base}${number}${options.suffix}`, options.cleanup)
+    if (options.caseMode === 'lower') stem = stem.toLowerCase()
+    else if (options.caseMode === 'upper') stem = stem.toUpperCase()
+    else if (options.caseMode === 'title')
+      stem = stem
+        .toLowerCase()
+        .replace(/(^|[\s_-])(\p{L})/gu, (_, separator, letter) => separator + letter.toUpperCase())
     // 覆盖名是完整文件名（含扩展名）；未覆盖时用生成名
     const name = override || `${stem}${extension}`
-    let error = ''
+    let error = !override ? ruleError : ''
+    if (
+      !override &&
+      options.extensionMode === 'custom' &&
+      !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(options.customExtension.trim().replace(/^\./, ''))
+    )
+      error = '扩展名需以字母或数字开头，仅含字母、数字、点、下划线或连字符。'
     if (
       !override &&
       options.numbered &&

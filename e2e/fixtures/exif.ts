@@ -1,0 +1,20 @@
+// Minimal JPEG APP1 with TIFF DateTimeOriginal, deterministic and free of personal metadata.
+export function exifJpeg(date = '2026:10:26 09:08:07') {
+  const tiff = Buffer.alloc(64)
+  tiff.write('II', 0)
+  tiff.writeUInt16LE(42, 2)
+  tiff.writeUInt32LE(8, 4)
+  tiff.writeUInt16LE(1, 8)
+  tiff.writeUInt16LE(0x8769, 10)
+  tiff.writeUInt16LE(4, 12)
+  tiff.writeUInt32LE(1, 14)
+  tiff.writeUInt32LE(26, 18)
+  tiff.writeUInt16LE(1, 26)
+  tiff.writeUInt16LE(0x9003, 28)
+  tiff.writeUInt16LE(2, 30)
+  tiff.writeUInt32LE(20, 32)
+  tiff.writeUInt32LE(44, 36)
+  tiff.write(date, 44, 'ascii')
+  const header = Buffer.from([0xff, 0xd8, 0xff, 0xe1, 0, 72])
+  return Buffer.concat([header, Buffer.from('Exif\0\0', 'ascii'), tiff, Buffer.from([0xff, 0xd9])])
+}

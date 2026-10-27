@@ -1,3 +1,4 @@
+import { exifJpeg } from './fixtures/exif'
 import { expect, test, type Page } from '@playwright/test'
 import { PDFDocument } from 'pdf-lib'
 
@@ -79,6 +80,19 @@ test('首次离线准备后，未访问过的六个工具与本地字体都可�
   await expect(page.locator('.pdf-thumbnail canvas')).toBeVisible()
   await page.getByRole('button', { name: '放大页面 1', exact: true }).click()
   await expect(page.locator('.pdf-preview-dialog canvas')).toBeVisible()
+  await page.goto('/#/rename')
+  await page
+    .getByLabel('选择需要重命名的文件')
+    .setInputFiles({ name: 'offline.jpg', mimeType: 'image/jpeg', buffer: exifJpeg() })
+  await page.getByRole('button', { name: '读取照片时间', exact: true }).click()
+  await expect(page.getByText('拍摄 2026:10:26 09:08:07', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '替换', exact: true }).click()
+  await page.getByRole('textbox', { name: '查找文字', exact: true }).fill('^offline$')
+  await page.getByRole('textbox', { name: '替换为', exact: true }).fill('renamed')
+  await page.getByRole('switch', { name: '正则表达式', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: '新文件名 offline.jpg' })).toHaveValue(
+    'renamed_001.jpg',
+  )
   await context.setOffline(false)
 })
 

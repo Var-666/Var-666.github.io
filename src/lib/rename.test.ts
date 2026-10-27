@@ -136,3 +136,95 @@ test('parseNameList：数量必须与文件数一致，空白行忽略', () => {
   assert.match((parseNameList('甲\n乙', 3) as { error: string }).error, /2 个名称 vs 3 个文件/)
   assert.match((parseNameList('  \n', 1) as { error: string }).error, /先粘贴/)
 })
+
+test('regex captures, case conversion and extension changes keep overrides and collision checks', () => {
+  const rows = renamePreview(['IMG_001.JPG', 'IMG_002.JPG'], {
+    ...options,
+    find: '^IMG_(\\d+)$',
+    replace: 'Photo-$1',
+    regex: true,
+    caseMode: 'lower',
+    extensionMode: 'lower',
+    numbered: false,
+  })
+  assert.deepEqual(
+    rows.map((row) => row.name),
+    ['photo-001.jpg', 'photo-002.jpg'],
+  )
+  assert.ok(rows.every((row) => !row.error))
+  assert.match(
+    renamePreview(['a.txt'], { ...options, regex: true, find: '[' })[0].error,
+    /正则无效/,
+  )
+  assert.equal(
+    renamePreview(
+      ['a.TXT'],
+      { ...options, extensionMode: 'custom', customExtension: '.md', caseMode: 'upper' },
+      ['exact.Txt'],
+    )[0].name,
+    'exact.Txt',
+  )
+  assert.equal(
+    renamePreview(['HELLO_world.TXT'], {
+      ...options,
+      caseMode: 'title',
+      numbered: false,
+      extensionMode: 'remove',
+    })[0].name,
+    'Hello_World',
+  )
+  assert.ok(
+    renamePreview(['a.txt', 'a.md'], {
+      ...options,
+      extensionMode: 'custom',
+      customExtension: 'csv',
+      numbered: false,
+    }).every((row) => row.error),
+  )
+  assert.match(
+    renamePreview(['a.txt'], { ...options, extensionMode: 'custom', customExtension: '../exe' })[0]
+      .error,
+    /扩展名|不支持/,
+  )
+  assert.equal(
+    renamePreview(['TEST.txt'], {
+      ...options,
+      find: 'test',
+      replace: '$&',
+      caseSensitive: false,
+      numbered: false,
+    })[0].name,
+    '$&.txt',
+  )
+})
+
+test('date names use explicit metadata and missing EXIF never silently falls back to modification time', () => {
+  const modified = new Date(2026, 9, 27, 14, 30, 9).getTime()
+  assert.equal(
+    renamePreview(
+      ['a.jpg'],
+      { ...options, dateSource: 'modified', dateFormat: 'datetime', numbered: false },
+      [],
+      [{ modified }],
+    )[0].name,
+    '2026-10-27_14-30-09_a.jpg',
+  )
+  assert.equal(
+    renamePreview(
+      ['a.jpg'],
+      { ...options, dateSource: 'exif', datePosition: 'replace', dateFormat: 'compact' },
+      [],
+      [{ shotAt: '2020:02:29 01:02:03' }],
+    )[0].name,
+    '20200229_010203_001.jpg',
+  )
+  assert.match(
+    renamePreview(['a.jpg'], { ...options, dateSource: 'exif' }, [], [{ modified }])[0].error,
+    /缺少拍摄时间/,
+  )
+  assert.equal(
+    renamePreview(['a.jpg'], { ...options, dateSource: 'exif' }, ['manual.jpg'], [{ modified }])[0]
+      .error,
+    '',
+  )
+})

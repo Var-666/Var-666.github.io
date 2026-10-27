@@ -70,6 +70,7 @@ test('PDF 整理与重命名：主控件在视口内且无横向溢出', async (
   await expectNoHorizontalOverflow(page)
   await page.goto('/#/rename')
   await expect(page.getByRole('heading', { name: '批量重命名' })).toBeVisible()
+  await page.getByRole('button', { name: '统一名称', exact: true }).click()
   await expect(page.getByRole('textbox', { name: '统一名称' })).toBeVisible()
   await expectNoHorizontalOverflow(page)
 })

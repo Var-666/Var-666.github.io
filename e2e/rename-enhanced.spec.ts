@@ -25,6 +25,7 @@ async function downloadBytes(page: Page): Promise<Buffer> {
 test.beforeEach(async ({ page }) => {
   await page.goto('/#/rename')
   await expect(page.getByRole('heading', { name: '批量重命名' })).toBeVisible()
+  await page.getByText('更多规则与名单导入', { exact: true }).click()
 })
 
 test('清理特殊字符：含冒号的统一名称从报错变为合法输出', async ({ page }) => {
