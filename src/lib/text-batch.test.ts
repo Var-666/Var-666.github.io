@@ -48,7 +48,7 @@ test('单文件错误隔离：坏编码与超大文件报错，其余照常完�
     onError: (id, message) => errors.push(`${id}:${message}`),
   })
   assert.deepEqual(summary, { done: 1, failed: 2 })
-  assert.match(errors[0], /batch-0:读取失败，请使用 UTF-8 编码。/)
+  assert.match(errors[0], /batch-0:无法按 UTF-8 或 GBK/)
   assert.match(errors[1], /^ok:/)
   assert.match(errors[2], /batch-2:单个文件不超过 2 MB。/)
 })

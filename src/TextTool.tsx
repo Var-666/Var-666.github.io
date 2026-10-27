@@ -1,3 +1,5 @@
+import { readTextFile, type TextEncoding, type DecodedText } from './lib/text-encoding'
+import { TextEncodingSelect } from './components/TextEncodingSelect'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import {
   AlignLeft,
@@ -188,6 +190,9 @@ function recordPreview(source: string, result: string, hunk: DiffHunk) {
 export default function TextTool({ active }: { active: boolean }) {
   const [settings, setSettings] = useState(initialSettings)
   const { preset, options } = settings
+  const [readEncoding, setReadEncoding] = useState<TextEncoding>('auto')
+  const [sourceEncoding, setSourceEncoding] = useState<DecodedText['encoding'] | null>(null)
+  const importedFile = useRef<File | null>(null)
   const [source, setSource] = useState('')
   const [result, setResult] = useState<ProcessResult>({ text: '', changes: [] })
   const [processing, setProcessing] = useState(false)
@@ -330,6 +335,8 @@ export default function TextTool({ active }: { active: boolean }) {
       toast.error('一次最多处理 100 万字符，请拆分后导入。')
       return false
     }
+    importedFile.current = null
+    setSourceEncoding(null)
     setUndo(source)
     setSource(text)
     setMobileTab('source')
@@ -359,7 +366,7 @@ export default function TextTool({ active }: { active: boolean }) {
     })
     toast.info('已在当前行尾插入保留标记：这一行的换行不会被合并')
   }
-  const importFile = async (file?: File) => {
+  const importFile = async (file?: File, encoding: TextEncoding = readEncoding) => {
     if (!file) return
     if (!/\.(txt|md)$/i.test(file.name)) {
       toast.error('请选择 TXT 或 Markdown 文本文件')
@@ -370,14 +377,19 @@ export default function TextTool({ active }: { active: boolean }) {
       return
     }
     const id = ++fileRequest.current
+    importedFile.current = file
     setImporting(true)
     try {
-      const bytes = await file.arrayBuffer()
-      const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+      const decoded = await readTextFile(file, encoding)
       if (id !== fileRequest.current) return
-      if (replaceSource(text)) toast.success(`已导入 ${file.name}`)
-    } catch {
-      if (id === fileRequest.current) toast.error('读取失败，请使用 UTF-8 编码的文本文件。')
+      if (replaceSource(decoded.text)) {
+        importedFile.current = file
+        setSourceEncoding(decoded.encoding)
+        toast.success(`已导入 ${file.name} · 已按 ${decoded.encoding} 读取`)
+      }
+    } catch (error) {
+      if (id === fileRequest.current)
+        toast.error(error instanceof Error ? error.message : '读取失败，请检查文件编码。')
     } finally {
       if (id === fileRequest.current) setImporting(false)
     }
@@ -531,6 +543,21 @@ export default function TextTool({ active }: { active: boolean }) {
             </Button>
           </div>
         </section>
+        <div className="text-import-options">
+          <TextEncodingSelect
+            value={readEncoding}
+            disabled={importing}
+            onChange={(value) => {
+              setReadEncoding(value)
+              if (importedFile.current) void importFile(importedFile.current, value)
+            }}
+          />
+          {sourceEncoding && (
+            <span className="encoding-note">
+              已按 {sourceEncoding} 读取 · 切换编码可重新读取，支持撤销
+            </span>
+          )}
+        </div>
         <section aria-label="选择整理场景" className="presets">
           <div className="preset-grid">
             {presetKeys.map((key) => {
@@ -779,6 +806,8 @@ export default function TextTool({ active }: { active: boolean }) {
                   onChange={(event) => {
                     fileRequest.current++
                     setImporting(false)
+                    importedFile.current = null
+                    setSourceEncoding(null)
                     setSource(event.target.value)
                   }}
                   onCompositionStart={() => setComposing(true)}
@@ -820,7 +849,7 @@ export default function TextTool({ active }: { active: boolean }) {
                   <b>{sourceStats.chars.toLocaleString()}</b> 字符
                   <span className="stat-divider" /> <b>{sourceStats.lines.toLocaleString()}</b> 行
                 </span>
-                <span className="encoding-label">纯文本 · UTF-8</span>
+                <span className="encoding-label">纯文本 · {sourceEncoding ?? 'UTF-8'}</span>
               </div>
             </section>
             <span className="transfer-mark" aria-hidden="true">
@@ -1163,8 +1192,8 @@ export default function TextTool({ active }: { active: boolean }) {
               <div>
                 <strong>放入需要整理的文字</strong>
                 <p>
-                  直接输入、粘贴，或拖入 UTF-8 编码的 TXT / Markdown 文件。支持最大 2 MB 文件、100
-                  万字符。
+                  直接输入、粘贴，或拖入 UTF-8 / GBK 编码的 TXT / Markdown 文件。支持最大 2 MB
+                  文件、100 万字符。
                 </p>
               </div>
             </li>

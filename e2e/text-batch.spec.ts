@@ -27,7 +27,7 @@ test('批量文件处理：应用当前规则、坏编码隔离、ZIP 内容核�
   await page.getByRole('button', { name: /开始处理/ }).click()
   await expect(page.getByText(/批量处理完成：成功 2 个，失败 1 个/)).toBeVisible()
   await expect(page.locator('.batch-item.state-error, .batch-state.state-error')).toHaveCount(1)
-  await expect(page.getByText('读取失败，请使用 UTF-8 编码。')).toBeVisible()
+  await expect(page.getByText('无法按 UTF-8 或 GBK / GB18030 读取，请检查文件编码。')).toBeVisible()
   await expect(page.getByText('好-整理.txt · 0.0 KB → 0.0 KB · 3 处调整')).toBeVisible()
   // 打包下载并核对清理后的内容
   await page.getByRole('button', { name: '打包下载 ZIP' }).click()

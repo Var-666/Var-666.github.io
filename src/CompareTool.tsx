@@ -1,3 +1,5 @@
+import { TextEncodingSelect } from './components/TextEncodingSelect'
+import { readTextFile, type TextEncoding, type DecodedText } from './lib/text-encoding'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Papa from 'papaparse'
 import { ArrowRightLeft, FileSpreadsheet, FileUp, LoaderCircle } from 'lucide-react'
@@ -23,6 +25,8 @@ import { outputName, type OutputFile } from './lib/file-convert'
 
 type Side = 'left' | 'right'
 type SideState = {
+  requestedEncoding: TextEncoding
+  encoding: DecodedText['encoding'] | null
   file: File | null
   workbook: WorkbookData | null
   sheetName: string
@@ -30,7 +34,15 @@ type SideState = {
   error: string
 }
 
-const emptySide: SideState = { file: null, workbook: null, sheetName: '', matrix: null, error: '' }
+const emptySide: SideState = {
+  requestedEncoding: 'auto',
+  encoding: null,
+  file: null,
+  workbook: null,
+  sheetName: '',
+  matrix: null,
+  error: '',
+}
 const previewLimit = 50
 
 const sizeLabel = (size: number) =>
@@ -65,13 +77,17 @@ export default function CompareTool({ active }: { active: boolean }) {
     }
   }, [active])
 
-  const loadFile = async (side: Side, file: File | undefined) => {
+  const loadFile = async (
+    side: Side,
+    file: File | undefined,
+    requestedEncoding: TextEncoding = (side === 'left' ? left : right).requestedEncoding,
+  ) => {
     if (!file) return
     setBusy(true)
     setOutput(null)
     const patch = (next: Partial<SideState>) =>
       side === 'left' ? setLeft((p) => ({ ...p, ...next })) : setRight((p) => ({ ...p, ...next }))
-    patch({ ...emptySide, file })
+    patch({ ...emptySide, file, requestedEncoding })
     try {
       if (file.name.toLowerCase().endsWith('.xlsx')) {
         const workbook = await loadWorkbook(file)
@@ -82,9 +98,9 @@ export default function CompareTool({ active }: { active: boolean }) {
           matrix: matrixFromRows(file.name, workbook.sheet(sheetName).rows),
         })
       } else {
-        const text = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer())
-        const parsed = parseCsvMatrix(text)
-        patch({ matrix: matrixFromRows(file.name, parsed.rows) })
+        const decoded = await readTextFile(file, requestedEncoding)
+        const parsed = parseCsvMatrix(decoded.text)
+        patch({ matrix: matrixFromRows(file.name, parsed.rows), encoding: decoded.encoding })
       }
     } catch (error) {
       patch({ error: error instanceof Error ? error.message : '读取失败，请检查文件与编码。' })
@@ -224,6 +240,20 @@ export default function CompareTool({ active }: { active: boolean }) {
             </Select>
           </label>
         )}
+        {!state.workbook && (
+          <TextEncodingSelect
+            label={`${label}读取编码`}
+            value={state.requestedEncoding}
+            disabled={busy}
+            onChange={(value) => {
+              if (state.file) void loadFile(side, state.file, value)
+              else if (side === 'left')
+                setLeft((previous) => ({ ...previous, requestedEncoding: value }))
+              else setRight((previous) => ({ ...previous, requestedEncoding: value }))
+            }}
+          />
+        )}
+        {state.encoding && <span className="encoding-note">已按 {state.encoding} 读取</span>}
         {state.matrix && (
           <p className="compare-file-meta">
             {state.matrix.rows.length.toLocaleString()} 行数据 · {state.matrix.headers.length} 列
@@ -440,7 +470,7 @@ export default function CompareTool({ active }: { active: boolean }) {
         </section>
       )}
       <p className="compare-note compare-limit">
-        限制：CSV 单个 2 MB（UTF-8），XLSX 单个 10 MB、单表 10 万行 × 1024
+        限制：CSV 单个 2 MB（UTF-8 / GBK），XLSX 单个 10 MB、单表 10 万行 × 1024
         列；比较按单元格显示文本进行，不比较公式与样式。
       </p>
     </main>

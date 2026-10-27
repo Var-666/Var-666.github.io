@@ -1,3 +1,4 @@
+import { readTextFile, type TextEncoding, type DecodedText } from './text-encoding'
 // Excel (.xlsx) 读取与生成：SheetJS CE（Apache-2.0）按需动态加载。
 // 保真策略：单元格一律导出为 Excel 的「显示值」（cell.w，由数字格式渲染），
 // 文本单元格保持原值；数值日期不重新计算公式，只读取缓存结果。
@@ -263,7 +264,7 @@ function sheetNameFrom(fileName: string): string {
   return (cleaned === 'History' ? `${cleaned}表` : cleaned).slice(0, 31)
 }
 
-export type CsvToExcelOptions = { detectNumbers: boolean }
+export type CsvToExcelOptions = { detectNumbers: boolean; encoding?: TextEncoding }
 
 /** 依据显示宽度估算列宽（全角字符计 2），便于直接阅读 */
 function matrixColumnWidths(rows: string[][]) {
@@ -335,8 +336,8 @@ export async function matrixToExcelFile(
 export async function csvFileToExcel(
   file: FileLike,
   options: CsvToExcelOptions,
-): Promise<OutputFile> {
-  const text = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer())
-  const { rows } = parseCsvMatrix(text)
-  return matrixToExcelFile(rows, file.name, options)
+): Promise<OutputFile & { encoding: DecodedText['encoding'] }> {
+  const decoded = await readTextFile(file, options.encoding)
+  const { rows } = parseCsvMatrix(decoded.text)
+  return { ...(await matrixToExcelFile(rows, file.name, options)), encoding: decoded.encoding }
 }

@@ -1,3 +1,5 @@
+import { TextEncodingSelect } from './components/TextEncodingSelect'
+import { readTextFile, type TextEncoding, type DecodedText } from './lib/text-encoding'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Papa from 'papaparse'
 import { FileSpreadsheet, FileUp, LoaderCircle, Trash2, X } from 'lucide-react'
@@ -23,6 +25,13 @@ import {
 } from './lib/table-process'
 
 type ExportFormat = 'csv' | 'xlsx'
+type InputTable = LoadedTable & { file: File; encoding: DecodedText['encoding'] }
+async function readTable(file: File, encoding: TextEncoding): Promise<InputTable> {
+  const decoded = await readTextFile(file, encoding)
+  const parsed = parseCsvMatrix(decoded.text)
+  const [headers = [], ...rows] = parsed.rows
+  return { name: file.name, file, encoding: decoded.encoding, headers, rows }
+}
 
 const csvBlob = (rows: string[][]) =>
   new Blob(['\uFEFF', Papa.unparse(rows, { escapeFormulae: true })], {
@@ -30,7 +39,8 @@ const csvBlob = (rows: string[][]) =>
   })
 
 export default function TableTool({ active }: { active: boolean }) {
-  const [tables, setTables] = useState<LoadedTable[]>([])
+  const [tables, setTables] = useState<InputTable[]>([])
+  const [readEncoding, setReadEncoding] = useState<TextEncoding>('auto')
   const [dedupeOn, setDedupeOn] = useState(false)
   const [dedupeColumn, setDedupeColumn] = useState('')
   const [keep, setKeep] = useState<'first' | 'last'>('first')
@@ -57,7 +67,7 @@ export default function TableTool({ active }: { active: boolean }) {
 
   const headers = useMemo(() => tables[0]?.headers ?? [], [tables])
   const addFiles = async (files: File[]) => {
-    if (!files.length) return
+    if (!files.length || busy) return
     setOutput(null)
     try {
       validateQueueFiles(
@@ -70,22 +80,24 @@ export default function TableTool({ active }: { active: boolean }) {
       toast.error(error instanceof Error ? error.message : '文件无法添加')
       return
     }
-    const loaded: LoadedTable[] = []
-    for (const file of files) {
-      try {
-        const text = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer())
-        const parsed = parseCsvMatrix(text)
-        const [head = [], ...body] = parsed.rows
-        loaded.push({ name: file.name, headers: head, rows: body })
-      } catch (error) {
-        // 单个文件失败不影响其他文件
-        toast.error(`${file.name}：${error instanceof Error ? error.message : '读取失败'}`)
+    setBusy(true)
+    const loaded: InputTable[] = []
+    try {
+      for (const file of files) {
+        try {
+          loaded.push(await readTable(file, readEncoding))
+        } catch (error) {
+          // 单个文件失败不影响其他文件
+          toast.error(`${file.name}：${error instanceof Error ? error.message : '读取失败'}`)
+        }
       }
-    }
-    if (loaded.length) {
-      setTables((previous) => [...previous, ...loaded])
-      const firstHeaders = tables[0]?.headers ?? loaded[0].headers
-      setDroppedColumns((previous) => previous.filter((column) => firstHeaders.includes(column)))
+      if (loaded.length) {
+        setTables((previous) => [...previous, ...loaded])
+        const firstHeaders = tables[0]?.headers ?? loaded[0].headers
+        setDroppedColumns((previous) => previous.filter((column) => firstHeaders.includes(column)))
+      }
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -204,13 +216,14 @@ export default function TableTool({ active }: { active: boolean }) {
         多工作表）。
       </p>
       <div className="table-files">
-        <Button variant="outline" size="sm" onClick={() => input.current?.click()}>
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => input.current?.click()}>
           <FileUp size={14} />
           添加 CSV 文件（最多 10 个）
         </Button>
         <input
           ref={input}
           type="file"
+          disabled={busy}
           multiple
           accept=".csv"
           className="sr-only"
@@ -220,10 +233,34 @@ export default function TableTool({ active }: { active: boolean }) {
             event.target.value = ''
           }}
         />
+        <TextEncodingSelect
+          value={readEncoding}
+          disabled={busy}
+          onChange={async (value) => {
+            if (!tables.length) {
+              setReadEncoding(value)
+              return
+            }
+            setBusy(true)
+            try {
+              const updated = await Promise.all(tables.map((table) => readTable(table.file, value)))
+              setTables(updated)
+              setReadEncoding(value)
+              setOutput(null)
+            } catch (error) {
+              toast.error(
+                error instanceof Error ? error.message : '无法重新读取文件，已保留原数据。',
+              )
+            } finally {
+              setBusy(false)
+            }
+          }}
+        />
         {!!tables.length && (
           <Button
             variant="ghost"
             size="sm"
+            disabled={busy}
             onClick={() => {
               setTables([])
               setDroppedColumns([])
@@ -239,7 +276,10 @@ export default function TableTool({ active }: { active: boolean }) {
         <div className="table-file-list">
           {tables.map((table, index) => (
             <div className="table-file-row" key={`${table.name}-${index}`}>
-              <span>{table.name}</span>
+              <span>
+                {table.name}
+                <small className="encoding-note"> · 已按 {table.encoding} 读取</small>
+              </span>
               <span className="table-file-meta">
                 {table.rows.length.toLocaleString()} 行 × {table.headers.length} 列
               </span>
@@ -478,7 +518,7 @@ export default function TableTool({ active }: { active: boolean }) {
         </section>
       )}
       <p className="compare-note compare-limit">
-        限制：单个 CSV 2 MB、UTF-8，最多 10 份、合计 10 万行 / 100
+        限制：单个 CSV 2 MB、UTF-8 / GBK，最多 10 份、合计 10 万行 / 100
         万格；合并要求各文件表头完全一致； 只处理普通表格数据，不支持公式、样式与合并单元格。
       </p>
     </main>

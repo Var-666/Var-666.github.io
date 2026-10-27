@@ -1,3 +1,5 @@
+import { TextEncodingSelect } from '@/components/TextEncodingSelect'
+import type { TextEncoding } from '@/lib/text-encoding'
 // 文本「更多操作」：批量替换、列表处理、格式转换与批量文件处理。
 // 预览与应用共用同一份纯函数结果；应用即写回原文（走 TextTool 的撤销栈），原规则保留便于重复执行。
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -69,6 +71,7 @@ export function TextBatchOps({
   const [list, setList] = useState<ListOptions>(emptyListOptions)
   const [format, setFormat] = useState<LineJoinFormat>('comma')
   const [batchItems, setBatchItems] = useState<UiBatchItem[]>([])
+  const [batchEncoding, setBatchEncoding] = useState<TextEncoding>('auto')
   const [batchRunning, setBatchRunning] = useState(false)
   const [batchZip, setBatchZip] = useState<{ url: string; name: string } | null>(null)
   const batchInput = useRef<HTMLInputElement>(null)
@@ -344,6 +347,26 @@ export function TextBatchOps({
           {processOptions && (
             <div className="text-ops-block">
               <h3>批量文件处理</h3>
+              <TextEncodingSelect
+                label="批量读取编码"
+                value={batchEncoding}
+                disabled={batchRunning}
+                onChange={(value) => {
+                  setBatchEncoding(value)
+                  for (const url of batchUrls.current) URL.revokeObjectURL(url)
+                  batchUrls.current.clear()
+                  batchBlobs.current.clear()
+                  setBatchZip(null)
+                  setBatchItems((previous) =>
+                    previous.map((item) => ({
+                      id: item.id,
+                      name: item.name,
+                      originalBytes: item.originalBytes,
+                      status: 'waiting',
+                    })),
+                  )
+                }}
+              />
               <p className="text-ops-meta">
                 导入多份 TXT / MD，统一应用主编辑器当前的整理规则；单个文件的错误不影响其他文件。
               </p>
@@ -401,51 +424,59 @@ export function TextBatchOps({
                         .map((item, index) => ({ item, index }))
                         .filter(({ item }) => item.status === 'waiting')
                       const files = waiting.map(({ index }) => batchFiles.current[index])
-                      const summary = await processBatchTextFiles(files, processOptions, {
-                        onStart: (runnerId) => {
-                          const position = Number(runnerId.split('-')[1])
-                          const id = waiting[position].item.id
-                          setBatchItems((previous) =>
-                            previous.map((item) =>
-                              item.id === id ? { ...item, status: 'working' } : item,
-                            ),
-                          )
+                      const summary = await processBatchTextFiles(
+                        files,
+                        processOptions,
+                        {
+                          onStart: (runnerId) => {
+                            const position = Number(runnerId.split('-')[1])
+                            const id = waiting[position].item.id
+                            setBatchItems((previous) =>
+                              previous.map((item) =>
+                                item.id === id ? { ...item, status: 'working' } : item,
+                              ),
+                            )
+                          },
+                          onDone: (runnerId, result, _originalBytes, encoding) => {
+                            const position = Number(runnerId.split('-')[1])
+                            const id = waiting[position].item.id
+                            const blob = new Blob([result.text], {
+                              type: 'text/plain;charset=utf-8',
+                            })
+                            const url = URL.createObjectURL(blob)
+                            batchUrls.current.add(url)
+                            batchBlobs.current.set(id, blob)
+                            setBatchItems((previous) =>
+                              previous.map((item) =>
+                                item.id === id
+                                  ? {
+                                      ...item,
+                                      status: 'done',
+                                      encoding,
+                                      result: result.text,
+                                      resultBytes: blob.size,
+                                      changeCount: result.changes.reduce(
+                                        (sum, change) => sum + change.count,
+                                        0,
+                                      ),
+                                      url,
+                                    }
+                                  : item,
+                              ),
+                            )
+                          },
+                          onError: (runnerId, message) => {
+                            const position = Number(runnerId.split('-')[1])
+                            const id = waiting[position].item.id
+                            setBatchItems((previous) =>
+                              previous.map((item) =>
+                                item.id === id ? { ...item, status: 'error', message } : item,
+                              ),
+                            )
+                          },
                         },
-                        onDone: (runnerId, result) => {
-                          const position = Number(runnerId.split('-')[1])
-                          const id = waiting[position].item.id
-                          const blob = new Blob([result.text], { type: 'text/plain;charset=utf-8' })
-                          const url = URL.createObjectURL(blob)
-                          batchUrls.current.add(url)
-                          batchBlobs.current.set(id, blob)
-                          setBatchItems((previous) =>
-                            previous.map((item) =>
-                              item.id === id
-                                ? {
-                                    ...item,
-                                    status: 'done',
-                                    result: result.text,
-                                    resultBytes: blob.size,
-                                    changeCount: result.changes.reduce(
-                                      (sum, change) => sum + change.count,
-                                      0,
-                                    ),
-                                    url,
-                                  }
-                                : item,
-                            ),
-                          )
-                        },
-                        onError: (runnerId, message) => {
-                          const position = Number(runnerId.split('-')[1])
-                          const id = waiting[position].item.id
-                          setBatchItems((previous) =>
-                            previous.map((item) =>
-                              item.id === id ? { ...item, status: 'error', message } : item,
-                            ),
-                          )
-                        },
-                      })
+                        batchEncoding,
+                      )
                       toast.success(
                         `批量处理完成：成功 ${summary.done} 个${summary.failed ? `，失败 ${summary.failed} 个` : ''}。`,
                       )
@@ -552,7 +583,7 @@ export function TextBatchOps({
                         <strong>{item.name}</strong>
                         <span>
                           {item.status === 'done' &&
-                            `${batchTextOutputName(item.name)} · ${(item.originalBytes / 1024).toFixed(1)} KB → ${(item.resultBytes! / 1024).toFixed(1)} KB · ${item.changeCount} 处调整`}
+                            `${batchTextOutputName(item.name)} · ${(item.originalBytes / 1024).toFixed(1)} KB → ${(item.resultBytes! / 1024).toFixed(1)} KB · ${item.changeCount} 处调整 · 已按 ${item.encoding} 读取`}
                           {item.status === 'error' && item.message}
                           {item.status === 'waiting' && '等待处理'}
                           {item.status === 'working' && '正在整理…'}

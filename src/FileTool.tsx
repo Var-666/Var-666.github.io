@@ -1,3 +1,5 @@
+import { readTextFile, encodingNotices, type TextEncoding } from './lib/text-encoding'
+import { TextEncodingSelect } from './components/TextEncodingSelect'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowDownToLine, Check, FileUp, Image, LoaderCircle, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -110,6 +112,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
   const [detectNumbers, setDetectNumbers] = useState(() =>
     savedOption<boolean>('detectNumbers', false),
   )
+  const [readEncoding, setReadEncoding] = useState<TextEncoding>('auto')
   const [tablePaste, setTablePaste] = useState('')
   const [merged, setMerged] = useState<(OutputFile & { url: string }) | null>(null)
   const [rows, setRows] = useState<Row[]>([])
@@ -331,10 +334,14 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     let cancelled = false
     ;(async () => {
       try {
-        const text = new TextDecoder('utf-8', { fatal: true }).decode(await row.file.arrayBuffer())
-        const parsed = parseCsvMatrix(text)
+        const decoded = await readTextFile(row.file, readEncoding)
+        const parsed = parseCsvMatrix(decoded.text)
         if (!cancelled)
-          setCsvPreview({ file: row.file, rows: parsed.rows, notices: parsed.notices })
+          setCsvPreview({
+            file: row.file,
+            rows: parsed.rows,
+            notices: [...encodingNotices(decoded.encoding), ...parsed.notices],
+          })
       } catch (error) {
         if (cancelled) return
         setCsvPreview(null)
@@ -354,7 +361,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     return () => {
       cancelled = true
     }
-  }, [rows, mode, csvPreview])
+  }, [rows, mode, csvPreview, readEncoding])
   const moveRow = (id: string, to: number) => {
     if (running.current || packing || to < 0 || to >= rows.length) return
     clearOutputs()
@@ -467,12 +474,17 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                 blob: new Blob([sheetToMarkdown(sheet)], { type: 'text/markdown;charset=utf-8' }),
                 name: outputName(base, 'md'),
               }
-          } else if (mode === 'csv-excel')
-            output = await csvFileToExcel(row.file, { detectNumbers })
-          else {
-            const source = new TextDecoder('utf-8', { fatal: true }).decode(
-              await row.file.arrayBuffer(),
-            )
+          } else if (mode === 'csv-excel') {
+            const converted = await csvFileToExcel(row.file, {
+              detectNumbers,
+              encoding: readEncoding,
+            })
+            output = converted
+            rowNotices = encodingNotices(converted.encoding)
+          } else {
+            const decoded = await readTextFile(row.file, readEncoding)
+            const source = decoded.text
+            rowNotices = encodingNotices(decoded.encoding)
             if (mode === 'markdown-csv') {
               const outputs = markdownTables(source).map((text, index) => ({
                 name: outputName(row.file.name, `table-${index + 1}.csv`),
@@ -505,7 +517,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                   },
                 ),
               }
-              rowNotices = converted.notices.length ? converted.notices : undefined
+              rowNotices = [...rowNotices, ...converted.notices]
             }
           }
           if (bytes + output.blob.size > 100 * 1024 * 1024)
@@ -555,7 +567,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
             status: 'error',
             message:
               error instanceof TypeError
-                ? '读取失败，请检查文件是否损坏；文本请使用 UTF-8 编码。'
+                ? '读取失败，请检查文件是否损坏或切换读取编码。'
                 : error instanceof Error
                   ? error.message
                   : '转换失败，请检查文件格式。',
@@ -911,6 +923,18 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                 </label>
               </div>
             )}
+            {!isExcelRead &&
+              (modes[mode].category === 'text' || modes[mode].category === 'table') && (
+                <TextEncodingSelect
+                  value={readEncoding}
+                  disabled={busy || packing}
+                  onChange={(value) => {
+                    clearOutputs()
+                    setCsvPreview(null)
+                    setReadEncoding(value)
+                  }}
+                />
+              )}
             <button
               type="button"
               className={`file-drop ${dragging ? 'is-dragging' : ''}`}

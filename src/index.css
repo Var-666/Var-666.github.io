@@ -3374,3 +3374,38 @@ a {
     font-size: 10px;
   }
 }
+.encoding-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  max-width: 100%;
+  font-size: 12px;
+  color: var(--gray);
+}
+.encoding-control [role='combobox'] {
+  width: 150px;
+  max-width: 100%;
+  height: 32px;
+  font-size: 12px;
+}
+.encoding-note {
+  font-size: 11px;
+  color: var(--gray);
+  overflow-wrap: anywhere;
+}
+.text-import-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: -8px 0 12px;
+}
+.table-file-row > span:first-child {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.table-file-row .encoding-note {
+  display: block;
+}

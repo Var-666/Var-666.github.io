@@ -1,5 +1,6 @@
+import { readTextFile, type TextEncoding, type DecodedText } from './text-encoding'
 // 批量文本文件处理：多份 TXT/MD 顺序应用当前整理规则。
-// 单文件的错误（过大、非 UTF-8、超字符上限）只标记该文件，不中断其余文件。
+// 单文件的错误（过大、编码无效、超字符上限）只标记该文件，不中断其余文件。
 import { processText, type Options, type ProcessResult } from './text'
 
 export const batchTextLimits = {
@@ -19,6 +20,7 @@ export type BatchTextItem = {
   resultBytes?: number
   result?: string
   changeCount?: number
+  encoding?: DecodedText['encoding']
   message?: string
 }
 
@@ -47,9 +49,15 @@ export async function processBatchTextFiles(
   options: Options,
   hooks: {
     onStart: (id: string) => void
-    onDone: (id: string, result: ProcessResult, originalBytes: number) => void
+    onDone: (
+      id: string,
+      result: ProcessResult,
+      originalBytes: number,
+      encoding: DecodedText['encoding'],
+    ) => void
     onError: (id: string, message: string) => void
   },
+  encoding: TextEncoding = 'auto',
 ): Promise<{ done: number; failed: number }> {
   let done = 0
   let failed = 0
@@ -61,19 +69,20 @@ export async function processBatchTextFiles(
     try {
       if (file.size > batchTextLimits.maxFileBytes)
         throw new Error(`单个文件不超过 ${batchTextLimits.maxFileBytes / 1024 / 1024} MB。`)
-      const text = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer())
+      const decoded = await readTextFile(file, encoding)
+      const text = decoded.text
       if (text.length > batchTextLimits.maxChars)
         throw new Error(`超过 ${batchTextLimits.maxChars / 10000} 万字符上限，请拆分文件。`)
       const result = processText(text, options)
       done++
-      hooks.onDone(id, result, file.size)
+      hooks.onDone(id, result, file.size, decoded.encoding)
     } catch (error) {
       failed++
       hooks.onError(
         id,
         error instanceof Error
           ? error instanceof TypeError
-            ? '读取失败，请使用 UTF-8 编码。'
+            ? '读取失败，请检查文件编码。'
             : error.message
           : '处理失败。',
       )
