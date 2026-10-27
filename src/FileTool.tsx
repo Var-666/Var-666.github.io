@@ -551,6 +551,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                 source,
                 mode as TextConversion,
                 row.file.name.toLowerCase().endsWith('.tsv') ? '\t' : ',',
+                /\.(jsonl|ndjson)$/i.test(row.file.name),
               )
               const extension =
                 mode === 'markdown'

@@ -40,9 +40,9 @@ export const modes = {
   'json-csv': {
     category: 'table',
     title: 'JSON → CSV',
-    accept: '.json',
-    hint: 'JSON 文件 · 单个 2 MB · UTF-8 / GBK 编码',
-    note: '支持对象数组，不含嵌套字段。疑似表格公式的文本会添加单引号保护。',
+    accept: '.json,.jsonl,.ndjson',
+    hint: 'JSON / JSONL / NDJSON · 单个 2 MB · UTF-8 / GBK 编码',
+    note: 'JSON 对象数组，或 JSONL/NDJSON 每行一个对象。嵌套对象按点路径展开，数组保留为 JSON 文本；疑似表格公式添加单引号保护。',
   },
   'csv-markdown': {
     category: 'table',

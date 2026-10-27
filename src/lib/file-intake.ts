@@ -98,12 +98,20 @@ export async function identifyFile(file: File): Promise<IdentifiedFile> {
     if (textual) {
       kind =
         (
-          { csv: 'csv', tsv: 'tsv', md: 'markdown', json: 'json', txt: 'text' } as Record<
-            string,
-            FileKind
-          >
+          {
+            csv: 'csv',
+            tsv: 'tsv',
+            md: 'markdown',
+            json: 'json',
+            jsonl: 'json',
+            ndjson: 'json',
+            txt: 'text',
+          } as Record<string, FileKind>
         )[extension] ?? 'text'
-      detected = ({ markdown: 'md', text: 'txt' } as Record<string, string>)[kind] ?? kind
+      detected =
+        kind === 'json' && ['jsonl', 'ndjson'].includes(extension)
+          ? extension
+          : (({ markdown: 'md', text: 'txt' } as Record<string, string>)[kind] ?? kind)
     }
   }
   const same = extension === detected || (extension === 'jpeg' && detected === 'jpg')

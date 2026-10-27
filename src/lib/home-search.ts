@@ -81,6 +81,13 @@ export const homeTasks: TaskEntry[] = [
     hash: '#/rename',
     keywords: ['文件名', '改名', '编号', '前缀'],
   },
+  {
+    id: 'json-csv',
+    title: 'JSON / JSONL 转 CSV',
+    toolId: 'files',
+    hash: '#/files?mode=json-csv',
+    keywords: ['json', 'jsonl', 'ndjson', '嵌套', '展平', '日志', '表格'],
+  },
 ]
 
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ')

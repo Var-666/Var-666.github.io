@@ -32,8 +32,8 @@ test('JSON uses union of fields, quotes strings and protects spreadsheet formula
     'a,b,c\r\n"\'=1+1",001,\r\n,,"x,y"',
   )
 })
-test('JSON rejects invalid shapes and nested values', () => {
-  for (const input of ['{', '{}', '[]', '[1]', '[{"a":{}}]'])
+test('JSON rejects invalid top-level shapes', () => {
+  for (const input of ['{', '{}', '[]', '[1]'])
     assert.throws(() => convertFileText(input, 'json-csv'))
 })
 test('Markdown export keeps content and strips formatting', () => {
