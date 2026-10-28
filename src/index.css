@@ -3885,3 +3885,48 @@ a {
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+
+.pdf-insert-actions {
+  display: flex;
+  margin: 16px 0;
+}
+.pdf-output-settings > label {
+  margin: 14px 0;
+}
+.pdf-setting-field {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--gray);
+  max-width: 360px;
+}
+.pdf-unlock-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 18px;
+  background: var(--subtle);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.pdf-unlock-panel .conversion-note {
+  margin: 0;
+}
+.pdf-compress-settings > button {
+  margin-top: 12px;
+}
+
+.workbench-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--background);
+}
+.workbench-actions .copy-button {
+  height: 32px;
+  font-size: 12px;
+}

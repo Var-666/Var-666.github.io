@@ -171,6 +171,15 @@ export function intakeTasks(files: IdentifiedFile[]): IntakeTask[] {
       maxTotalMb: 10,
     })
   }
+  if (all('pdf', 'image') && files.some((file) => file.kind === 'image'))
+    tasks.push({
+      id: 'pdf-mixed',
+      title: '将图片加入 PDF 页面',
+      target: 'pdf',
+      maxFiles: 10,
+      maxSingleMb: 20,
+      maxTotalMb: 50,
+    })
   if (all('docx')) conversion('word-pdf', 'Word 转成 PDF', 10)
   if (all('xlsx')) {
     conversion('excel-csv', 'Excel 转 CSV', 10, 1)

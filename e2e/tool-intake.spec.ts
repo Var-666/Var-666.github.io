@@ -296,3 +296,11 @@ test.describe('取消未完成的交接', () => {
     await expect(page.locator('.rename-table')).toContainText('still-usable.csv')
   })
 })
+
+test('混合PDF与图片从全局任务直接进入同一页面列表', async ({ page }) => {
+  await page.goto('/')
+  await intake(page, [await pdf(), { name: 'photo.png', mimeType: 'image/png', buffer: png }])
+  await task(page, '将图片加入 PDF 页面')
+  await expect(page.locator('.pdf-page')).toHaveCount(2)
+  await expect(page.locator('.pdf-page-origin').filter({ hasText: 'photo.png' })).toBeVisible()
+})

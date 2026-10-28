@@ -781,10 +781,6 @@ export default function TextTool({ active }: { active: boolean }) {
                   <IconButton label="下载 TXT 文件" disabled={!ready} onClick={download}>
                     <ArrowDownToLine size={16} />
                   </IconButton>
-                  <Button size="sm" className="copy-button" disabled={!ready} onClick={copy}>
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
-                    {copied ? '已复制' : '复制结果'}
-                  </Button>
                 </div>
               </div>
               <div className="editor-body">
@@ -932,6 +928,12 @@ export default function TextTool({ active }: { active: boolean }) {
               )}
             </>
           )}
+          <div className="workbench-actions">
+            <Button size="sm" className="copy-button" disabled={!ready} onClick={copy}>
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? '已复制' : '复制结果'}
+            </Button>
+          </div>
         </section>
         <TextBatchOps
           active={active}

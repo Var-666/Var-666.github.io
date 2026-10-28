@@ -1,3 +1,4 @@
+import type { PDFRawStream as RawStream } from 'pdf-lib'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { PDFDocument, PDFName, degrees } from 'pdf-lib'
@@ -143,4 +144,88 @@ test('organizePdfSegments 按当前顺序与旋转分段导出', async () => {
   assert.equal(first.getPage(0).getRotation().angle, 90) // 当前顺序第 1 位 = 原第 3 页且已旋转
   const second = await PDFDocument.load(new Uint8Array(await outputs[1].blob.arrayBuffer()))
   assert.equal(second.getPageCount(), 1)
+})
+
+test('页码保持原文与页面旋转，按选中顺序编号，源文档不变', async () => {
+  const { decodePDFRawStream, PDFArray, PDFRawStream } = await import('pdf-lib')
+  const source = await PDFDocument.create()
+  source.addPage([300, 400]).drawText('ORIGINAL')
+  source.addPage([300, 400]).setRotation(degrees(-90))
+  const before = await source.save()
+  const result = await PDFDocument.load(
+    await (
+      await organizePdf(new Map([['a', source]]), [entry('a', 0), entry('a', 1)], {
+        numbering: { start: 7 },
+      })
+    ).arrayBuffer(),
+  )
+  const content = (index: number) => {
+    const contents = result.getPage(index).node.Contents()!
+    return (contents instanceof PDFArray ? contents.asArray() : [contents])
+      .map((ref) => result.context.lookup(ref))
+      .filter((value): value is RawStream => value instanceof PDFRawStream)
+      .map((stream) => new TextDecoder().decode(decodePDFRawStream(stream).decode()))
+      .join('\n')
+  }
+  assert.match(content(0), /<4F524947494E414C>/)
+  assert.match(content(0), /<37>/)
+  assert.match(content(1), /<38>/)
+  assert.equal(result.getPage(1).getRotation().angle, 270)
+  assert.deepEqual(await source.save(), before)
+})
+
+test('水印图片只嵌入一次并设置透明度，拆分每份独立从起始值编号', async () => {
+  const { PDFDict } = await import('pdf-lib')
+  const source = await PDFDocument.create()
+  source.addPage([200, 300])
+  source.addPage([200, 300])
+  const watermark = {
+    bytes: Uint8Array.from(
+      Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGN0S33BgA0wYRUdtBIAPicBo5sMNB0AAAAASUVORK5CYII=',
+        'base64',
+      ),
+    ),
+    opacity: 0.2,
+  }
+  const options = { numbering: { start: 9 }, watermark }
+  const output = await PDFDocument.load(
+    await (
+      await organizePdf(new Map([['a', source]]), [entry('a', 0), entry('a', 1)], options)
+    ).arrayBuffer(),
+  )
+  const refs = output.getPages().map((page) => {
+    const objects = page.node.Resources()!.lookup(PDFName.of('XObject'), PDFDict)
+    assert.equal(objects.keys().length, 1)
+    const states = page.node.Resources()!.lookup(PDFName.of('ExtGState'), PDFDict)
+    assert.match(states.toString(), /ca 0\.2/)
+    return objects.values()[0].toString()
+  })
+  assert.equal(refs[0], refs[1])
+  const parts = await organizePdfSegments(
+    new Map([['a', source]]),
+    [entry('a', 0), entry('a', 1)],
+    [[1], [2]],
+    options,
+  )
+  assert.deepEqual(
+    parts.map((part) => part.pages),
+    [1, 1],
+  )
+  await assert.rejects(
+    organizePdf(new Map([['a', source]]), [entry('a', 0)], { numbering: { start: 0 } }),
+    /起始页码/,
+  )
+  await assert.rejects(
+    organizePdf(new Map([['a', source]]), [entry('a', 0)], {
+      watermark: { ...watermark, opacity: NaN },
+    }),
+    /不透明度/,
+  )
+  await assert.rejects(
+    organizePdf(new Map([['a', source]]), [entry('a', 0)], {
+      watermark: { ...watermark, bytes: new Uint8Array(1_000_001) },
+    }),
+    /水印/,
+  )
 })

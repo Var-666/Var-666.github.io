@@ -87,7 +87,7 @@ test('首次离线准备后，未访问过的六个工具与本地字体都可�
   const pdf = await PDFDocument.create()
   pdf.addPage().drawText('Offline PDF preview')
   await page.goto('/#/pdf')
-  await page.setInputFiles('input[aria-label="选择需要整理的 PDF"]', {
+  await page.setInputFiles('input[aria-label="选择 PDF 或图片"]', {
     name: 'offline.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
@@ -124,6 +124,21 @@ test('首次离线准备后，未访问过的六个工具与本地字体都可�
       return { type: blob.type, dimensions }
     }, heicUrl),
   ).toEqual({ type: 'image/jpeg', dimensions: [64, 40] })
+  await page.goto('/#/pdf')
+  await page
+    .getByLabel('选择 PDF 或图片', { exact: true })
+    .setInputFiles('e2e/fixtures/encrypted.pdf')
+  await page.getByLabel('PDF 打开密码', { exact: true }).fill(' 密碼-123 ')
+  await page.getByRole('button', { name: '解密并导入', exact: true }).click()
+  await expect(page.locator('.pdf-page')).toHaveCount(3)
+  await expect(page.locator('.pdf-page-origin').filter({ hasText: 'offline.pdf' })).toHaveCount(1)
+  await expect(page.locator('[aria-label="解密结果"] a[download]')).toBeVisible()
+  await page
+    .locator('summary')
+    .filter({ hasText: /^PDF 结构压缩$/ })
+    .click()
+  await page.getByRole('button', { name: '压缩并导出所选', exact: true }).click()
+  await expect(page.locator('.conversion-actions a[download]')).toBeVisible()
   await context.setOffline(false)
 })
 

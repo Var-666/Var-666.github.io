@@ -154,7 +154,7 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
             <FileUp size={25} />
           </span>
           <strong>{files.length ? '继续添加文件，或拖到这里' : '选择文件，或拖到这里'}</strong>
-          <span>任意格式 · 最多 100 个文件 · 总计 100 MB</span>
+          <span>任意格式</span>
         </button>
         <input
           ref={input}
@@ -168,6 +168,13 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
             event.target.value = ''
           }}
         />
+        <details className="tool-advanced">
+          <summary>使用说明与限制</summary>
+          <p className="conversion-note">
+            最多 100 个文件、总计 100
+            MB，支持空文件。按列表顺序编号，仅导出副本，原文件不变。扩展名规则只改名称，不转换内容。
+          </p>
+        </details>
         <RenameRules options={options} update={update} busy={packing || readingDates}>
           <div className="name-import">
             <Textarea
@@ -291,7 +298,7 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
             {previewState.error}
           </p>
         )}
-        <p className="conversion-note">按列表顺序编号，仅导出副本，原文件不变。</p>
+
         {!!files.length && (
           <div className="rename-table-wrap">
             <table className="rename-table">

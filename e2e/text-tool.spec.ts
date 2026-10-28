@@ -51,3 +51,25 @@ test('列表处理：排序加行号并显示行数变化', async ({ page }) => 
   await page.getByRole('button', { name: '应用列表处理' }).click()
   await expect(editor).toHaveValue('apple\nbanana\ncherry')
 })
+
+test('文本主操作位于底部，空输入禁用，复制字节仍来自当前整理结果', async ({ page }) => {
+  await page.evaluate(() => {
+    Object.assign(window, { copiedText: '' })
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (text: string) => Object.assign(window, { copiedText: text }) },
+    })
+  })
+  const copy = page.getByRole('button', { name: '复制结果', exact: true })
+  await expect(copy).toBeDisabled()
+  expect(await copy.evaluate((element) => Boolean(element.closest('.workbench-actions')))).toBe(
+    true,
+  )
+  await page.getByRole('textbox', { name: '原始文本', exact: true }).fill('  001   中文  ')
+  await expect(page.getByRole('textbox', { name: '整理结果', exact: true })).toHaveValue('001 中文')
+  await copy.click()
+  expect(await page.evaluate(() => (window as unknown as { copiedText: string }).copiedText)).toBe(
+    '001 中文',
+  )
+  await expect(page.getByRole('button', { name: '已复制', exact: true })).toBeVisible()
+})

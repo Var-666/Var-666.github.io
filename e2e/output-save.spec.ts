@@ -196,7 +196,7 @@ test('PDF 拆分结果保存成多份 PDF，单文件可以系统分享；比较
   pdf.addPage()
   pdf.addPage()
   await page.goto('/#/pdf')
-  await page.getByLabel('选择需要整理的 PDF').setInputFiles({
+  await page.getByLabel('选择 PDF 或图片').setInputFiles({
     name: 'two.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
@@ -206,7 +206,11 @@ test('PDF 拆分结果保存成多份 PDF，单文件可以系统分享；比较
   await expect
     .poll(() => page.evaluate(() => window.nativeTest.shared[0]?.text.startsWith('%PDF-')))
     .toBeTruthy()
-  await page.getByRole('button', { name: /拆分导出/ }).click()
+  await page
+    .locator('summary')
+    .filter({ hasText: /^拆分导出$/ })
+    .click()
+  await page.getByRole('button', { name: /^拆分导出 \(/ }).click()
   await page.getByRole('button', { name: '保存到文件夹', exact: true }).click()
   await expect
     .poll(() =>

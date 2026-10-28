@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { PDFDocument } from 'pdf-lib'
 import { unzipSync } from 'fflate'
 import { deflateSync } from 'node:zlib'
@@ -68,16 +68,20 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('按页码段拆分导出 ZIP，逐份核对页数与内容归属', async ({ page }) => {
-  await page.setInputFiles('input[aria-label="选择需要整理的 PDF"]', {
+  await page.setInputFiles('input[aria-label="选择 PDF 或图片"]', {
     name: '三页.pdf',
     mimeType: 'application/pdf',
     buffer: await buildPdf(3),
   })
-  await expect(page.getByRole('button', { name: /拆分导出/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^拆分导出 \(/ })).toBeHidden()
+  await page
+    .locator('summary')
+    .filter({ hasText: /^拆分导出$/ })
+    .click()
   await page.getByRole('combobox', { name: '拆分方式' }).click()
   await page.getByRole('option', { name: '按页码段' }).click()
   await page.getByRole('textbox', { name: '拆分页码段' }).fill('1-2,3')
-  await page.getByRole('button', { name: /拆分导出/ }).click()
+  await page.getByRole('button', { name: /^拆分导出 \(/ }).click()
   const { name, bytes } = await downloadBytes(page)
   expect(name).toBe('拆分结果.zip')
   const files = unzipSync(new Uint8Array(bytes))
@@ -93,15 +97,19 @@ test('按页码段拆分导出 ZIP，逐份核对页数与内容归属', async (
 })
 
 test('每 N 页拆分：3 页按每 2 页拆成 2 份，修改设置后旧下载失效', async ({ page }) => {
-  await page.setInputFiles('input[aria-label="选择需要整理的 PDF"]', {
+  await page.setInputFiles('input[aria-label="选择 PDF 或图片"]', {
     name: '三页.pdf',
     mimeType: 'application/pdf',
     buffer: await buildPdf(3),
   })
+  await page
+    .locator('summary')
+    .filter({ hasText: /^拆分导出$/ })
+    .click()
   await page.getByRole('combobox', { name: '拆分方式' }).click()
   await page.getByRole('option', { name: '每 N 页一个文件' }).click()
   await page.getByRole('textbox', { name: '每份页数' }).fill('2')
-  await page.getByRole('button', { name: /拆分导出/ }).click()
+  await page.getByRole('button', { name: /^拆分导出 \(/ }).click()
   const first = await downloadBytes(page)
   expect(first.name).toBe('拆分结果.zip')
   const files = unzipSync(new Uint8Array(first.bytes))

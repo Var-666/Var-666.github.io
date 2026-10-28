@@ -21,6 +21,7 @@
     "postbuild": "node scripts/build-offline.mjs"
   },
   "dependencies": {
+    "@neslinesli93/qpdf-wasm": "0.3.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-select": "^2.2.6",
