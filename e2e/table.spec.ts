@@ -5,7 +5,7 @@ const csvA = '编号,部门,姓名\nA01,研发,甲\nA02,销售,乙\n'
 const csvB = '编号,部门,姓名\nA01,研发,甲\nA03,人事,丙\n'
 
 async function upload(page: Page, name: string, text: string) {
-  await page.setInputFiles('input[aria-label="添加 CSV 文件"]', {
+  await page.setInputFiles('input[aria-label="添加表格文件"]', {
     name,
     mimeType: 'text/csv',
     buffer: Buffer.from(text, 'utf8'),
@@ -82,6 +82,7 @@ test('按部门拆分导出 ZIP，逐个文件核对内容', async ({ page }) =>
 test('删除列与筛选的组合在预览计数中体现', async ({ page }) => {
   await upload(page, '一.csv', csvA)
   await upload(page, '二.csv', csvB)
+  await page.getByRole('switch', { name: '启用列操作' }).click()
   await page.getByRole('button', { name: '姓名' }).click()
   await expect(page.getByText('删除列 姓名')).toBeVisible()
   await expect(page.getByText('结果 4 行 × 2 列')).toBeVisible()

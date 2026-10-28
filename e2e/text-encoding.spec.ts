@@ -130,7 +130,7 @@ test('表格对比可手动重读 GBK，两边显示真实编码并生成正确�
 
 test('表格批处理重新解码失败保留原表，批量文本显示每文件编码', async ({ page }) => {
   await page.goto('/#/table')
-  await page.setInputFiles('input[aria-label="添加 CSV 文件"]', csv)
+  await page.setInputFiles('input[aria-label="添加表格文件"]', csv)
   await expect(page.locator('.table-preview')).toContainText('中文')
   await chooseEncoding(page, '读取编码', 'UTF-8')
   await expect(page.getByText(/无法按 UTF-8 读取/)).toBeVisible()

@@ -174,15 +174,17 @@ export function intakeTasks(files: IdentifiedFile[]): IntakeTask[] {
   if (all('csv')) {
     conversion('csv-json', 'CSV 转 JSON')
     conversion('csv-excel', 'CSV 转 Excel')
+  }
+  if (all('csv', 'xlsx'))
     tasks.push({
       id: 'table',
       title: '合并、去重、筛选表格',
       target: 'table',
       maxFiles: 10,
-      maxSingleMb: 2,
+      maxSingleMb: 10,
       maxTotalMb: 50,
     })
-  }
+
   if (all('csv', 'tsv')) conversion('csv-markdown', '表格转 Markdown')
   if (all('csv', 'xlsx'))
     tasks.push({

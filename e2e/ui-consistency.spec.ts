@@ -166,7 +166,7 @@ for (const theme of ['light', 'dark'] as const) {
     await noOverflow(page)
     await page.screenshot({ path: info.outputPath('matrix.png'), fullPage: true })
     await page.goto('/#/table')
-    await page.setInputFiles('input[aria-label="添加 CSV 文件"]', csv)
+    await page.setInputFiles('input[aria-label="添加表格文件"]', csv)
     await expect(page.locator('.table-preview')).toBeVisible()
     await expect(page.locator('.table-preview')).toHaveCSS('font-size', '12px')
     await expect(page.locator('.table-preview')).toHaveCSS('font-variant-numeric', 'tabular-nums')

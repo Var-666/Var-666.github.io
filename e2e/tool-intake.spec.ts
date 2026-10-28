@@ -252,6 +252,9 @@ for (const colorScheme of ['light', 'dark'] as const)
     await page.setViewportSize({ width: 390, height: 844 })
     await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
     await page.goto('/')
+    await page.addStyleTag({
+      content: '*,*::before,*::after{transition:none!important;animation:none!important}',
+    })
     const noOverflow = async () =>
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
@@ -265,12 +268,7 @@ for (const colorScheme of ['light', 'dark'] as const)
     ])
     await noOverflow()
     const dialog = page.getByRole('dialog', { name: '你想做什么？' })
-    expect(
-      await dialog.evaluate((e) => {
-        const r = e.getBoundingClientRect()
-        return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight
-      }),
-    ).toBe(true)
+    await expect(dialog).toBeInViewport({ ratio: 1 })
     await page.screenshot({ path: info.outputPath('intake-mobile.png'), fullPage: true })
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)

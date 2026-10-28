@@ -1,7 +1,8 @@
 import { OutputActions } from './components/OutputActions'
 import { useTransferReceiver } from './lib/tool-transfer'
 import { TextEncodingSelect } from './components/TextEncodingSelect'
-import { readTextFile, type TextEncoding, type DecodedText } from './lib/text-encoding'
+import type { TextEncoding } from './lib/text-encoding'
+import { readTable, workbookTable, validateInputTables, type InputTable } from './table-tool/input'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Papa from 'papaparse'
 import { FileSpreadsheet, FileUp, LoaderCircle, Trash2, X } from 'lucide-react'
@@ -15,25 +16,20 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { matricesToExcelFile, parseCsvMatrix } from './lib/file-excel'
+import { matricesToExcelFile } from './lib/file-excel'
 import { packOutputs } from './lib/file-media'
 import type { OutputFile } from './lib/file-convert'
 import { validateQueueFiles } from './lib/file-queue'
 import {
-  groupFileName,
+  groupFileNames,
+  joinColumns,
+  tableLimits,
+  type TableMergeMode,
   processTables,
-  type LoadedTable,
   type ProcessOptions,
 } from './lib/table-process'
 
 type ExportFormat = 'csv' | 'xlsx'
-type InputTable = LoadedTable & { file: File; encoding: DecodedText['encoding'] }
-async function readTable(file: File, encoding: TextEncoding): Promise<InputTable> {
-  const decoded = await readTextFile(file, encoding)
-  const parsed = parseCsvMatrix(decoded.text)
-  const [headers = [], ...rows] = parsed.rows
-  return { name: file.name, file, encoding: decoded.encoding, headers, rows }
-}
 
 const csvBlob = (rows: string[][]) =>
   new Blob(['\uFEFF', Papa.unparse(rows, { escapeFormulae: true })], {
@@ -43,6 +39,12 @@ const csvBlob = (rows: string[][]) =>
 export default function TableTool({ active }: { active: boolean }) {
   const [tables, setTables] = useState<InputTable[]>([])
   const [readEncoding, setReadEncoding] = useState<TextEncoding>('auto')
+  const [mergeMode, setMergeMode] = useState<TableMergeMode>('strict')
+  const [leftKey, setLeftKey] = useState('')
+  const [rightKey, setRightKey] = useState('')
+  const [columnNames, setColumnNames] = useState<Record<string, string>>({})
+  const [columnOrder, setColumnOrder] = useState<string[]>([])
+  const [columnOpsOn, setColumnOpsOn] = useState(false)
   const [dedupeOn, setDedupeOn] = useState(false)
   const [dedupeColumn, setDedupeColumn] = useState('')
   const [keep, setKeep] = useState<'first' | 'last'>('first')
@@ -56,25 +58,51 @@ export default function TableTool({ active }: { active: boolean }) {
   const [busy, setBusy] = useState(false)
   const [output, setOutput] = useState<(OutputFile & { url: string }) | null>(null)
   const input = useRef<HTMLInputElement>(null)
-  const urls = useRef(new Set<string>())
+  useEffect(
+    () => () => {
+      if (output) URL.revokeObjectURL(output.url)
+    },
+    [output],
+  )
 
+  const effectiveLeftKey = tables[0]?.headers.includes(leftKey)
+    ? leftKey
+    : (tables[0]?.headers[0] ?? '')
+  const effectiveRightKey = tables[1]?.headers.includes(rightKey)
+    ? rightKey
+    : (tables[1]?.headers[0] ?? '')
+  const isJoin = !['strict', 'align'].includes(mergeMode)
+  const headers = useMemo(() => {
+    const names =
+      mergeMode === 'strict'
+        ? (tables[0]?.headers ?? [])
+        : mergeMode === 'align'
+          ? [...new Set(tables.flatMap((table) => table.headers))]
+          : joinColumns(tables[0]?.headers ?? [], tables[1]?.headers ?? [], effectiveRightKey)
+              .headers
+    return names.length > tableLimits.maxCols ? [] : names
+  }, [tables, mergeMode, effectiveRightKey])
   useEffect(() => {
-    const current = urls.current
-    return () => {
-      for (const url of current) URL.revokeObjectURL(url)
-      current.clear()
-    }
-  }, [])
-
-  const headers = useMemo(() => tables[0]?.headers ?? [], [tables])
+    setOutput(null)
+  }, [
+    mergeMode,
+    leftKey,
+    rightKey,
+    columnNames,
+    columnOrder,
+    columnOpsOn,
+    keep,
+    filterMode,
+    format,
+  ])
   const addFiles = async (files: File[]) => {
     if (!files.length || busy) return
     setOutput(null)
     try {
       validateQueueFiles(
-        tables.map((table) => new File([], table.name)),
+        tables.map((table) => table.file),
         files,
-        '.csv',
+        '.csv,.xlsx',
         10,
       )
     } catch (error) {
@@ -86,7 +114,12 @@ export default function TableTool({ active }: { active: boolean }) {
     try {
       for (const file of files) {
         try {
-          loaded.push(await readTable(file, readEncoding))
+          const existing = [...tables, ...loaded]
+          const available =
+            256 * 1024 * 1024 - existing.reduce((sum, table) => sum + table.expandedBytes, 0)
+          const table = await readTable(file, readEncoding, undefined, available)
+          validateInputTables([...existing, table])
+          loaded.push(table)
         } catch (error) {
           // 单个文件失败不影响其他文件
           toast.error(`${file.name}：${error instanceof Error ? error.message : '读取失败'}`)
@@ -111,16 +144,31 @@ export default function TableTool({ active }: { active: boolean }) {
 
   const options: ProcessOptions = useMemo(
     () => ({
+      merge: { mode: mergeMode, leftKey: effectiveLeftKey, rightKey: effectiveRightKey },
+      renameColumns: columnOpsOn
+        ? Object.fromEntries(
+            Object.entries(columnNames).filter(
+              ([key, value]) => headers.includes(key) && value.trim(),
+            ),
+          )
+        : {},
+      columnOrder: columnOpsOn ? columnOrder : [],
       dedupe: dedupeOn && effectiveDedupeColumn ? { column: effectiveDedupeColumn, keep } : null,
       filter:
         filterOn && effectiveFilterColumn && keyword.trim()
           ? { column: effectiveFilterColumn, mode: filterMode, keyword }
           : null,
-      dropColumns: droppedColumns.filter((column) => headers.includes(column)),
+      dropColumns: columnOpsOn ? droppedColumns.filter((column) => headers.includes(column)) : [],
       splitBy: headers.includes(splitBy) ? splitBy : null,
     }),
     [
       headers,
+      mergeMode,
+      effectiveLeftKey,
+      effectiveRightKey,
+      columnNames,
+      columnOrder,
+      columnOpsOn,
       dedupeOn,
       effectiveDedupeColumn,
       keep,
@@ -150,6 +198,7 @@ export default function TableTool({ active }: { active: boolean }) {
     try {
       const result = validResult
       const matrix = [result.headers, ...result.rows]
+      const groupNames = groupFileNames(validResult.stats.groups.map((group) => group.value))
       let file: OutputFile
       if (!options.splitBy) {
         file =
@@ -158,23 +207,22 @@ export default function TableTool({ active }: { active: boolean }) {
             : await matricesToExcelFile([{ name: '处理结果', rows: matrix }], '处理结果')
       } else if (format === 'csv') {
         file = await packOutputs(
-          validResult.stats.groups.map((group) => ({
-            name: `${groupFileName(group.value)}.csv`,
+          validResult.stats.groups.map((group, index) => ({
+            name: `${groupNames[index]}.csv`,
             blob: csvBlob([result.headers, ...group.rows]),
           })),
           '处理结果-拆分.zip',
         )
       } else {
         file = await matricesToExcelFile(
-          validResult.stats.groups.map((group) => ({
-            name: groupFileName(group.value),
+          validResult.stats.groups.map((group, index) => ({
+            name: groupNames[index],
             rows: [result.headers, ...group.rows],
           })),
           '处理结果-拆分',
         )
       }
       const url = URL.createObjectURL(file.blob)
-      urls.current.add(url)
       setOutput({ ...file, url })
       toast.success('处理结果已生成，可下载查看。')
     } catch (error) {
@@ -193,7 +241,11 @@ export default function TableTool({ active }: { active: boolean }) {
   ) => (
     <label>
       {label}
-      <Select value={value || (withNone ? 'none' : undefined)} onValueChange={onChange}>
+      <Select
+        disabled={busy}
+        value={value || (withNone ? 'none' : undefined)}
+        onValueChange={onChange}
+      >
         <SelectTrigger aria-label={label}>
           <SelectValue />
         </SelectTrigger>
@@ -214,24 +266,28 @@ export default function TableTool({ active }: { active: boolean }) {
       <section className="intro">
         <h1>表格批量处理</h1>
       </section>
-      <p className="compare-note">
-        导入多份同结构 CSV，按固定顺序处理：合并 → 按关键列去重（保留第一条 / 最后一条）→ 按列筛选 →
-        删除列 → 按字段拆分。每一步的影响在预览中给出数量，可导出 CSV 或 XLSX（拆分为 ZIP /
-        多工作表）。
-      </p>
+      <details className="tool-advanced">
+        <summary>使用说明与限制</summary>
+        <p className="compare-note">
+          导入 CSV / XLSX（可选工作表），单个 10 MB（CSV 最多 1000 万字符），总计 50
+          MB；合并结果不超过 10 万行 / 100 万格。按固定顺序处理：合并或连接 →
+          按关键列去重（保留第一条 / 最后一条）→ 按列筛选 → 删除列 →
+          按字段拆分。每一步的影响在预览中给出数量，可导出 CSV 或 XLSX（拆分为 ZIP / 多工作表）。
+        </p>
+      </details>
       <div className="table-files">
         <Button variant="outline" size="sm" disabled={busy} onClick={() => input.current?.click()}>
           <FileUp size={14} />
-          添加 CSV 文件（最多 10 个）
+          添加表格文件（CSV / XLSX，最多 10 个）
         </Button>
         <input
           ref={input}
           type="file"
           disabled={busy}
           multiple
-          accept=".csv"
+          accept=".csv,.xlsx"
           className="sr-only"
-          aria-label="添加 CSV 文件"
+          aria-label="添加表格文件"
           onChange={(event) => {
             void addFiles(Array.from(event.target.files || []))
             event.target.value = ''
@@ -247,7 +303,12 @@ export default function TableTool({ active }: { active: boolean }) {
             }
             setBusy(true)
             try {
-              const updated = await Promise.all(tables.map((table) => readTable(table.file, value)))
+              const updated = await Promise.all(
+                tables.map((table) =>
+                  table.workbook ? Promise.resolve(table) : readTable(table.file, value, table.id),
+                ),
+              )
+              validateInputTables(updated)
               setTables(updated)
               setReadEncoding(value)
               setOutput(null)
@@ -279,10 +340,51 @@ export default function TableTool({ active }: { active: boolean }) {
       {!!tables.length && (
         <div className="table-file-list">
           {tables.map((table, index) => (
-            <div className="table-file-row" key={`${table.name}-${index}`}>
+            <div className="table-file-row" key={table.id}>
               <span>
                 {table.name}
-                <small className="encoding-note"> · 已按 {table.encoding} 读取</small>
+                {table.encoding && (
+                  <small className="encoding-note"> · 已按 {table.encoding} 读取</small>
+                )}
+                {table.workbook && (
+                  <Select
+                    disabled={busy}
+                    value={table.sheetName}
+                    onValueChange={(value) => {
+                      try {
+                        const updated = workbookTable(
+                          table.file,
+                          table.workbook!,
+                          value,
+                          table.expandedBytes,
+                          table.id,
+                        )
+                        const next = tables.map((item) => (item.id === table.id ? updated : item))
+                        validateInputTables(next)
+                        setTables(next)
+                        setOutput(null)
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : '无法读取该工作表。')
+                      }
+                    }}
+                  >
+                    <SelectTrigger aria-label={`${table.name} 工作表`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {table.workbook.sheets.map((sheet) => (
+                        <SelectItem value={sheet.name} key={sheet.name}>
+                          {sheet.name}（{sheet.rows} 行 × {sheet.cols} 列）
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {table.notices.map((notice, index) => (
+                  <small className="encoding-note" key={index}>
+                    {notice}
+                  </small>
+                ))}
               </span>
               <span className="table-file-meta">
                 {table.rows.length.toLocaleString()} 行 × {table.headers.length} 列
@@ -304,134 +406,305 @@ export default function TableTool({ active }: { active: boolean }) {
         </div>
       )}
       {!!tables.length && (
-        <section className="compare-options" aria-label="处理选项">
-          <div className="table-option-row">
+        <section className="compare-options table-steps" aria-label="处理选项">
+          <div className="table-step">
+            <h2>1. 合并或连接</h2>
+            <div className="table-option-row">
+              <label>
+                合并方式
+                <Select
+                  disabled={busy}
+                  value={mergeMode}
+                  onValueChange={(value) => setMergeMode(value as TableMergeMode)}
+                >
+                  <SelectTrigger aria-label="合并方式">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="strict">同结构追加</SelectItem>
+                    <SelectItem value="align">按列名对齐补空</SelectItem>
+                    <SelectItem value="left">左连接（保留左表）</SelectItem>
+                    <SelectItem value="inner">内连接（只保留匹配）</SelectItem>
+                    <SelectItem value="full">全连接（保留两表）</SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+              {isJoin && (
+                <>
+                  <label>
+                    左表主键
+                    <Select
+                      disabled={busy || !tables[0]}
+                      value={effectiveLeftKey || undefined}
+                      onValueChange={setLeftKey}
+                    >
+                      <SelectTrigger aria-label="左表主键">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tables[0]?.headers.map((header) => (
+                          <SelectItem key={header} value={header}>
+                            {header}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <label>
+                    右表主键
+                    <Select
+                      disabled={busy || !tables[1]}
+                      value={effectiveRightKey || undefined}
+                      onValueChange={setRightKey}
+                    >
+                      <SelectTrigger aria-label="右表主键">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tables[1]?.headers.map((header) => (
+                          <SelectItem key={header} value={header}>
+                            {header}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || tables.length !== 2}
+                    onClick={() => {
+                      setTables((previous) => [previous[1], previous[0]])
+                      setLeftKey(effectiveRightKey)
+                      setRightKey(effectiveLeftKey)
+                    }}
+                  >
+                    交换左右表
+                  </Button>
+                </>
+              )}
+            </div>
+            {isJoin && (
+              <p className="conversion-note">
+                第一份为左表，第二份为右表；主键去首尾空白后精确匹配，空主键不互相匹配。一对多保留所有组合，超限时拒绝生成。
+              </p>
+            )}
+          </div>
+          <div className="table-step">
             <label className="compare-switch">
               <Switch
                 aria-label="启用去重"
                 checked={dedupeOn}
+                disabled={busy}
                 onCheckedChange={(value) => {
                   setDedupeOn(value)
                   setOutput(null)
                 }}
               />
-              去重
+              2. 去重
             </label>
-            {columnSelect(
-              '去重列',
-              effectiveDedupeColumn,
-              (value) => {
-                setDedupeColumn(value)
-                setOutput(null)
-              },
-              false,
+            {dedupeOn && (
+              <div className="table-option-row">
+                {columnSelect(
+                  '去重列',
+                  effectiveDedupeColumn,
+                  (value) => {
+                    setDedupeColumn(value)
+                    setOutput(null)
+                  },
+                  false,
+                )}
+                <label>
+                  保留
+                  <Select
+                    value={keep}
+                    disabled={busy}
+                    onValueChange={(value) => setKeep(value as 'first' | 'last')}
+                  >
+                    <SelectTrigger aria-label="去重保留">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="first">第一条</SelectItem>
+                      <SelectItem value="last">最后一条</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+              </div>
             )}
-            <label>
-              保留
-              <Select value={keep} onValueChange={(value) => setKeep(value as 'first' | 'last')}>
-                <SelectTrigger aria-label="去重保留">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="first">第一条</SelectItem>
-                  <SelectItem value="last">最后一条</SelectItem>
-                </SelectContent>
-              </Select>
-            </label>
           </div>
-          <div className="table-option-row">
+          <div className="table-step">
             <label className="compare-switch">
               <Switch
                 aria-label="启用筛选"
                 checked={filterOn}
+                disabled={busy}
                 onCheckedChange={(value) => {
                   setFilterOn(value)
                   setOutput(null)
                 }}
               />
-              筛选
+              3. 筛选
             </label>
-            {columnSelect(
-              '筛选列',
-              effectiveFilterColumn,
-              (value) => {
-                setFilterColumn(value)
-                setOutput(null)
-              },
-              false,
-            )}
-            <label>
-              方式
-              <Select
-                value={filterMode}
-                onValueChange={(value) => setFilterMode(value as 'include' | 'exclude')}
-              >
-                <SelectTrigger aria-label="筛选方式">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="include">只保留包含</SelectItem>
-                  <SelectItem value="exclude">排除包含</SelectItem>
-                </SelectContent>
-              </Select>
-            </label>
-            <label className="table-keyword">
-              关键词
-              <input
-                aria-label="筛选关键词"
-                value={keyword}
-                placeholder="关键词"
-                onChange={(event) => {
-                  setKeyword(event.target.value)
-                  setOutput(null)
-                }}
-              />
-            </label>
-          </div>
-          <div className="compare-columns">
-            <span>点击列名切换是否删除（红色 = 将删除）：</span>
-            {headers.map((column) => {
-              const dropped = droppedColumns.includes(column)
-              return (
-                <button
-                  type="button"
-                  key={column}
-                  className={`compare-column-chip${dropped ? ' is-dropped' : ''}`}
-                  aria-pressed={dropped}
-                  onClick={() => {
-                    setDroppedColumns((previous) =>
-                      dropped ? previous.filter((item) => item !== column) : [...previous, column],
-                    )
+            {filterOn && (
+              <div className="table-option-row">
+                {columnSelect(
+                  '筛选列',
+                  effectiveFilterColumn,
+                  (value) => {
+                    setFilterColumn(value)
                     setOutput(null)
-                  }}
-                >
-                  {column}
-                </button>
-              )
-            })}
-          </div>
-          <div className="table-option-row">
-            {columnSelect(
-              '按列拆分',
-              splitBy,
-              (value) => {
-                setSplitBy(value === 'none' ? '' : value)
-                setOutput(null)
-              },
-              true,
+                  },
+                  false,
+                )}
+                <label>
+                  方式
+                  <Select
+                    disabled={busy}
+                    value={filterMode}
+                    onValueChange={(value) => setFilterMode(value as 'include' | 'exclude')}
+                  >
+                    <SelectTrigger aria-label="筛选方式">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="include">只保留包含</SelectItem>
+                      <SelectItem value="exclude">排除包含</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label className="table-keyword">
+                  关键词
+                  <input
+                    aria-label="筛选关键词"
+                    value={keyword}
+                    placeholder="关键词"
+                    disabled={busy}
+                    onChange={(event) => {
+                      setKeyword(event.target.value)
+                      setOutput(null)
+                    }}
+                  />
+                </label>
+              </div>
             )}
-            <label>
-              输出格式
-              <Select value={format} onValueChange={(value) => setFormat(value as ExportFormat)}>
-                <SelectTrigger aria-label="输出格式">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="csv">CSV{options.splitBy ? '（ZIP）' : ''}</SelectItem>
-                  <SelectItem value="xlsx">XLSX{options.splitBy ? '（多工作表）' : ''}</SelectItem>
-                </SelectContent>
-              </Select>
+          </div>
+          <div className="table-step">
+            <label className="compare-switch">
+              <Switch
+                aria-label="启用列操作"
+                checked={columnOpsOn}
+                disabled={busy}
+                onCheckedChange={setColumnOpsOn}
+              />
+              4. 列操作
             </label>
+            {columnOpsOn && (
+              <>
+                <div className="compare-columns">
+                  <span>点击列名切换是否删除（红色 = 将删除）：</span>
+                  {headers.map((column) => {
+                    const dropped = droppedColumns.includes(column)
+                    return (
+                      <button
+                        type="button"
+                        key={column}
+                        className={`compare-column-chip${dropped ? ' is-dropped' : ''}`}
+                        aria-pressed={dropped}
+                        disabled={busy}
+                        onClick={() => {
+                          setDroppedColumns((previous) =>
+                            dropped
+                              ? previous.filter((item) => item !== column)
+                              : [...previous, column],
+                          )
+                          setOutput(null)
+                        }}
+                      >
+                        {column}
+                      </button>
+                    )
+                  })}
+                </div>
+                <details className="tool-advanced">
+                  <summary>列改名和顺序</summary>
+                  <div className="table-column-editor">
+                    {[
+                      ...columnOrder.filter((column) => headers.includes(column)),
+                      ...headers.filter((column) => !columnOrder.includes(column)),
+                    ].map((column, index, array) => (
+                      <div className="table-column-row" key={column}>
+                        <label>
+                          {column}
+                          <input
+                            className="tool-input"
+                            aria-label={`${column} 新列名`}
+                            maxLength={255}
+                            value={Object.hasOwn(columnNames, column) ? columnNames[column] : ''}
+                            placeholder={column}
+                            disabled={busy || droppedColumns.includes(column)}
+                            onChange={(event) =>
+                              setColumnNames((previous) => ({
+                                ...previous,
+                                [column]: event.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        {([-1, 1] as const).map((offset) => (
+                          <Button
+                            key={offset}
+                            size="sm"
+                            variant="outline"
+                            aria-label={`${offset < 0 ? '上移列' : '下移列'} ${column}`}
+                            disabled={busy || index + offset < 0 || index + offset >= array.length}
+                            onClick={() => {
+                              const order = [...array]
+                              order.splice(index + offset, 0, order.splice(index, 1)[0])
+                              setColumnOrder(order)
+                            }}
+                          >
+                            {offset < 0 ? '↑' : '↓'}
+                          </Button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </>
+            )}
+          </div>
+          <div className="table-step">
+            <h2>5. 拆分与导出</h2>
+            <div className="table-option-row">
+              {columnSelect(
+                '按列拆分',
+                splitBy,
+                (value) => {
+                  setSplitBy(value === 'none' ? '' : value)
+                  setOutput(null)
+                },
+                true,
+              )}
+              <label>
+                输出格式
+                <Select
+                  value={format}
+                  disabled={busy}
+                  onValueChange={(value) => setFormat(value as ExportFormat)}
+                >
+                  <SelectTrigger aria-label="输出格式">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="csv">CSV{options.splitBy ? '（ZIP）' : ''}</SelectItem>
+                    <SelectItem value="xlsx">
+                      XLSX{options.splitBy ? '（多工作表）' : ''}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+            </div>
           </div>
         </section>
       )}
@@ -443,6 +716,16 @@ export default function TableTool({ active }: { active: boolean }) {
       {validResult && (
         <section className="compare-result" aria-label="处理预览">
           <div className="compare-summary">
+            {validResult.stats.join && (
+              <span className="chip">
+                匹配 {validResult.stats.join.pairs} 对 · 左表未匹配{' '}
+                {validResult.stats.join.leftUnmatched} 行 · 右表未匹配{' '}
+                {validResult.stats.join.rightUnmatched} 行
+              </span>
+            )}
+            {!!validResult.stats.renamedColumns && (
+              <span className="chip">列改名 {validResult.stats.renamedColumns} 列</span>
+            )}
             <span className="chip">
               合并 {validResult.stats.files} 份 · {validResult.stats.mergedRows} 行
             </span>
@@ -475,7 +758,7 @@ export default function TableTool({ active }: { active: boolean }) {
             <table className="table-preview" aria-label="处理结果预览（前 10 行）">
               <thead>
                 <tr>
-                  {validResult.headers.map((header) => (
+                  {validResult.headers.slice(0, 20).map((header) => (
                     <th key={header}>{header}</th>
                   ))}
                 </tr>
@@ -483,17 +766,24 @@ export default function TableTool({ active }: { active: boolean }) {
               <tbody>
                 {validResult.rows.slice(0, 10).map((row, index) => (
                   <tr key={index}>
-                    {validResult.headers.map((_, columnIndex) => (
-                      <td key={columnIndex}>{row[columnIndex] ?? ''}</td>
+                    {validResult.headers.slice(0, 20).map((_, columnIndex) => (
+                      <td key={columnIndex}>
+                        {(row[columnIndex] ?? '').length > 160
+                          ? (row[columnIndex] ?? '').slice(0, 160) + '…'
+                          : (row[columnIndex] ?? '')}
+                      </td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {validResult.rows.length > 10 && (
+          {(validResult.rows.length > 10 ||
+            validResult.headers.length > 20 ||
+            validResult.rows.slice(0, 10).some((row) => row.some((cell) => cell.length > 160))) && (
             <p className="compare-more">
-              预览前 10 行，共 {validResult.rows.length} 行，导出查看全部
+              预览前 10 行 / 20 列，长单元格显示前 160 字；导出保留全部内容（共{' '}
+              {validResult.rows.length} 行）
             </p>
           )}
           <div className="compare-export">
@@ -522,10 +812,6 @@ export default function TableTool({ active }: { active: boolean }) {
           </div>
         </section>
       )}
-      <p className="compare-note compare-limit">
-        限制：单个 CSV 2 MB、UTF-8 / GBK，最多 10 份、合计 10 万行 / 100
-        万格；合并要求各文件表头完全一致； 只处理普通表格数据，不支持公式、样式与合并单元格。
-      </p>
     </main>
   )
 }

@@ -48,10 +48,10 @@ export const homeTasks: TaskEntry[] = [
   },
   {
     id: 'merge-csv',
-    title: '合并 / 拆分多份 CSV',
+    title: '合并 / 连接 / 拆分表格',
     toolId: 'table',
     hash: '#/table',
-    keywords: ['合并', '拆分', '去重', '清洗'],
+    keywords: ['合并', '连接', '对齐', '拆分', '去重', '清洗', 'CSV', 'Excel', 'XLSX'],
   },
   {
     id: 'compare-tables',

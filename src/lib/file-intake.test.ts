@@ -37,7 +37,7 @@ test('task compatibility and destination limits reflect actual tools, including 
   const csv = await identifyFile(new File(['编号,名称\n001,中文'], 'one.csv'))
   const xlsx = await identifyFile(office('xl/workbook.xml'))
   assert.ok(intakeTasks([csv, xlsx]).some((task) => task.target === 'compare'))
-  assert.ok(!intakeTasks([csv, xlsx]).some((task) => task.target === 'table'))
+  assert.ok(intakeTasks([csv, xlsx]).some((task) => task.target === 'table'))
   const compare = intakeTasks([csv, csv, csv]).find((task) => task.target === 'compare')!
   assert.match(taskLimit(compare, [csv, csv, csv]), /最多 2 个/)
   const large = { ...csv, file: new File(['x'.repeat(2 * 1024 * 1024 + 1)], 'large.csv') }

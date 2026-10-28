@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import {
   emptyProcessOptions,
   groupFileName,
+  groupFileNames,
+  joinTables,
   mergeTables,
   processTables,
   type LoadedTable,
@@ -128,4 +130,168 @@ test('分组文件名清理非法字符并截断', () => {
   assert.equal(groupFileName('研发/一部*2026'), '研发 一部 2026')
   assert.equal(groupFileName('   '), '分组')
   assert.equal(groupFileName('x'.repeat(60)).length, 40)
+})
+
+test('按列名对齐补空，合并列顺序稳定且输入表不变', () => {
+  const a = table('a', [
+      ['id', 'name'],
+      ['001', '甲'],
+    ]),
+    b = table('b', [
+      ['name', 'dept'],
+      ['乙', '研发'],
+    ])
+  const out = mergeTables([a, b], true)
+  assert.deepEqual(out, {
+    headers: ['id', 'name', 'dept'],
+    rows: [
+      ['001', '甲', ''],
+      ['', '乙', '研发'],
+    ],
+  })
+  assert.deepEqual(a.headers, ['id', 'name'])
+  assert.throws(
+    () =>
+      mergeTables([
+        table('bad', [
+          ['x', 'x'],
+          ['1', '2'],
+        ]),
+      ]),
+    /重复列名/,
+  )
+})
+
+test('主键连接保留一对多、同名右列及前导零，空键不互相匹配', () => {
+  const left = table('left', [
+    ['id', 'name'],
+    ['001', '甲'],
+    ['002', '乙'],
+    ['', '左空'],
+  ])
+  const right = table('right', [
+    ['编号', 'name', 'dept'],
+    ['001', 'A', '研发'],
+    ['001', 'B', '销售'],
+    ['003', 'C', '财务'],
+    ['', '右空', ''],
+  ])
+  const join = (mode: 'left' | 'inner' | 'full') =>
+    joinTables([left, right], { mode, leftKey: 'id', rightKey: '编号' })
+  const out = join('left')
+  assert.deepEqual(out.headers, ['id', 'name', 'name（右表）', 'dept'])
+  assert.deepEqual(out.rows, [
+    ['001', '甲', 'A', '研发'],
+    ['001', '甲', 'B', '销售'],
+    ['002', '乙', '', ''],
+    ['', '左空', '', ''],
+  ])
+  assert.deepEqual(out.join, { pairs: 2, leftUnmatched: 2, rightUnmatched: 2 })
+  assert.equal(join('inner').rows.length, 2)
+  assert.deepEqual(join('full').rows.slice(-2), [
+    ['003', '', 'C', '财务'],
+    ['', '', '右空', ''],
+  ])
+  assert.throws(
+    () => joinTables([left], { mode: 'left', leftKey: 'id', rightKey: '编号' }),
+    /两份表/,
+  )
+  assert.throws(
+    () => joinTables([left, right], { mode: 'left', leftKey: '不存在', rightKey: '编号' }),
+    /有效的连接主键/,
+  )
+})
+
+test('主键连接的笛卡尔积与按列对齐在生成超限结果前拒绝', () => {
+  const a = { name: 'a', headers: ['id', 'a'], rows: Array(400).fill(['x', '1']) },
+    b = { name: 'b', headers: ['id', 'b'], rows: Array(400).fill(['x', '2']) }
+  assert.throws(
+    () => joinTables([a, b], { mode: 'full', leftKey: 'id', rightKey: 'id' }),
+    /10 万行/,
+  )
+  assert.throws(
+    () =>
+      mergeTables(
+        [{ name: 'wide', headers: Array.from({ length: 1025 }, (_, i) => 'c' + i), rows: [] }],
+        true,
+      ),
+    /1024/,
+  )
+  assert.throws(
+    () => mergeTables([{ name: 'many', headers: ['a'], rows: Array(100001).fill(['x']) }]),
+    /10 万行/,
+  )
+})
+
+test('删除前置列并重排/改名后拆分仍以正确列分组；删除拆分列则明确拒绝', () => {
+  const options = {
+    ...emptyProcessOptions,
+    dropColumns: ['编号'],
+    columnOrder: ['姓名', '部门'],
+    renameColumns: { 姓名: '员工' },
+    splitBy: '部门',
+  }
+  const out = processTables([first], options)
+  assert.deepEqual(out.headers, ['员工', '部门'])
+  assert.deepEqual(
+    out.stats.groups.map((g) => [g.value, g.rows]),
+    [
+      ['研发', [['甲', '研发']]],
+      ['销售', [['乙', '销售']]],
+    ],
+  )
+  assert.equal(out.stats.renamedColumns, 1)
+  assert.throws(
+    () =>
+      processTables([first], { ...emptyProcessOptions, dropColumns: ['部门'], splitBy: '部门' }),
+    /拆分列已被删除/,
+  )
+  assert.throws(
+    () => processTables([first], { ...emptyProcessOptions, renameColumns: { 姓名: '部门' } }),
+    /重复列名/,
+  )
+})
+
+test('分组清理和空值标签不再合并或覆盖不同分组', () => {
+  const source = table('x', [
+    ['key', 'v'],
+    ['研发/一部', '1'],
+    ['研发?一部', '2'],
+    ['', '3'],
+    ['（空值）', '4'],
+  ])
+  const out = processTables([source], { ...emptyProcessOptions, splitBy: 'key' })
+  assert.equal(out.stats.groups.length, 4)
+  assert.deepEqual(groupFileNames(out.stats.groups.map((g) => g.value)), [
+    '研发 一部',
+    '研发 一部 (2)',
+    '（空值）',
+    '（空值） (2)',
+  ])
+  assert.equal(new Set(groupFileNames(['x'.repeat(50) + 'a', 'x'.repeat(50) + 'b'])).size, 2)
+  assert.equal(groupFileName('CON'), 'CON 分组')
+  assert.equal(groupFileName('bad\u0000name'), 'bad name')
+})
+
+test('split group counts are bounded before building thousands of output files', () => {
+  const source = {
+    name: 'groups',
+    headers: ['k'],
+    rows: Array.from({ length: 1001 }, (_, index) => [String(index)]),
+  }
+  assert.throws(
+    () => processTables([source], { ...emptyProcessOptions, splitBy: 'k' }),
+    /1000 个分组/,
+  )
+})
+
+test('result limits include the header so exported boundary-sized tables remain importable', () => {
+  const headers = Array.from({ length: 10 }, (_, i) => 'c' + i),
+    row = headers.map(() => '001')
+  const table = { name: 'boundary', headers, rows: Array(99999).fill(row) }
+  assert.equal(processTables([table], emptyProcessOptions).rows.length, 99999)
+  assert.throws(
+    () => processTables([{ ...table, rows: Array(100000).fill(row) }], emptyProcessOptions),
+    /含表头/,
+  )
 })

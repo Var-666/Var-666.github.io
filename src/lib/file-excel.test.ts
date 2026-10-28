@@ -377,3 +377,20 @@ test('matricesToExcelFile 导出多工作表且内容与命名正确', async () 
   )
   assert.equal(changed['D2'].v, '10')
 })
+
+test('CSV resource bounds precede sparse-row padding; larger character limit is explicit', () => {
+  const wide =
+    Array.from({ length: 1024 }, (_, index) => 'c' + index).join(',') +
+    '\n' +
+    Array(1000).fill('x').join('\n')
+  assert.throws(() => parseCsvMatrix(wide), /100 万格/)
+  const source = 'a\n' + 'x'.repeat(2_000_001)
+  assert.throws(() => parseCsvMatrix(source), /200 万/)
+  assert.equal(parseCsvMatrix(source, 10_000_000).rows[1][0].length, 2_000_001)
+})
+
+test('XLSX character ceiling is explicit and shared by single/multi-sheet exports', async () => {
+  const rows = [['a'], ['x'.repeat(32768)]]
+  await assert.rejects(matrixToExcelFile(rows, 'long', { detectNumbers: false }), /32767.*CSV/)
+  await assert.rejects(matricesToExcelFile([{ name: 'long', rows }], 'long'), /32767.*CSV/)
+})

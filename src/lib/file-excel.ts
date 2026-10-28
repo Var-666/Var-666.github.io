@@ -229,8 +229,12 @@ export function sheetToMarkdown(sheet: SheetData): string {
 const safeNumber = /^(0|[1-9][0-9]{0,11})(\.[0-9]{1,8})?$/
 export const isSafeNumberText = (value: string) => safeNumber.test(value.trim())
 
-export function parseCsvMatrix(text: string): { rows: string[][]; notices: string[] } {
-  if (text.length > 2_000_000) throw new Error('文本过大，请使用 200 万字符以内的文件。')
+export function parseCsvMatrix(
+  text: string,
+  maxChars = 2_000_000,
+): { rows: string[][]; notices: string[] } {
+  if (text.length > maxChars)
+    throw new Error(`文本过大，请使用 ${maxChars / 10000} 万字符以内的文件。`)
   if (!text.replace(/^\uFEFF/, '').trim()) throw new Error('CSV 内容为空。')
   const parsed = Papa.parse<string[]>(text.replace(/^\uFEFF/, ''), { skipEmptyLines: true })
   // UndetectableDelimiter 只是提示已按逗号兜底，不是解析失败
@@ -241,12 +245,12 @@ export function parseCsvMatrix(text: string): { rows: string[][]; notices: strin
   const notices: string[] = []
   const width = rows.reduce((max, row) => Math.max(max, row.length), 0)
   if (width > excelLimits.maxCols) throw new Error(`CSV 超过 ${excelLimits.maxCols} 列，请先拆分。`)
+  if (rows.length > excelLimits.maxRows || rows.length * width > excelLimits.maxCells)
+    throw new Error('CSV 超出处理上限（10 万行、100 万格），请拆分后转换。')
   if (rows.some((row) => row.length !== width)) {
     notices.push('部分行的列数与最宽行不同，已用空单元格补齐。')
     for (const row of rows) while (row.length < width) row.push('')
   }
-  if (rows.length > excelLimits.maxRows || rows.length * width > excelLimits.maxCells)
-    throw new Error('CSV 超出处理上限（10 万行、100 万格），请拆分后转换。')
   return { rows, notices }
 }
 
@@ -284,11 +288,17 @@ function matrixColumnWidths(rows: string[][]) {
   )
 }
 
+function validateExcelCells(rows: string[][]) {
+  if (rows.some((row) => row.some((cell) => cell.length > 32767)))
+    throw new Error('单元格超过 Excel 的 32767 字符上限，请缩短内容或改用 CSV 导出。')
+}
+
 /** 生成多工作表 xlsx（全部按文本写入，不识别数字，避免编号类内容失真） */
 export async function matricesToExcelFile(
   sheets: { name: string; rows: string[][] }[],
   fileName: string,
 ): Promise<OutputFile> {
+  sheets.forEach((sheet) => validateExcelCells(sheet.rows))
   const XLSX = await loadSheetJs()
   const workbook = XLSX.utils.book_new()
   sheets.forEach((sheet, index) => {
@@ -314,6 +324,7 @@ export async function matrixToExcelFile(
   fileName: string,
   options: CsvToExcelOptions,
 ): Promise<OutputFile> {
+  validateExcelCells(rows)
   const XLSX = await loadSheetJs()
   const data = options.detectNumbers
     ? rows.map((row) =>

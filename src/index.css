@@ -3645,3 +3645,46 @@ a {
     padding-inline: 8px;
   }
 }
+
+.table-step + .table-step {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.table-step h2,
+.table-step > .compare-switch {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+.table-step .table-option-row {
+  margin-top: 12px;
+}
+.table-column-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.table-column-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  min-width: 0;
+}
+.table-column-row > label {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+.table-file-row [role='combobox'] {
+  width: min(100%, 220px);
+  margin-top: 6px;
+}
+@media (max-width: 650px) {
+  .table-column-editor {
+    grid-template-columns: 1fr;
+  }
+}

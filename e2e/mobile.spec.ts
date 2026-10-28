@@ -78,6 +78,6 @@ test('PDF 整理与重命名：主控件在视口内且无横向溢出', async (
 test('表格批量处理：选项行换行且不溢出', async ({ page }) => {
   await page.goto('/#/table')
   await expect(page.getByRole('heading', { name: '表格批量处理' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '添加 CSV 文件（最多 10 个）' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '添加表格文件（CSV / XLSX，最多 10 个）' })).toBeVisible()
   await expectNoHorizontalOverflow(page)
 })

@@ -172,7 +172,7 @@ test('重命名直接存目录保留原字节，表格分组 ZIP 可另存独立
   await page.evaluate(() => {
     location.hash = '#/table'
   })
-  await page.getByLabel('添加 CSV 文件').setInputFiles(csvFile('table.csv'))
+  await page.getByLabel('添加表格文件').setInputFiles(csvFile('table.csv'))
   await page.getByRole('combobox', { name: '按列拆分' }).click()
   await page.getByRole('option', { name: '部门', exact: true }).click()
   await page.getByRole('button', { name: '导出 CSV（ZIP）', exact: true }).click()
