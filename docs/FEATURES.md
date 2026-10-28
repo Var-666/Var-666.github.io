@@ -133,6 +133,8 @@ SEO 与安全：`robots.txt` 与 `sitemap.xml` 随构建发布；页面带 canon
 - `src/lib/file-excel.ts`：Excel 工作簿读取（显示值保真、zip 预检查、集中上限）与 XLSX 生成。
 - `src/lib/convert-report.ts`：Word / PDF 互转的结果校验与质量报告。
 - `src/lib/text.ts` / `src/lib/text-diff.ts` / `src/lib/text.worker.ts`：纯函数整理规则、差异计算与后台线程。
+- `src/text-tool/TextSettingsDialog.tsx` / `DiffOverlay.tsx` / `useTextProcessing.ts`：设置视图、差异覆盖层和带请求版本保护的后台处理管线。
+- `src/file-tool/ConversionOptions.tsx` / `options.ts`：转换参数视图和原有 12 个参数的校验、默认值与 300ms 本地保存。
 - `src/lib/storage.ts`：本地存储（主题、设置、预设、收藏、最近使用、参数记忆），旧键迁移。
 - `src/lib/home-search.ts`：首页搜索与任务入口索引。
 - `e2e/`：Playwright 端到端回归（文件转换、首页、文本、对比、批处理、PDF、重命名、离线、移动端）。

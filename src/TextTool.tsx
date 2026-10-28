@@ -1,3 +1,13 @@
+import { useTextProcessing } from './text-tool/useTextProcessing'
+import { OverlayMarks, type DiffMark } from './text-tool/DiffOverlay'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { TextSettingsDialog } from './text-tool/TextSettingsDialog'
 import { OutputActions } from './components/OutputActions'
 import { useTransferReceiver } from './lib/tool-transfer'
 import { readTextFile, type TextEncoding, type DecodedText } from './lib/text-encoding'
@@ -41,12 +51,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { TextBatchOps } from './text-tool/TextBatchOps'
 import {
@@ -56,14 +60,6 @@ import {
   type StoredUserPreset,
 } from './lib/storage'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  processText,
   presets,
   baseOptions,
   textStats,
@@ -71,14 +67,11 @@ import {
   KEEP_BREAK_MARK,
   type Options,
   type Preset,
-  type ProcessResult,
 } from '@/lib/text'
 import { cn } from '@/lib/utils'
 import { clipboardWithTimeout } from '@/lib/clipboard'
 import { storageKeys } from '@/lib/storage'
-import { textDiff, DIFF_MAX_CHARS, type DiffHunk } from '@/lib/text-diff'
-
-type DiffMark = { start: number; end: number; hunk: number; side: 'del' | 'ins' }
+import { DIFF_MAX_CHARS, type DiffHunk } from '@/lib/text-diff'
 
 const icons = {
   clean: WandSparkles,
@@ -127,51 +120,6 @@ function IconButton({
     </Tooltip>
   )
 }
-function Rule({
-  title,
-  description,
-  checked,
-  onChange,
-  id,
-}: {
-  title: string
-  description?: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-  id: string
-}) {
-  return (
-    <div className="rule">
-      <label htmlFor={id}>
-        <span>{title}</span>
-        {description && <small>{description}</small>}
-      </label>
-      <Switch id={id} checked={checked} onCheckedChange={onChange} />
-    </div>
-  )
-}
-// 覆盖层内容：在完整原文中把变更范围包上高亮 span，文字本身保持透明
-function OverlayMarks({ text, marks }: { text: string; marks: DiffMark[] }) {
-  const nodes: React.ReactNode[] = []
-  let cursor = 0
-  marks.forEach((mark, index) => {
-    const start = Math.max(cursor, mark.start)
-    if (start >= mark.end) return
-    if (start > cursor) nodes.push(text.slice(cursor, start))
-    nodes.push(
-      <span
-        key={index}
-        data-hunk={mark.hunk}
-        className={mark.side === 'del' ? 'diff-del' : 'diff-ins'}
-      >
-        {text.slice(start, mark.end)}
-      </span>,
-    )
-    cursor = mark.end
-  })
-  nodes.push(text.slice(cursor))
-  return <>{nodes}</>
-}
 const previewLimit = 36
 const markWhitespace = (text: string) => text.replace(/\n/g, '⏎').replace(/\t/g, '␉')
 function recordPreview(source: string, result: string, hunk: DiffHunk) {
@@ -196,10 +144,12 @@ export default function TextTool({ active }: { active: boolean }) {
   const [sourceEncoding, setSourceEncoding] = useState<DecodedText['encoding'] | null>(null)
   const importedFile = useRef<File | null>(null)
   const [source, setSource] = useState('')
-  const [result, setResult] = useState<ProcessResult>({ text: '', changes: [] })
-  const [processing, setProcessing] = useState(false)
-  const [failed, setFailed] = useState(false)
   const [composing, setComposing] = useState(false)
+  const { result, processing, failed, diff, request } = useTextProcessing(
+    source,
+    options,
+    composing,
+  )
   const [mobileTab, setMobileTab] = useState('source')
   const [copied, setCopied] = useState(false)
   const [undo, setUndo] = useState<string | null>(null)
@@ -207,7 +157,6 @@ export default function TextTool({ active }: { active: boolean }) {
   const [helpOpen, setHelpOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [diff, setDiff] = useState<DiffHunk[] | null>(null)
   const [recordsOpen, setRecordsOpen] = useState(false)
   const [userPresets, setUserPresets] = useState<StoredUserPreset[]>(() =>
     readUserPresets(localStorage, Object.keys(presets), sanitizeOptions),
@@ -221,73 +170,19 @@ export default function TextTool({ active }: { active: boolean }) {
       setHelpOpen(false)
     }
   }, [active])
-  const worker = useRef<Worker | null>(null)
-  const request = useRef(0)
   const fileInput = useRef<HTMLInputElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const output = useRef<HTMLTextAreaElement>(null)
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileRequest = useRef(0)
-  useEffect(() => {
-    let instance: Worker | null = null
-    try {
-      instance = new Worker(new URL('./lib/text.worker.ts', import.meta.url), { type: 'module' })
-      worker.current = instance
-      instance.onmessage = ({ data }) => {
-        if (data.id !== request.current) return
-        setProcessing(false)
-        if (data.error) {
-          setFailed(true)
-          setDiff(null)
-          toast.error(data.error)
-        } else {
-          setResult(data.result)
-          setDiff(data.diff ?? null)
-          setFailed(false)
-        }
-      }
-      instance.onerror = () => {
-        instance?.terminate()
-        worker.current = null
-        setFailed(true)
-        setDiff(null)
-        setProcessing(false)
-        toast.error('处理线程暂时不可用，请修改文字重试，或刷新页面。')
-      }
-    } catch {
-      worker.current = null
-    }
-    return () => {
-      instance?.terminate()
-      worker.current = null
+  useEffect(
+    () => () => {
       if (copyTimer.current) clearTimeout(copyTimer.current)
-    }
-  }, [])
+    },
+    [],
+  )
   useEffect(() => {
-    const id = ++request.current
     setCopied(false)
-    setFailed(false)
-    if (composing) {
-      setProcessing(true)
-      return
-    }
-    if (!source) {
-      setResult({ text: '', changes: [] })
-      setDiff([])
-      setProcessing(false)
-      return
-    }
-    setProcessing(true)
-    const timer = setTimeout(() => {
-      if (worker.current) worker.current.postMessage({ id, text: source, options })
-      else {
-        const processed = processText(source, options)
-        setResult(processed)
-        setDiff(textDiff(source, processed.text))
-        setProcessing(false)
-      }
-    }, 180)
-    return () => clearTimeout(timer)
   }, [source, options, composing])
   useEffect(() => {
     try {
@@ -494,36 +389,6 @@ export default function TextTool({ active }: { active: boolean }) {
   const resultStats = useMemo(() => textStats(result.text), [result.text])
   const changeCount = result.changes.reduce((total, change) => total + change.count, 0)
   const ready = !!result.text && !processing && !failed
-  const rule = (key: keyof Options, title: string, description?: string) => (
-    <Rule
-      key={key}
-      id={`option-${key}`}
-      title={title}
-      description={description}
-      checked={!!options[key]}
-      onChange={(value) => update(key, value as never)}
-    />
-  )
-  const blankSelect = (
-    <div className="rule">
-      <label htmlFor="blank-lines">
-        空白行处理<small>按需要保留段落之间的留白</small>
-      </label>
-      <Select
-        value={options.blankLines}
-        onValueChange={(value) => update('blankLines', value as Options['blankLines'])}
-      >
-        <SelectTrigger id="blank-lines" className="w-[130px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="keep">全部保留</SelectItem>
-          <SelectItem value="single">最多留一行</SelectItem>
-          <SelectItem value="remove">全部删除</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-  )
   const sourceMarks = useMemo<DiffMark[]>(
     () =>
       diff?.flatMap((hunk) =>
@@ -1092,136 +957,20 @@ export default function TextTool({ active }: { active: boolean }) {
           event.target.value = ''
         }}
       />
-      <Dialog open={advancedOpen} onOpenChange={setAdvancedOpen}>
-        <DialogContent className="settings-dialog">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings2 size={18} />
-              整理设置
-            </DialogTitle>
-            <DialogDescription>
-              当前场景：{presets[preset].title}。所有规则都从原文重新处理。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="settings-scroll">
-            <div className="settings-section">
-              <span className="settings-label">空格与空行</span>
-              {rule('trimLines', '清理行首行尾空格', '移除每行两端的空格和制表符')}
-              {rule('collapseSpaces', '合并连续空格', '将多个空格或制表符合并成一个空格')}
-              {blankSelect}
-            </div>
-            <Accordion type="multiple" defaultValue={['scene']}>
-              <AccordionItem value="scene">
-                <AccordionTrigger>场景规则</AccordionTrigger>
-                <AccordionContent>
-                  {rule(
-                    'markdownPlain',
-                    'Markdown 转纯文本',
-                    '保留正文、代码和链接；表格转成制表符分隔的文本',
-                  )}
-                  {rule(
-                    'repairBreaks',
-                    '修复 PDF 断行',
-                    '规则推测连接断句；尽量保留段落、列表与链接',
-                  )}
-                  <div className="rule">
-                    <label htmlFor="repair-mode">
-                      断行修复模式
-                      <small>保守尽量保留原结构，标准更积极合并软换行</small>
-                    </label>
-                    <Select
-                      value={options.repairMode}
-                      onValueChange={(value) =>
-                        update('repairMode', value as Options['repairMode'])
-                      }
-                    >
-                      <SelectTrigger id="repair-mode" className="w-[130px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="conservative">保守修复</SelectItem>
-                        <SelectItem value="standard">标准修复</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {rule('dedupe', '删除重复行', '保留第一次出现的行与原有顺序')}
-                  {rule('ignoreWhitespace', '去重时忽略首尾空格')}
-                  {rule('ignoreCase', '去重时忽略英文大小写')}
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="typography">
-                <AccordionTrigger>中文排版</AccordionTrigger>
-                <AccordionContent>
-                  {rule('fullwidth', '全角字符转半角', '转换全角英文字母、数字、符号与空格')}
-                  {rule('cjkSpacing', '调整中英文间距', '在汉字与英文字母、数字之间补一个空格')}
-                  {rule(
-                    'chinesePunctuation',
-                    '转换中文标点',
-                    '含中文的片段中转换逗号、冒号等，保护链接与小数',
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-            <div className="user-preset-manager">
-              <h3>自定义预设</h3>
-              <div className="user-preset-save">
-                <input
-                  aria-label="预设名称"
-                  placeholder="预设名称，如：日报清理"
-                  maxLength={30}
-                  value={presetName}
-                  onChange={(event) => setPresetName(event.target.value)}
-                />
-                <Button variant="outline" size="sm" onClick={saveCurrentUserPreset}>
-                  保存当前规则
-                </Button>
-              </div>
-              {userPresets.map((entry) => (
-                <div className="user-preset-row" key={entry.id}>
-                  <span>{entry.name}</span>
-                  <div>
-                    <Button variant="outline" size="sm" onClick={() => applyUserPreset(entry)}>
-                      应用
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`删除自定义预设 ${entry.name}`}
-                      onClick={() => {
-                        removeUserPreset(entry.id)
-                        toast.success(`已删除「${entry.name}」`)
-                      }}
-                    >
-                      删除
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              {!userPresets.length && (
-                <p className="user-preset-empty">
-                  把当前场景与规则组合保存为预设，之后一键应用（只保存规则，不保存正文）。
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="dialog-footer">
-            <Button
-              variant="outline"
-              onClick={() => {
-                choosePreset(preset)
-                toast.success('已恢复当前场景的默认规则')
-              }}
-            >
-              <RotateCcw size={14} />
-              恢复默认
-            </Button>
-            <Button onClick={() => setAdvancedOpen(false)}>
-              完成
-              <Check size={14} />
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TextSettingsDialog
+        advancedOpen={advancedOpen}
+        setAdvancedOpen={setAdvancedOpen}
+        preset={preset}
+        options={options}
+        update={update}
+        presetName={presetName}
+        setPresetName={setPresetName}
+        userPresets={userPresets}
+        saveCurrentUserPreset={saveCurrentUserPreset}
+        applyUserPreset={applyUserPreset}
+        removeUserPreset={removeUserPreset}
+        choosePreset={choosePreset}
+      />
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent className="help-dialog">
           <DialogHeader>

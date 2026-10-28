@@ -1,3 +1,5 @@
+import { ConversionOptions } from './file-tool/ConversionOptions'
+import { useFileOptions } from './file-tool/options'
 import { OutputActions } from './components/OutputActions'
 import { useToolTransfer, useTransferReceiver, type ToolTransfer } from './lib/tool-transfer'
 import { ConfirmImport } from './components/ConfirmImport'
@@ -7,16 +9,8 @@ import { TextEncodingSelect } from './components/TextEncodingSelect'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowDownToLine, Check, FileUp, Image, LoaderCircle, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { Switch } from '@/components/ui/switch'
 import { validateQueueFiles } from './lib/file-queue'
 import { convertFileText, markdownTables, type TextConversion } from './lib/file-text'
 import {
@@ -48,28 +42,10 @@ import {
 
 import { imagesToPdf, packOutputs, pdfToImages } from './lib/file-media'
 import { compressImageFile } from './lib/image-compress'
-import type { ImageSize, PdfSheetSize } from './lib/media-options'
 import { Textarea } from '@/components/ui/textarea'
 import { categories, modeKeys, modes, type Mode } from './file-tool/modes'
 import { sizeLabel, type Row } from './file-tool/types'
-import { readFileOptions, saveFileOptions, type FileOptionSchema } from './lib/storage'
 
-// 参数记忆的 schema：只存选项值（枚举 / 数值 / 布尔），永不存文件内容
-const fileOptionSchema: FileOptionSchema = {
-  format: (value) => value === 'png' || value === 'jpeg' || value === 'webp',
-  imageSize: (value) =>
-    value === 'original' || value === '1920' || value === '1280' || value === 'half',
-  quality: (value) => typeof value === 'number' && value >= 10 && value <= 100,
-  compressTarget: (value) => ['100', '200', '500', '1000'].includes(value as string),
-  compressFormat: (value) => value === 'jpeg' || value === 'webp',
-  pdfFormat: (value) => value === 'png' || value === 'jpeg',
-  pdfLayout: (value) => value === 'pages' || value === 'long',
-  mergeSize: (value) => value === 'a4' || value === 'a3' || value === 'letter',
-  mergeOrientation: (value) => value === 'portrait' || value === 'landscape',
-  mergeFit: (value) => value === 'contain' || value === 'cover',
-  pages: (value) => typeof value === 'string' && value.length <= 50,
-  detectNumbers: (value) => typeof value === 'boolean',
-}
 import { FileQueue } from './file-tool/FileQueue'
 import { CsvExcelPreview, ExcelPreview } from './file-tool/ExcelPreview'
 
@@ -85,9 +61,6 @@ export default function FileTool({ active = true }: { active?: boolean }) {
   useEffect(() => {
     if (!active) setIncomingTransfer(null)
   }, [active])
-  const savedOptions = useRef(readFileOptions(localStorage, fileOptionSchema))
-  const savedOption = <K extends string | number | boolean>(key: string, fallback: K): K =>
-    (savedOptions.current[key] as K | undefined) ?? fallback
   const [mode, setMode] = useState<Mode>(() => modeFromHash() ?? 'image')
   const isExcelRead = mode === 'excel-csv' || mode === 'excel-json' || mode === 'excel-md'
   const [excel, setExcel] = useState<{ file: File; workbook: WorkbookData } | null>(null)
@@ -97,30 +70,21 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     rows: string[][]
     notices: string[]
   } | null>(null)
-  const [format, setFormat] = useState<'png' | 'jpeg' | 'webp'>(() => savedOption('format', 'png'))
-  const [imageSize, setImageSize] = useState<ImageSize>(() => savedOption('imageSize', 'original'))
-  const [quality, setQuality] = useState(() => savedOption<number>('quality', 90))
-  const [compressTarget, setCompressTarget] = useState<'100' | '200' | '500' | '1000'>(() =>
-    savedOption('compressTarget', '200'),
-  )
-  const [compressFormat, setCompressFormat] = useState<'jpeg' | 'webp'>(() =>
-    savedOption('compressFormat', 'jpeg'),
-  )
-  const [pdfFormat, setPdfFormat] = useState<'png' | 'jpeg'>(() => savedOption('pdfFormat', 'png'))
-  const [pdfLayout, setPdfLayout] = useState<'pages' | 'long'>(() =>
-    savedOption('pdfLayout', 'pages'),
-  )
-  const [mergeSize, setMergeSize] = useState<PdfSheetSize>(() => savedOption('mergeSize', 'a4'))
-  const [mergeOrientation, setMergeOrientation] = useState<'portrait' | 'landscape'>(() =>
-    savedOption('mergeOrientation', 'portrait'),
-  )
-  const [mergeFit, setMergeFit] = useState<'contain' | 'cover'>(() =>
-    savedOption('mergeFit', 'contain'),
-  )
-  const [pages, setPages] = useState(() => savedOption<string>('pages', ''))
-  const [detectNumbers, setDetectNumbers] = useState(() =>
-    savedOption<boolean>('detectNumbers', false),
-  )
+  const [fileOptions, setFileOptions] = useFileOptions()
+  const {
+    format,
+    imageSize,
+    quality,
+    compressTarget,
+    compressFormat,
+    pdfFormat,
+    pdfLayout,
+    mergeSize,
+    mergeOrientation,
+    mergeFit,
+    pages,
+    detectNumbers,
+  } = fileOptions
   const [readEncoding, setReadEncoding] = useState<TextEncoding>('auto')
   const [tablePaste, setTablePaste] = useState('')
   const [merged, setMerged] = useState<(OutputFile & { url: string }) | null>(null)
@@ -141,43 +105,6 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       current.clear()
     }
   }, [])
-  // 参数记忆：选项变化后 300ms 写入本地（只存选项值，不存文件内容）
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      saveFileOptions(
-        localStorage,
-        {
-          format,
-          imageSize,
-          quality,
-          compressTarget,
-          compressFormat,
-          pdfFormat,
-          pdfLayout,
-          mergeSize,
-          mergeOrientation,
-          mergeFit,
-          pages,
-          detectNumbers,
-        },
-        fileOptionSchema,
-      )
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [
-    format,
-    imageSize,
-    quality,
-    compressTarget,
-    compressFormat,
-    pdfFormat,
-    pdfLayout,
-    mergeSize,
-    mergeOrientation,
-    mergeFit,
-    pages,
-    detectNumbers,
-  ])
   const reset = () => {
     for (const url of urls.current) URL.revokeObjectURL(url)
     urls.current.clear()
@@ -659,6 +586,17 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     }
   }
   const excelPending = isExcelRead && !!rows.length && !excel
+  const optionControls = (
+    <ConversionOptions
+      mode={mode}
+      options={fileOptions}
+      disabled={busy || packing}
+      onChange={(patch) => {
+        clearOutputs()
+        setFileOptions((previous) => ({ ...previous, ...patch }))
+      }}
+    />
+  )
   const done = rows.filter((row) => row.status === 'done').length
   return (
     <main className="main-content file-tool">
@@ -724,271 +662,9 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                       : '支持多文件依次转换'}
                 </span>
               </div>
-              {mode === 'image' && (
-                <div className="image-options">
-                  <label>
-                    输出格式
-                    <Select
-                      disabled={busy || packing}
-                      value={format}
-                      onValueChange={(value) => {
-                        clearOutputs()
-                        setFormat(value as typeof format)
-                      }}
-                    >
-                      <SelectTrigger aria-label="输出格式">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="png">PNG</SelectItem>
-                        <SelectItem value="jpeg">JPG</SelectItem>
-                        <SelectItem value="webp">WebP</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  <label>
-                    尺寸
-                    <Select
-                      disabled={busy || packing}
-                      value={imageSize}
-                      onValueChange={(value) => {
-                        clearOutputs()
-                        setImageSize(value as ImageSize)
-                      }}
-                    >
-                      <SelectTrigger aria-label="图片尺寸">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="original">原尺寸</SelectItem>
-                        <SelectItem value="1920">宽度 ≤ 1920</SelectItem>
-                        <SelectItem value="1280">宽度 ≤ 1280</SelectItem>
-                        <SelectItem value="half">缩放 50%</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  {format !== 'png' && (
-                    <label>
-                      质量 {quality}%
-                      <input
-                        type="range"
-                        aria-label="图片质量"
-                        min="10"
-                        max="100"
-                        disabled={busy || packing}
-                        value={quality}
-                        onChange={(event) => {
-                          clearOutputs()
-                          setQuality(Number(event.target.value))
-                        }}
-                      />
-                    </label>
-                  )}
-                </div>
-              )}
+              {mode === 'image' && optionControls}
             </div>
-            {mode === 'image-compress' && (
-              <div className="image-options">
-                <label>
-                  目标大小
-                  <Select
-                    disabled={busy || packing}
-                    value={compressTarget}
-                    onValueChange={(value) => {
-                      clearOutputs()
-                      setCompressTarget(value as typeof compressTarget)
-                    }}
-                  >
-                    <SelectTrigger aria-label="目标大小">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="100">100 KB</SelectItem>
-                      <SelectItem value="200">200 KB</SelectItem>
-                      <SelectItem value="500">500 KB</SelectItem>
-                      <SelectItem value="1000">1 MB</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label>
-                  输出格式
-                  <Select
-                    disabled={busy || packing}
-                    value={compressFormat}
-                    onValueChange={(value) => {
-                      clearOutputs()
-                      setCompressFormat(value as typeof compressFormat)
-                    }}
-                  >
-                    <SelectTrigger aria-label="压缩输出格式">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="jpeg">JPG</SelectItem>
-                      <SelectItem value="webp">WebP</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label>
-                  尺寸上限
-                  <Select
-                    disabled={busy || packing}
-                    value={imageSize}
-                    onValueChange={(value) => {
-                      clearOutputs()
-                      setImageSize(value as ImageSize)
-                    }}
-                  >
-                    <SelectTrigger aria-label="尺寸上限">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="original">原尺寸</SelectItem>
-                      <SelectItem value="1920">宽度 ≤ 1920</SelectItem>
-                      <SelectItem value="1280">宽度 ≤ 1280</SelectItem>
-                      <SelectItem value="half">缩放 50%</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-              </div>
-            )}
-            {mode === 'image-pdf' && (
-              <div className="image-options pdf-options">
-                <label>
-                  页面尺寸
-                  <Select
-                    disabled={busy || packing}
-                    value={mergeSize}
-                    onValueChange={(value) => {
-                      clearOutputs()
-                      setMergeSize(value as PdfSheetSize)
-                    }}
-                  >
-                    <SelectTrigger aria-label="页面尺寸">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="a4">A4（210 × 297 mm）</SelectItem>
-                      <SelectItem value="a3">A3（297 × 420 mm）</SelectItem>
-                      <SelectItem value="letter">Letter（215.9 × 279.4 mm）</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label>
-                  方向
-                  <Select
-                    disabled={busy || packing}
-                    value={mergeOrientation}
-                    onValueChange={(value) => {
-                      clearOutputs()
-                      setMergeOrientation(value as typeof mergeOrientation)
-                    }}
-                  >
-                    <SelectTrigger aria-label="页面方向">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="portrait">纵向</SelectItem>
-                      <SelectItem value="landscape">横向</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label>
-                  适配
-                  <Select
-                    disabled={busy || packing}
-                    value={mergeFit}
-                    onValueChange={(value) => {
-                      clearOutputs()
-                      setMergeFit(value as typeof mergeFit)
-                    }}
-                  >
-                    <SelectTrigger aria-label="图片适配">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="contain">完整显示（留白）</SelectItem>
-                      <SelectItem value="cover">填满页面</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-              </div>
-            )}
-            {mode === 'pdf-image' && (
-              <div className="image-options pdf-options">
-                <label>
-                  输出格式
-                  <Select
-                    disabled={busy || packing}
-                    value={pdfFormat}
-                    onValueChange={(value) => {
-                      clearOutputs()
-                      setPdfFormat(value as typeof pdfFormat)
-                    }}
-                  >
-                    <SelectTrigger aria-label="PDF 图片格式">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="png">PNG</SelectItem>
-                      <SelectItem value="jpeg">JPG</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label>
-                  导出方式
-                  <Select
-                    disabled={busy || packing}
-                    value={pdfLayout}
-                    onValueChange={(value) => {
-                      clearOutputs()
-                      setPdfLayout(value as typeof pdfLayout)
-                    }}
-                  >
-                    <SelectTrigger aria-label="PDF 导出方式">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pages">逐页图片</SelectItem>
-                      <SelectItem value="long">拼成长图</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label>
-                  页码
-                  <input
-                    className="page-range"
-                    aria-label="PDF 页码"
-                    disabled={busy || packing}
-                    placeholder="全部页，如 1,3-5"
-                    value={pages}
-                    onChange={(event) => {
-                      clearOutputs()
-                      setPages(event.target.value)
-                    }}
-                  />
-                </label>
-              </div>
-            )}
-            {mode === 'csv-excel' && (
-              <div className="image-options excel-options">
-                <label className="number-toggle">
-                  <Switch
-                    aria-label="尝试识别数字"
-                    checked={detectNumbers}
-                    disabled={busy || packing}
-                    onCheckedChange={(value) => {
-                      clearOutputs()
-                      setDetectNumbers(value)
-                    }}
-                  />
-                  <span>
-                    尝试识别数字
-                    <small>仅转换无前导零、非科学计数的普通数字；编号与长整数保持文本</small>
-                  </span>
-                </label>
-              </div>
-            )}
+            {mode !== 'image' && optionControls}
             {!isExcelRead &&
               (modes[mode].category === 'text' || modes[mode].category === 'table') && (
                 <TextEncodingSelect
