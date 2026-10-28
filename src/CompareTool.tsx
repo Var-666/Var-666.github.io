@@ -1,3 +1,5 @@
+import { highlightDiffWorkbook } from './lib/xlsx-highlight'
+import { uniqueHeaders } from './lib/file-text'
 import { OutputActions } from './components/OutputActions'
 import { useTransferReceiver, type ToolTransfer } from './lib/tool-transfer'
 import { ConfirmImport } from './components/ConfirmImport'
@@ -22,6 +24,8 @@ import {
   matricesToExcelFile,
   parseCsvMatrix,
   type WorkbookData,
+  sheetNotices,
+  excelLimits,
 } from './lib/file-excel'
 import { packOutputs } from './lib/file-media'
 import { outputName, type OutputFile } from './lib/file-convert'
@@ -35,6 +39,7 @@ type SideState = {
   sheetName: string
   matrix: TableMatrix | null
   error: string
+  notices: string[]
 }
 
 const emptySide: SideState = {
@@ -45,8 +50,10 @@ const emptySide: SideState = {
   sheetName: '',
   matrix: null,
   error: '',
+  notices: [],
 }
 const previewLimit = 50
+const clip = (text: string) => (text.length > 160 ? text.slice(0, 160) + '…' : text)
 
 const sizeLabel = (size: number) =>
   size < 1024 * 1024
@@ -54,9 +61,11 @@ const sizeLabel = (size: number) =>
     : `${(size / 1024 / 1024).toFixed(1)} MB`
 
 /** 从 CSV 文本或已选工作表构造表格矩阵；首行为表头 */
-function matrixFromRows(name: string, rows: string[][]): TableMatrix {
+function matrixFromRows(name: string, rows: string[][], notices: string[]): TableMatrix {
   const [headers = [], ...body] = rows
-  return { name, headers, rows: body }
+  const names = uniqueHeaders(headers, notices)
+  if (names.some((name) => name.length > 512)) throw new Error('列名超过 512 字符，请先缩短表头。')
+  return { name, headers: names, rows: body }
 }
 
 export default function CompareTool({ active }: { active: boolean }) {
@@ -67,21 +76,24 @@ export default function CompareTool({ active }: { active: boolean }) {
   const [left, setLeft] = useState<SideState>(emptySide)
   const [right, setRight] = useState<SideState>(emptySide)
   const [keyColumn, setKeyColumn] = useState('')
+  const [compositeOn, setCompositeOn] = useState(false)
+  const [extraKeys, setExtraKeys] = useState<string[]>([])
+  const [filter, setFilter] = useState<'all' | 'added' | 'removed' | 'changed' | 'unchanged'>('all')
   const [ignoredColumns, setIgnoredColumns] = useState<string[]>([])
   const [normalizeSpaces, setNormalizeSpaces] = useState(false)
   const [busy, setBusy] = useState(false)
   const [output, setOutput] = useState<(OutputFile & { url: string }) | null>(null)
   const leftInput = useRef<HTMLInputElement>(null)
   const rightInput = useRef<HTMLInputElement>(null)
-  const urls = useRef(new Set<string>())
-
+  useEffect(
+    () => () => {
+      if (output) URL.revokeObjectURL(output.url)
+    },
+    [output],
+  )
   useEffect(() => {
-    const current = urls.current
-    return () => {
-      for (const url of current) URL.revokeObjectURL(url)
-      current.clear()
-    }
-  }, [])
+    setOutput(null)
+  }, [keyColumn, compositeOn, extraKeys, ignoredColumns, normalizeSpaces])
 
   const loadFile = async (
     side: Side,
@@ -93,23 +105,41 @@ export default function CompareTool({ active }: { active: boolean }) {
     setOutput(null)
     const patch = (next: Partial<SideState>) =>
       side === 'left' ? setLeft((p) => ({ ...p, ...next })) : setRight((p) => ({ ...p, ...next }))
-    patch({ ...emptySide, file, requestedEncoding })
     try {
+      if (!/\.(csv|xlsx)$/i.test(file.name)) throw new Error('请选择 CSV 或 XLSX 文件。')
+      if (!file.size || file.size > (/\.xlsx$/i.test(file.name) ? 10 : 2) * 1024 * 1024)
+        throw new Error('文件不能为空；CSV 单个最多 2 MB，XLSX 单个最多 10 MB。')
       if (file.name.toLowerCase().endsWith('.xlsx')) {
         const workbook = await loadWorkbook(file)
         const sheetName = workbook.sheets[0]?.name ?? ''
+        const sheet = workbook.sheet(sheetName),
+          notices = sheetNotices(sheet)
         patch({
+          ...emptySide,
+          file,
+          requestedEncoding,
           workbook,
           sheetName,
-          matrix: matrixFromRows(file.name, workbook.sheet(sheetName).rows),
+          matrix: matrixFromRows(file.name, sheet.rows, notices),
+          notices,
         })
       } else {
         const decoded = await readTextFile(file, requestedEncoding)
         const parsed = parseCsvMatrix(decoded.text)
-        patch({ matrix: matrixFromRows(file.name, parsed.rows), encoding: decoded.encoding })
+        const notices = [...parsed.notices]
+        patch({
+          ...emptySide,
+          file,
+          requestedEncoding,
+          matrix: matrixFromRows(file.name, parsed.rows, notices),
+          encoding: decoded.encoding,
+          notices,
+        })
       }
     } catch (error) {
-      patch({ error: error instanceof Error ? error.message : '读取失败，请检查文件与编码。' })
+      patch({
+        error: `${file.name}：${error instanceof Error ? error.message : '读取失败，请检查文件与编码。'}`,
+      })
     } finally {
       setBusy(false)
     }
@@ -137,11 +167,16 @@ export default function CompareTool({ active }: { active: boolean }) {
     if (!workbook) return
     setOutput(null)
     try {
+      const sheet = workbook.sheet(sheetName),
+        notices = sheetNotices(sheet)
       patch({
         sheetName,
+        error: '',
+        notices,
         matrix: matrixFromRows(
           side === 'left' ? left.file!.name : right.file!.name,
-          workbook.sheet(sheetName).rows,
+          sheet.rows,
+          notices,
         ),
       })
     } catch (error) {
@@ -154,8 +189,20 @@ export default function CompareTool({ active }: { active: boolean }) {
     [left.matrix, right.matrix],
   )
   const effectiveKey = keyColumn && commons.includes(keyColumn) ? keyColumn : (commons[0] ?? '')
-  const compareColumns = commons.filter(
-    (column) => column !== effectiveKey && !ignoredColumns.includes(column),
+  const keyColumns = useMemo(
+    () =>
+      compositeOn
+        ? [
+            effectiveKey,
+            ...extraKeys.filter((key) => commons.includes(key) && key !== effectiveKey),
+          ]
+        : [effectiveKey],
+    [compositeOn, effectiveKey, extraKeys, commons],
+  )
+  const compareColumns = useMemo(
+    () =>
+      commons.filter((column) => !keyColumns.includes(column) && !ignoredColumns.includes(column)),
+    [commons, keyColumns, ignoredColumns],
   )
 
   const comparison = useMemo(() => {
@@ -164,6 +211,7 @@ export default function CompareTool({ active }: { active: boolean }) {
       return {
         report: compareTables(left.matrix, right.matrix, {
           keyColumn: effectiveKey,
+          keyColumns,
           compareColumns,
           normalizeSpaces,
         }),
@@ -171,7 +219,7 @@ export default function CompareTool({ active }: { active: boolean }) {
     } catch (error) {
       return { error: error instanceof Error ? error.message : '无法比较，请检查主键与比较列。' }
     }
-  }, [left.matrix, right.matrix, effectiveKey, compareColumns, normalizeSpaces])
+  }, [left.matrix, right.matrix, effectiveKey, keyColumns, compareColumns, normalizeSpaces])
 
   const reportError = comparison?.error ?? ''
   const validReport = comparison?.report ?? null
@@ -184,9 +232,18 @@ export default function CompareTool({ active }: { active: boolean }) {
     setBusy(true)
     try {
       const matrices = diffMatrices(left.matrix, right.matrix, validReport)
+      if (
+        kind === 'xlsx' &&
+        matrices.some(
+          (sheet) =>
+            sheet.rows.length > excelLimits.maxRows ||
+            sheet.rows.length * (sheet.rows[0]?.length ?? 0) > excelLimits.maxCells,
+        )
+      )
+        throw new Error('XLSX 明细超过 10 万行或 100 万格，请减少比较列或导出 CSV。')
       const file: OutputFile =
         kind === 'xlsx'
-          ? await matricesToExcelFile(matrices, '表格对比结果')
+          ? await highlightDiffWorkbook(await matricesToExcelFile(matrices, '表格对比结果'))
           : await packOutputs(
               matrices.map((sheet) => ({
                 name: outputName(sheet.name, 'csv'),
@@ -197,7 +254,6 @@ export default function CompareTool({ active }: { active: boolean }) {
               '表格对比结果.zip',
             )
       const url = URL.createObjectURL(file.blob)
-      urls.current.add(url)
       setOutput({ ...file, url })
       toast.success('差异结果已生成，可下载查看。')
     } catch (error) {
@@ -228,6 +284,7 @@ export default function CompareTool({ active }: { active: boolean }) {
             type="file"
             accept=".csv,.xlsx"
             className="sr-only"
+            disabled={busy}
             aria-label={`选择${label}文件`}
             onChange={(event) => {
               void loadFile(side, event.target.files?.[0])
@@ -280,6 +337,11 @@ export default function CompareTool({ active }: { active: boolean }) {
             {state.matrix.rows.length.toLocaleString()} 行数据 · {state.matrix.headers.length} 列
           </p>
         )}
+        {state.notices.map((notice, index) => (
+          <p className="encoding-note" key={index}>
+            {notice}
+          </p>
+        ))}
         {state.error && (
           <p className="compare-error" role="alert">
             {state.error}
@@ -307,11 +369,15 @@ export default function CompareTool({ active }: { active: boolean }) {
       <section className="intro">
         <h1>表格对比</h1>
       </section>
-      <p className="compare-note">
-        导入旧表与新表（CSV 或
-        .xlsx），选择主键列后按主键匹配记录：列出新增、删除与修改（逐列前后对照）。
-        重复主键按首次出现参与匹配并显式提示，主键为空的行不参与匹配；不自动猜测主键。
-      </p>
+      <details className="tool-advanced">
+        <summary>使用说明与限制</summary>
+        <p className="compare-note">
+          导入旧表与新表（CSV 或
+          .xlsx），选择主键列后按主键匹配记录：列出新增、删除与修改（逐列前后对照）。
+          重复主键按首次出现参与匹配并显式提示，主键为空的行不参与匹配；不自动猜测主键。 CSV 单个 2
+          MB、XLSX 单个 10 MB、单表最多 10 万行/100 万格；按显示值比较，不比较公式或样式。
+        </p>
+      </details>
       <div className="compare-grid">
         {sidePanel('left', left)}
         <ArrowRightLeft className="compare-swap-icon" size={18} aria-hidden="true" />
@@ -336,42 +402,79 @@ export default function CompareTool({ active }: { active: boolean }) {
           </label>
           <label className="compare-switch">
             <Switch
-              aria-label="空格规范化"
-              checked={normalizeSpaces}
-              onCheckedChange={(value) => {
-                setNormalizeSpaces(value)
-                setOutput(null)
-              }}
+              aria-label="使用组合主键"
+              checked={compositeOn}
+              disabled={busy}
+              onCheckedChange={setCompositeOn}
             />
-            空格规范化（仅空白不同的值视为相同）
+            使用组合主键
           </label>
-          {!!commons.length && (
+          {compositeOn && (
             <div className="compare-columns">
-              <span>比较列（取消勾选的列不参与比较）：</span>
+              <span>追加主键字段（任一字段为空的行不匹配）：</span>
               {commons
                 .filter((column) => column !== effectiveKey)
-                .map((column) => {
-                  const ignored = ignoredColumns.includes(column)
-                  return (
-                    <label key={column} className="compare-column-chip">
-                      <input
-                        type="checkbox"
-                        checked={!ignored}
-                        onChange={() => {
-                          setIgnoredColumns((previous) =>
-                            ignored
-                              ? previous.filter((item) => item !== column)
-                              : [...previous, column],
-                          )
-                          setOutput(null)
-                        }}
-                      />
-                      {column}
-                    </label>
-                  )
-                })}
+                .map((column) => (
+                  <label key={column} className="compare-column-chip">
+                    <input
+                      type="checkbox"
+                      aria-label={`主键字段 ${column}`}
+                      checked={extraKeys.includes(column)}
+                      disabled={busy}
+                      onChange={() =>
+                        setExtraKeys((previous) =>
+                          previous.includes(column)
+                            ? previous.filter((key) => key !== column)
+                            : [...previous, column],
+                        )
+                      }
+                    />
+                    {column}
+                  </label>
+                ))}
             </div>
           )}
+          <details className="tool-advanced">
+            <summary>比较范围与空格规则</summary>
+            <label className="compare-switch">
+              <Switch
+                aria-label="空格规范化"
+                checked={normalizeSpaces}
+                onCheckedChange={(value) => {
+                  setNormalizeSpaces(value)
+                  setOutput(null)
+                }}
+              />
+              空格规范化（仅空白不同的值视为相同）
+            </label>
+            {!!commons.length && (
+              <div className="compare-columns">
+                <span>比较列（取消勾选的列不参与比较）：</span>
+                {commons
+                  .filter((column) => !keyColumns.includes(column))
+                  .map((column) => {
+                    const ignored = ignoredColumns.includes(column)
+                    return (
+                      <label key={column} className="compare-column-chip">
+                        <input
+                          type="checkbox"
+                          checked={!ignored}
+                          onChange={() => {
+                            setIgnoredColumns((previous) =>
+                              ignored
+                                ? previous.filter((item) => item !== column)
+                                : [...previous, column],
+                            )
+                            setOutput(null)
+                          }}
+                        />
+                        {column}
+                      </label>
+                    )
+                  })}
+              </div>
+            )}
+          </details>
         </section>
       )}
       {reportError && (
@@ -382,10 +485,41 @@ export default function CompareTool({ active }: { active: boolean }) {
       {validReport && (
         <section className="compare-result" aria-label="对比结果">
           <div className="compare-summary">
-            <span className="chip chip-add">新增 {validReport.added.length}</span>
-            <span className="chip chip-del">删除 {validReport.removed.length}</span>
-            <span className="chip chip-mod">修改 {validReport.changed.length}</span>
-            <span className="chip">未变 {validReport.unchanged}</span>
+            <button
+              className="chip"
+              aria-pressed={filter === 'all'}
+              onClick={() => setFilter('all')}
+            >
+              全部差异
+            </button>
+            <button
+              className="chip chip-add"
+              aria-pressed={filter === 'added'}
+              onClick={() => setFilter('added')}
+            >
+              新增 {validReport.added.length}
+            </button>
+            <button
+              className="chip chip-del"
+              aria-pressed={filter === 'removed'}
+              onClick={() => setFilter('removed')}
+            >
+              删除 {validReport.removed.length}
+            </button>
+            <button
+              className="chip chip-mod"
+              aria-pressed={filter === 'changed'}
+              onClick={() => setFilter('changed')}
+            >
+              修改 {validReport.changed.length}
+            </button>
+            <button
+              className="chip"
+              aria-pressed={filter === 'unchanged'}
+              onClick={() => setFilter('unchanged')}
+            >
+              未变 {validReport.unchanged}
+            </button>
             {(validReport.headersOnlyLeft.length > 0 ||
               validReport.headersOnlyRight.length > 0) && (
               <span className="compare-warn" role="status">
@@ -411,103 +545,139 @@ export default function CompareTool({ active }: { active: boolean }) {
               </span>
             )}
           </div>
-          {diffCount === 0 ? (
+          {diffCount === 0 && filter !== 'unchanged' && (
             <p className="compare-same">两表按当前设置没有差异。</p>
-          ) : (
-            <>
-              {[
-                {
-                  title: `新增记录（${validReport.added.length}）`,
-                  rows: validReport.added,
-                  right: true,
-                },
-                {
-                  title: `删除记录（${validReport.removed.length}）`,
-                  rows: validReport.removed,
-                  right: false,
-                },
-              ].map((block) =>
-                block.rows.length ? (
-                  <div key={block.title} className="compare-block">
-                    <h3>{block.title}</h3>
-                    <div className="compare-key-list">
-                      {block.rows.slice(0, previewLimit).map((entry) => (
-                        <span className="compare-key" key={entry.key} title={entry.key}>
-                          {entry.key}
-                        </span>
-                      ))}
-                      {block.rows.length > previewLimit && (
-                        <span className="compare-more">
-                          …共 {block.rows.length} 条，导出查看全部
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ) : null,
-              )}
-              {!!validReport.changed.length && (
-                <div className="compare-block">
-                  <h3>修改记录（{validReport.changed.length}）</h3>
-                  <ul className="compare-changes">
-                    {validReport.changed.slice(0, previewLimit).map((entry) => (
-                      <li key={entry.key}>
-                        <span className="compare-key" title={entry.key}>
-                          {entry.key}
-                        </span>
-                        {entry.cells.map((cell) => (
-                          <span className="compare-change" key={cell.column}>
-                            <b>{cell.column}</b>
-                            <del>{cell.left || '（空）'}</del>→<ins>{cell.right || '（空）'}</ins>
-                          </span>
+          )}
+          {(
+            [
+              {
+                type: 'added',
+                title: `新增记录（${validReport.added.length}）`,
+                rows: validReport.added,
+                matrix: right.matrix!,
+              },
+              {
+                type: 'removed',
+                title: `删除记录（${validReport.removed.length}）`,
+                rows: validReport.removed,
+                matrix: left.matrix!,
+              },
+              {
+                type: 'unchanged',
+                title: `未变记录（${validReport.unchanged}）`,
+                rows: validReport.unchangedRows,
+                matrix: left.matrix!,
+              },
+            ] as const
+          )
+            .filter((block) =>
+              filter === 'all' ? block.type !== 'unchanged' : block.type === filter,
+            )
+            .map((block) =>
+              block.rows.length ? (
+                <div key={block.type} className="compare-block">
+                  <h3>{block.title}</h3>
+                  <div className="table-preview-scroll">
+                    <table className="table-preview" aria-label={block.title}>
+                      <thead>
+                        <tr>
+                          {block.matrix.headers.map((header) => (
+                            <th key={header}>{header}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {block.rows.slice(0, previewLimit).map((entry) => (
+                          <tr key={entry.key}>
+                            {block.matrix.headers.map((header, index) => (
+                              <td key={header}>
+                                {keyColumns.includes(header) ? (
+                                  <span className="compare-key">
+                                    {clip(entry.row[index] ?? '')}
+                                  </span>
+                                ) : (
+                                  clip(entry.row[index] ?? '')
+                                )}
+                              </td>
+                            ))}
+                          </tr>
                         ))}
-                      </li>
-                    ))}
-                    {validReport.changed.length > previewLimit && (
-                      <li className="compare-more">
-                        …共 {validReport.changed.length} 条，导出查看全部
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
-              <div className="compare-export">
-                <Button
-                  size="sm"
-                  disabled={busy || !diffCount}
-                  onClick={() => void exportFile('xlsx')}
-                >
-                  {busy ? (
-                    <LoaderCircle className="animate-spin" size={14} />
-                  ) : (
-                    <FileSpreadsheet size={14} />
+                      </tbody>
+                    </table>
+                  </div>
+                  {block.rows.length > previewLimit && (
+                    <p className="compare-more">…共 {block.rows.length} 条，导出查看全部</p>
                   )}
-                  导出 XLSX（新增 / 删除 / 修改三个工作表）
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy || !diffCount}
-                  onClick={() => void exportFile('csv')}
-                >
-                  导出 CSV（ZIP 三个文件）
-                </Button>
-                {output && <OutputActions outputs={[output]} disabled={busy} />}
-                {output && (
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={output.url} download={output.name}>
-                      下载 {output.name}
-                    </a>
-                  </Button>
+                </div>
+              ) : null,
+            )}
+          {(filter === 'all' || filter === 'changed') && !!validReport.changed.length && (
+            <div className="compare-block">
+              <h3>修改记录（{validReport.changed.length}）</h3>
+              <ul className="compare-changes">
+                {validReport.changed.slice(0, previewLimit).map((entry) => (
+                  <li key={entry.key}>
+                    <span className="compare-key">{clip(entry.key)}</span>
+                    {entry.cells.map((cell) => (
+                      <span className="compare-change" key={cell.column}>
+                        <b>{cell.column}</b>
+                        <del>{clip(cell.left) || '（空）'}</del>→
+                        <ins>{clip(cell.right) || '（空）'}</ins>
+                      </span>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+              {validReport.changed.length > previewLimit && (
+                <p className="compare-more">…共 {validReport.changed.length} 条，导出查看全部</p>
+              )}
+            </div>
+          )}
+          {filter !== 'all' &&
+            ((filter === 'added' && !validReport.added.length) ||
+              (filter === 'removed' && !validReport.removed.length) ||
+              (filter === 'changed' && !validReport.changed.length) ||
+              (filter === 'unchanged' && !validReport.unchanged)) && (
+              <p className="compare-same">当前类型没有记录。</p>
+            )}
+          <p className="compare-more">
+            每类预览前 50 行，长单元格显示前 160 字；导出包含全部差异，筛选不影响下载。XLSX
+            用红色标出删除/旧值，绿色标出新增/新值。
+          </p>
+          {diffCount > 0 && (
+            <div className="compare-export">
+              <Button
+                size="sm"
+                disabled={busy || !diffCount}
+                onClick={() => void exportFile('xlsx')}
+              >
+                {busy ? (
+                  <LoaderCircle className="animate-spin" size={14} />
+                ) : (
+                  <FileSpreadsheet size={14} />
                 )}
-              </div>
-            </>
+                导出 XLSX（新增 / 删除 / 修改三个工作表）
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || !diffCount}
+                onClick={() => void exportFile('csv')}
+              >
+                导出 CSV（ZIP 三个文件）
+              </Button>
+              {output && <OutputActions outputs={[output]} disabled={busy} />}
+              {output && (
+                <Button size="sm" variant="outline" asChild>
+                  <a href={output.url} download={output.name}>
+                    下载 {output.name}
+                  </a>
+                </Button>
+              )}
+            </div>
           )}
         </section>
       )}
-      <p className="compare-note compare-limit">
-        限制：CSV 单个 2 MB（UTF-8 / GBK），XLSX 单个 10 MB、单表 10 万行 × 1024
-        列；比较按单元格显示文本进行，不比较公式与样式。
-      </p>
     </main>
   )
 }

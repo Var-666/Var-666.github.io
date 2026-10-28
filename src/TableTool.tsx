@@ -206,13 +206,14 @@ export default function TableTool({ active }: { active: boolean }) {
             ? { name: '处理结果.csv', blob: csvBlob(matrix) }
             : await matricesToExcelFile([{ name: '处理结果', rows: matrix }], '处理结果')
       } else if (format === 'csv') {
-        file = await packOutputs(
-          validResult.stats.groups.map((group, index) => ({
-            name: `${groupNames[index]}.csv`,
-            blob: csvBlob([result.headers, ...group.rows]),
-          })),
-          '处理结果-拆分.zip',
-        )
+        function* outputs() {
+          for (const [index, group] of result.stats.groups.entries())
+            yield {
+              name: `${groupNames[index]}.csv`,
+              blob: csvBlob([result.headers, ...group.rows]),
+            }
+        }
+        file = await packOutputs(outputs(), '处理结果-拆分.zip')
       } else {
         file = await matricesToExcelFile(
           validResult.stats.groups.map((group, index) => ({

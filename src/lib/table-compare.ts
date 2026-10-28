@@ -5,6 +5,7 @@ export type TableMatrix = { name: string; headers: string[]; rows: string[][] }
 
 export type CompareOptions = {
   keyColumn: string
+  keyColumns?: string[]
   /** 除主键外参与比较的列（调用方应传两表公共列；缺失即报错，不静默跳过） */
   compareColumns: string[]
   /** 比较前把连续空白折叠为单个空格并去首尾空白（差异明细仍显示原值） */
@@ -17,6 +18,7 @@ export type KeyedRow = { key: string; row: string[] }
 export type ChangedRow = { key: string; cells: ChangeCell[] }
 
 export type CompareReport = {
+  keyColumns: string[]
   leftName: string
   rightName: string
   headersOnlyLeft: string[]
@@ -29,6 +31,7 @@ export type CompareReport = {
   removed: KeyedRow[]
   changed: ChangedRow[]
   unchanged: number
+  unchangedRows: KeyedRow[]
 }
 
 export function commonHeaders(left: TableMatrix, right: TableMatrix): string[] {
@@ -41,15 +44,16 @@ const normalizeValue = (value: string, normalizeSpaces: boolean) =>
 
 function indexByKey(
   table: TableMatrix,
-  keyIndex: number,
+  keyIndexes: number[],
   side: 'left' | 'right',
 ): { map: Map<string, string[]>; duplicates: DuplicateKey[]; missing: number } {
   const map = new Map<string, string[]>()
   const counts = new Map<string, number>()
   let missing = 0
   for (const row of table.rows) {
-    const key = (row[keyIndex] ?? '').trim()
-    if (!key) {
+    const parts = keyIndexes.map((index) => (row[index] ?? '').trim())
+    const key = parts.length === 1 ? parts[0] : JSON.stringify(parts)
+    if (parts.some((part) => !part)) {
       missing++
       continue
     }
@@ -70,10 +74,11 @@ export function compareTables(
 ): CompareReport {
   const leftIndex = new Map(left.headers.map((header, i) => [header, i] as const))
   const rightIndex = new Map(right.headers.map((header, i) => [header, i] as const))
-  const keyLeft = leftIndex.get(options.keyColumn)
-  const keyRight = rightIndex.get(options.keyColumn)
-  if (keyLeft === undefined || keyRight === undefined)
-    throw new Error(`主键列「${options.keyColumn}」需要在两个表格中都存在。`)
+  const keys = [...new Set(options.keyColumns?.length ? options.keyColumns : [options.keyColumn])]
+  if (!keys.length || keys.some((key) => !leftIndex.has(key) || !rightIndex.has(key)))
+    throw new Error(`主键列「${keys.join('、')}」需要在两个表格中都存在。`)
+  const keyLeft = keys.map((key) => leftIndex.get(key)!),
+    keyRight = keys.map((key) => rightIndex.get(key)!)
   for (const column of options.compareColumns) {
     if (!leftIndex.has(column))
       throw new Error(`比较列「${column}」在旧表（${left.name}）中不存在。`)
@@ -86,6 +91,7 @@ export function compareTables(
   const removed: KeyedRow[] = []
   const changed: ChangedRow[] = []
   let unchanged = 0
+  const unchangedRows: KeyedRow[] = []
   for (const [key, row] of L.map) {
     const rightRow = R.map.get(key)
     if (!rightRow) {
@@ -103,12 +109,16 @@ export function compareTables(
         cells.push({ column, left: leftValue, right: rightValue })
     }
     if (cells.length) changed.push({ key, cells })
-    else unchanged++
+    else {
+      unchanged++
+      unchangedRows.push({ key, row })
+    }
   }
   const added: KeyedRow[] = []
   for (const [key, row] of R.map) if (!L.map.has(key)) added.push({ key, row })
 
   return {
+    keyColumns: keys,
     leftName: left.name,
     rightName: right.name,
     headersOnlyLeft: left.headers.filter((header) => !rightIndex.has(header)),
@@ -119,6 +129,7 @@ export function compareTables(
     removed,
     changed,
     unchanged,
+    unchangedRows,
   }
 }
 
@@ -128,21 +139,40 @@ export function diffMatrices(
   right: TableMatrix,
   report: CompareReport,
 ): { name: string; rows: string[][] }[] {
+  const encoder = new TextEncoder()
+  let bytes = 9
+  const checked = (row: string[]) => {
+    bytes += 2 + Math.max(0, row.length - 1)
+    for (const value of row) {
+      bytes += encoder.encode(value).byteLength
+      const formula = /^[=+\-@\t\r]/.test(value)
+      if (formula) bytes++
+      const quoted =
+        formula || /[",\r\n]/.test(value) || value.startsWith(' ') || value.endsWith(' ')
+      if (quoted) {
+        bytes += 2
+        for (const character of value) if (character === '"') bytes++
+      }
+    }
+    if (bytes > 100 * 1024 * 1024)
+      throw new Error('差异导出超过 100 MB，请减少比较列或缩小数据范围。')
+    return row
+  }
   return [
     {
       name: '新增记录',
-      rows: [right.headers, ...report.added.map((entry) => entry.row)],
+      rows: [checked(right.headers), ...report.added.map((entry) => checked(entry.row))],
     },
     {
       name: '删除记录',
-      rows: [left.headers, ...report.removed.map((entry) => entry.row)],
+      rows: [checked(left.headers), ...report.removed.map((entry) => checked(entry.row))],
     },
     {
       name: '修改明细',
       rows: [
-        ['主键', '变化列', '旧值', '新值'],
+        checked(['主键', '变化列', '旧值', '新值']),
         ...report.changed.flatMap((entry) =>
-          entry.cells.map((cell) => [entry.key, cell.column, cell.left, cell.right]),
+          entry.cells.map((cell) => checked([entry.key, cell.column, cell.left, cell.right])),
         ),
       ],
     },

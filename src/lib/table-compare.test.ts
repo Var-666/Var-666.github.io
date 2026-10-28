@@ -132,3 +132,79 @@ test('diffMatrices 输出三个导出矩阵，修改明细逐列展开', () => {
     ['A01', '数量', '1', '10'],
   ])
 })
+
+test('composite keys distinguish delimiter-like content and require every component', () => {
+  const left = table(
+    'left',
+    ['a', 'b', 'v'],
+    [
+      ['x|y', 'z', 'same'],
+      ['x', 'y|z', 'old'],
+      ['', 'missing', 'skip'],
+    ],
+  )
+  const right = table(
+    'right',
+    ['b', 'v', 'a'],
+    [
+      ['z', 'same', 'x|y'],
+      ['y|z', 'new', 'x'],
+      ['missing', 'skip', ''],
+    ],
+  )
+  const report = compareTables(left, right, {
+    keyColumn: 'a',
+    keyColumns: ['a', 'b'],
+    compareColumns: ['v'],
+    normalizeSpaces: false,
+  })
+  assert.equal(report.unchanged, 1)
+  assert.equal(report.changed.length, 1)
+  assert.equal(report.changed[0].key, '["x","y|z"]')
+  assert.deepEqual(report.keyColumns, ['a', 'b'])
+  assert.deepEqual(report.missingKeys, { left: 1, right: 1 })
+})
+
+test('duplicate composite tuples are reported once and selected key components remain distinct', () => {
+  const left = table(
+    'left',
+    ['id', 'site', 'v'],
+    [
+      ['001', '北京', '旧'],
+      ['001', '上海', '沪'],
+    ],
+  )
+  const right = table(
+    'right',
+    ['id', 'site', 'v'],
+    [
+      ['001', '北京', '新'],
+      ['001', '上海', '沪'],
+      ['001', '北京', '重复'],
+    ],
+  )
+  const report = compareTables(left, right, {
+    keyColumn: 'id',
+    keyColumns: ['id', 'site'],
+    compareColumns: ['v'],
+    normalizeSpaces: false,
+  })
+  assert.equal(report.changed.length, 1)
+  assert.equal(report.unchanged, 1)
+  assert.deepEqual(report.duplicateKeys, [{ side: 'right', key: '["001","北京"]', count: 2 }])
+})
+
+test('diff export stops repeated long fields before creating an oversized output matrix', () => {
+  const report = compareTables(base, next, options)
+  const key = 'x'.repeat(1024 * 1024),
+    cell = { column: '数量', left: '1', right: '2' }
+  assert.equal(
+    diffMatrices(base, next, { ...report, changed: [{ key, cells: Array(40).fill(cell) }] })[2].rows
+      .length,
+    41,
+  )
+  assert.throws(
+    () => diffMatrices(base, next, { ...report, changed: [{ key, cells: Array(110).fill(cell) }] }),
+    /超过 100 MB/,
+  )
+})

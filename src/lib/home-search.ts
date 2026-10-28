@@ -58,7 +58,7 @@ export const homeTasks: TaskEntry[] = [
     title: '比较两份表格差异',
     toolId: 'compare',
     hash: '#/compare',
-    keywords: ['对比', '比较', '差异', '核对', '表格', '主键'],
+    keywords: ['对比', '比较', '差异', '核对', '表格', '主键', '组合主键', '高亮', 'XLSX'],
   },
   {
     id: 'pdf-organize',

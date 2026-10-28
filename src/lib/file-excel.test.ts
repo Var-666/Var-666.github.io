@@ -394,3 +394,17 @@ test('XLSX character ceiling is explicit and shared by single/multi-sheet export
   await assert.rejects(matrixToExcelFile(rows, 'long', { detectNumbers: false }), /32767.*CSV/)
   await assert.rejects(matricesToExcelFile([{ name: 'long', rows }], 'long'), /32767.*CSV/)
 })
+
+test('multi-sheet XLSX enforces aggregate cell budget including repeated headers', async () => {
+  const rows = Array(50001).fill(Array(10).fill('001'))
+  await assert.rejects(
+    matricesToExcelFile(
+      [
+        { name: 'a', rows },
+        { name: 'b', rows },
+      ],
+      'large',
+    ),
+    /合计超过 100 万格/,
+  )
+})

@@ -14,22 +14,36 @@ export const defaultImagesToPdfOptions: ImagesToPdfOptions = {
   fit: 'contain',
 }
 
-export async function packOutputs(outputs: OutputFile[], name: string): Promise<OutputFile> {
+export async function packOutputs(
+  outputs: Iterable<OutputFile>,
+  name: string,
+): Promise<OutputFile> {
   const { zipSync } = await import('fflate')
   const files: Record<string, Uint8Array> = Object.create(null)
   let bytes = 0
+  const parts: OutputFile[] = [],
+    used = new Set<string>()
   for (const output of outputs) {
     // fflate flattens names into a plain object, where this key would silently disappear.
     if (output.name === '__proto__') throw new Error('不支持此文件名，请先添加编号或修改名称。')
     bytes += output.blob.size
     if (bytes > 100 * 1024 * 1024) throw new Error('输出超过 100 MB，请减少页数或文件数量。')
-    files[output.name] = new Uint8Array(await output.blob.arrayBuffer())
+    const dot = output.name.lastIndexOf('.'),
+      stem = dot > 0 ? output.name.slice(0, dot) : output.name,
+      extension = dot > 0 ? output.name.slice(dot) : ''
+    let fileName = output.name,
+      suffix = 2
+    while (used.has(fileName.normalize('NFC').toLowerCase()))
+      fileName = `${stem} (${suffix++})${extension}`
+    used.add(fileName.normalize('NFC').toLowerCase())
+    files[fileName] = new Uint8Array(await output.blob.arrayBuffer())
+    parts.push({ ...output, name: fileName })
   }
   const data = zipSync(files, { level: 0 })
   return {
     name,
     blob: new Blob([data as Uint8Array<ArrayBuffer>], { type: 'application/zip' }),
-    parts: outputs,
+    parts,
   }
 }
 

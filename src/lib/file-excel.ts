@@ -288,9 +288,18 @@ function matrixColumnWidths(rows: string[][]) {
   )
 }
 
-function validateExcelCells(rows: string[][]) {
-  if (rows.some((row) => row.some((cell) => cell.length > 32767)))
-    throw new Error('单元格超过 Excel 的 32767 字符上限，请缩短内容或改用 CSV 导出。')
+function validateExcelSheets(sheets: { rows: string[][] }[]) {
+  let totalCells = 0
+  for (const { rows } of sheets) {
+    const columns = rows.reduce((maximum, row) => Math.max(maximum, row.length), 0)
+    if (rows.length > excelLimits.maxRows || columns > excelLimits.maxCols)
+      throw new Error('XLSX 单表超过 10 万行或 1024 列，请减少数据或导出 CSV。')
+    totalCells += rows.length * columns
+    if (totalCells > excelLimits.maxCells)
+      throw new Error('XLSX 工作簿合计超过 100 万格，请减少数据或导出 CSV。')
+    if (rows.some((row) => row.some((cell) => cell.length > 32767)))
+      throw new Error('单元格超过 Excel 的 32767 字符上限，请缩短内容或改用 CSV 导出。')
+  }
 }
 
 /** 生成多工作表 xlsx（全部按文本写入，不识别数字，避免编号类内容失真） */
@@ -298,7 +307,7 @@ export async function matricesToExcelFile(
   sheets: { name: string; rows: string[][] }[],
   fileName: string,
 ): Promise<OutputFile> {
-  sheets.forEach((sheet) => validateExcelCells(sheet.rows))
+  validateExcelSheets(sheets)
   const XLSX = await loadSheetJs()
   const workbook = XLSX.utils.book_new()
   sheets.forEach((sheet, index) => {
@@ -324,7 +333,7 @@ export async function matrixToExcelFile(
   fileName: string,
   options: CsvToExcelOptions,
 ): Promise<OutputFile> {
-  validateExcelCells(rows)
+  validateExcelSheets([{ rows }])
   const XLSX = await loadSheetJs()
   const data = options.detectNumbers
     ? rows.map((row) =>

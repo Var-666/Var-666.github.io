@@ -3688,3 +3688,13 @@ a {
     grid-template-columns: 1fr;
   }
 }
+.compare-summary button.chip {
+  cursor: pointer;
+}
+.compare-summary button.chip[aria-pressed='true'] {
+  box-shadow: 0 0 0 1px var(--primary);
+}
+.compare-options > .tool-advanced {
+  flex-basis: 100%;
+  width: 100%;
+}
