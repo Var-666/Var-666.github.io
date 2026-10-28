@@ -1,5 +1,6 @@
 import { findWhitespaceCut } from './page-break'
-import { imageDimensions, type ImageSize } from './media-options'
+import type { ImageSize } from './media-options'
+import { prepareImage, type ImageEditOptions } from './image-edit'
 
 export type OutputFile = { blob: Blob; name: string; parts?: OutputFile[] }
 export type WordToPdfResult = OutputFile & {
@@ -19,41 +20,33 @@ export const outputName = (name: string, extension: string) =>
 
 export async function convertImage(
   file: File,
-  format: 'png' | 'jpeg' | 'webp',
+  format: 'png' | 'jpeg' | 'webp' | 'avif',
   quality: number,
   size: ImageSize = 'original',
+  edit?: ImageEditOptions,
 ): Promise<OutputFile> {
-  const bitmap = await createImageBitmap(file).catch(() => {
-    throw new Error('无法读取图片，请检查文件是否损坏或格式是否正确。')
-  })
+  const canvas = await prepareImage(file, size, edit)
   try {
-    if (bitmap.width * bitmap.height > 24_000_000)
-      throw new Error('图片超过 2400 万像素，请先缩小尺寸。')
-    const canvas = document.createElement('canvas')
-    const dimensions = imageDimensions(bitmap.width, bitmap.height, size)
-    canvas.width = dimensions.width
-    canvas.height = dimensions.height
-    const context = canvas.getContext('2d')
-    if (!context) throw new Error('浏览器无法创建图片画布。')
     if (format === 'jpeg') {
+      const context = canvas.getContext('2d')!
+      context.globalCompositeOperation = 'destination-over'
       context.fillStyle = '#fff'
       context.fillRect(0, 0, canvas.width, canvas.height)
     }
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
     const mime = `image/${format}`
     const blob = await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob(
         (value) =>
-          value?.type === mime ? resolve(value) : reject(new Error('当前浏览器不支持此输出格式。')),
+          value?.type === mime
+            ? resolve(value)
+            : reject(new Error('当前浏览器不支持此输出格式，请选择其他格式。')),
         mime,
         quality,
       ),
     )
-    canvas.width = 0
-    canvas.height = 0
     return { blob, name: outputName(file.name, format === 'jpeg' ? 'jpg' : format) }
   } finally {
-    bitmap.close()
+    canvas.width = canvas.height = 0
   }
 }
 

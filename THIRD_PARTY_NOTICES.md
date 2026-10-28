@@ -48,3 +48,9 @@ The distributed packages retain their own copyright and license notices.
 
 - opencc-js 1.4.2, https://github.com/nk2028/opencc-js, MIT (implementation) AND Apache-2.0 (bundled opencc-data dictionary derivatives).
 - Original upstream copyright, license texts and data attribution are redistributed at `public/licenses/opencc-js.txt` (also available in the published site's `/licenses/opencc-js.txt`). No runtime CDN or dictionary requests are used.
+
+## HEIC decoder
+
+- libheif-js 1.23.5 / libheif 1.23.5, LGPL-3.0, https://github.com/catdad-experiments/libheif-js . The unchanged WASM bundle is imported only by a dedicated local Worker.
+- Upstream library and codec licenses, sources/build links and replacement instructions are redistributed in `public/licenses/libheif-js.txt`, published at `/licenses/libheif-js.txt`. No decoder/CDN requests leave this origin.
+- `e2e/fixtures/colors.heic` is a synthetic 64×40 four-quadrant RGB fixture generated for this project with macOS sips; it contains no personal photo or personal metadata.

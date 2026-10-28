@@ -240,6 +240,7 @@ export function TextExtras({
             <label className="text-extra-setting">
               表达式
               <input
+                className="tool-input"
                 aria-label="提取正则表达式"
                 placeholder="如：编号：(\\d+)"
                 value={extraction.pattern}
@@ -250,6 +251,7 @@ export function TextExtras({
             <label className="text-extra-setting">
               标志
               <input
+                className="tool-input"
                 aria-label="提取正则标志"
                 placeholder="i / m / s / u"
                 value={extraction.flags}

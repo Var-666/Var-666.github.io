@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { OutputActions } from '@/components/OutputActions'
 import { ContinueWith } from '@/components/ContinueWith'
 // 转换文件队列：排序（图片合并模式）、逐文件状态、下载、移除与结果详情开关
@@ -37,6 +38,7 @@ export function FileQueue({
   onMarkPreviewError: (id: string) => void
 }) {
   const moving = useRef<string | null>(null)
+  const image = mode === 'image' || mode === 'image-compress'
   return (
     <div className="file-queue">
       {rows.map((row, index) => (
@@ -120,7 +122,7 @@ export function FileQueue({
               </span>
             </div>
             <div className="file-row-actions">
-              {row.output && row.report && (
+              {row.output && (row.report || image) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -128,7 +130,13 @@ export function FileQueue({
                   disabled={busy || packing}
                   onClick={() => onToggleDetail(row.id)}
                 >
-                  {row.showDetail ? '收起详情' : '结果详情'}
+                  {image
+                    ? row.showDetail
+                      ? '收起预览'
+                      : '预览图片'
+                    : row.showDetail
+                      ? '收起详情'
+                      : '结果详情'}
                 </Button>
               )}
               {row.output && (
@@ -164,6 +172,14 @@ export function FileQueue({
               {notice}
             </p>
           ))}
+          {row.showDetail && image && row.output && (
+            <img
+              className="file-image-preview"
+              src={row.output.url}
+              alt={`${row.output.name} 转换预览`}
+              onError={() => toast.error('当前浏览器无法预览此图片，仍可下载查看。')}
+            />
+          )}
           {row.showDetail && row.report && (
             <ConversionResultDetails
               report={row.report}

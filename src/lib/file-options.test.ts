@@ -33,7 +33,7 @@ test('grouped conversion options retain every legacy key and restore only valida
   assert.deepEqual(JSON.parse(stored), read)
   assert.deepEqual(Object.keys(defaultFileOptions).sort(), Object.keys(fileOptionSchema).sort())
   stored = JSON.stringify({
-    format: 'avif',
+    format: 'gif',
     quality: 1000,
     pages: 'x'.repeat(51),
     detectNumbers: 'yes',

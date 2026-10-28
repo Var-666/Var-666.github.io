@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { supportsImageEncoding } from '@/lib/image-decode'
 import {
   Select,
   SelectContent,
@@ -27,6 +29,7 @@ export function ConversionOptions({
   encoding: TextEncoding
   onEncodingChange: (value: TextEncoding) => void
 }) {
+  const [avif] = useState(() => supportsImageEncoding('avif'))
   const {
     format,
     imageSize,
@@ -64,6 +67,9 @@ export function ConversionOptions({
                 <SelectItem value="png">PNG</SelectItem>
                 <SelectItem value="jpeg">JPG</SelectItem>
                 <SelectItem value="webp">WebP</SelectItem>
+                <SelectItem value="avif" disabled={!avif}>
+                  {avif ? 'AVIF' : 'AVIF（当前浏览器不支持编码）'}
+                </SelectItem>
               </SelectContent>
             </Select>
           </label>
@@ -155,6 +161,11 @@ export function ConversionOptions({
             </Select>
           </label>
         </div>
+      )}
+      {mode === 'image' && format === 'avif' && !avif && (
+        <p className="conversion-note" role="status">
+          当前浏览器不支持 AVIF 编码，请改用 PNG、JPG 或 WebP。
+        </p>
       )}
       <details key={mode} className="tool-advanced conversion-advanced">
         <summary>高级设置与说明</summary>
@@ -319,6 +330,12 @@ export function ConversionOptions({
           <TextEncodingSelect value={encoding} disabled={disabled} onChange={onEncodingChange} />
         )}
         <p className="conversion-note">{modes[mode].note}</p>
+        {modes[mode].category === 'image' && (
+          <p className="conversion-note">
+            HEIC / HEIF 只导出主图；深度、多图、HDR 和原始元数据不保留，色彩可能变化。AVIF
+            输出依浏览器编码能力。
+          </p>
+        )}
         <p className="conversion-note">{modes[mode].hint}</p>
       </details>
     </div>

@@ -1,3 +1,5 @@
+import { ImageEditOptions } from './file-tool/ImageEditOptions'
+import { defaultImageEdit } from './lib/image-edit'
 import { ConversionOptions } from './file-tool/ConversionOptions'
 import { useFileOptions } from './file-tool/options'
 import { OutputActions } from './components/OutputActions'
@@ -73,6 +75,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     notices: string[]
   } | null>(null)
   const [fileOptions, setFileOptions] = useFileOptions()
+  const [imageEdit, setImageEdit] = useState(defaultImageEdit)
   const {
     format,
     imageSize,
@@ -411,12 +414,13 @@ export default function FileTool({ active = true }: { active?: boolean }) {
           let output: OutputFile
           let rowNotices: string[] | undefined
           if (mode === 'image')
-            output = await convertImage(row.file, format, quality / 100, imageSize)
+            output = await convertImage(row.file, format, quality / 100, imageSize, imageEdit)
           else if (mode === 'image-compress') {
             const compressed = await compressImageFile(row.file, {
               targetBytes: Number(compressTarget) * 1024,
               format: compressFormat,
               size: imageSize,
+              edit: imageEdit,
             })
             output = compressed
             rowNotices = [
@@ -729,6 +733,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
               multiple
               accept={modes[mode].accept}
               className="sr-only"
+              disabled={busy || packing}
               aria-label="选择待转换文件"
               onChange={(event) => {
                 addFiles(Array.from(event.target.files || []))
@@ -761,6 +766,16 @@ export default function FileTool({ active = true }: { active?: boolean }) {
               </div>
             )}
             {optionControls}
+            {(mode === 'image' || mode === 'image-compress') && (
+              <ImageEditOptions
+                value={imageEdit}
+                disabled={busy || packing}
+                onChange={(value) => {
+                  clearOutputs()
+                  setImageEdit(value)
+                }}
+              />
+            )}
             {!!rows.length && (
               <FileQueue
                 rows={rows}

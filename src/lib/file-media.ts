@@ -1,3 +1,4 @@
+import { decodeImage } from './image-decode'
 import { openPdf, outputName, type OutputFile } from './file-convert'
 import { pdfPageNumbers, pdfSheetGeometry, type PdfSheetSize } from './media-options'
 
@@ -157,9 +158,7 @@ export async function imagesToPdf(
   try {
     for (const [index, file] of files.entries()) {
       progress(`正在合并第 ${index + 1} / ${files.length} 张图片`)
-      const bitmap = await createImageBitmap(file).catch(() => {
-        throw new Error(`无法读取图片：${file.name}`)
-      })
+      const bitmap = await decodeImage(file)
       try {
         if (bitmap.width * bitmap.height > 24_000_000)
           throw new Error(`${file.name} 超过 2400 万像素，请先缩小。`)

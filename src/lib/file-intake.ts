@@ -1,3 +1,4 @@
+import { imageContainer } from './image-decode'
 import type { Mode } from '@/file-tool/modes'
 import type { NewTransfer } from './tool-transfer'
 
@@ -51,6 +52,9 @@ export async function identifyFile(file: File): Promise<IdentifiedFile> {
   } else if (ascii.startsWith('RIFF') && ascii.slice(8, 12) === 'WEBP') {
     kind = 'image'
     detected = 'webp'
+  } else if (imageContainer(head)) {
+    kind = 'image'
+    detected = imageContainer(head)!
   } else if (
     ascii.search(/(?:^|[\r\n])%PDF-\d\.\d/) >= 0 &&
     ascii.search(/(?:^|[\r\n])%PDF-\d\.\d/) <= 1024
@@ -83,7 +87,9 @@ export async function identifyFile(file: File): Promise<IdentifiedFile> {
   } else if (
     head.length &&
     !head.includes(0) &&
-    !['png', 'jpg', 'jpeg', 'webp', 'pdf', 'docx', 'xlsx'].includes(extension)
+    !['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif', 'avif', 'pdf', 'docx', 'xlsx'].includes(
+      extension,
+    )
   ) {
     let textual = false
     for (const encoding of ['utf-8', 'gb18030']) {

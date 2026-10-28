@@ -1,7 +1,8 @@
 // 图片压缩到指定大小：先在当前尺寸对编码质量降档试探，仍超限再逐级缩小尺寸；
 // 无法达标时返回可达成的最小结果并如实标注，绝不假装压缩成功。
 import { outputName, type OutputFile } from './file-convert'
-import { imageDimensions, type ImageSize } from './media-options'
+import type { ImageSize } from './media-options'
+import { prepareImage, type ImageEditOptions } from './image-edit'
 
 export type ImageCompressFormat = 'jpeg' | 'webp'
 
@@ -67,18 +68,19 @@ export type ImageCompressResult = OutputFile & {
 /** 浏览器端压缩入口：解码位图、按缩放比例重绘并交给 compressToTarget 搜索目标大小 */
 export async function compressImageFile(
   file: File,
-  options: { targetBytes: number; format: ImageCompressFormat; size?: ImageSize },
+  options: {
+    targetBytes: number
+    format: ImageCompressFormat
+    size?: ImageSize
+    edit?: ImageEditOptions
+  },
 ): Promise<ImageCompressResult> {
-  const bitmap = await createImageBitmap(file).catch(() => {
-    throw new Error('无法读取图片，请检查文件是否损坏或格式是否正确。')
-  })
+  const prepared = await prepareImage(file, options.size ?? 'original', options.edit)
   const canvas = document.createElement('canvas')
   try {
-    if (bitmap.width * bitmap.height > 24_000_000)
-      throw new Error('图片超过 2400 万像素，请先缩小尺寸。')
     const context = canvas.getContext('2d')
     if (!context) throw new Error('浏览器无法创建图片画布。')
-    const base = imageDimensions(bitmap.width, bitmap.height, options.size ?? 'original')
+    const base = { width: prepared.width, height: prepared.height }
     let drawnScale = -1
     const encode = async (quality: number, scale: number): Promise<Blob> => {
       if (scale !== drawnScale) {
@@ -88,7 +90,7 @@ export async function compressImageFile(
           context.fillStyle = '#fff'
           context.fillRect(0, 0, canvas.width, canvas.height)
         }
-        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+        context.drawImage(prepared, 0, 0, canvas.width, canvas.height)
         drawnScale = scale
       }
       return new Promise<Blob>((resolve, reject) =>
@@ -111,11 +113,11 @@ export async function compressImageFile(
       metTarget: result.metTarget,
       attempts: result.attempts,
       originalBytes: file.size,
-      width: canvas.width,
-      height: canvas.height,
+      width: Math.max(1, Math.round(base.width * result.scale)),
+      height: Math.max(1, Math.round(base.height * result.scale)),
     }
   } finally {
-    bitmap.close()
+    prepared.width = prepared.height = 0
     canvas.width = canvas.height = 0
   }
 }

@@ -396,3 +396,14 @@ TextTool「更多操作」第四区块：一次导入多份 TXT/MD，统一应�
 - 验证：225/225 单测、109/109 全量 E2E；最后补充取消旧任务、完成结果复用与统计图标/文本颜色后，文本扩展与离线 11/11 通过。lint 零警告、format、TypeScript/Vite/postbuild、git diff --check 通过。新增 7 单测 + 7 E2E，核对真实 OpenCC 一简多繁和台湾词、原文应用/撤销与隐私、四类提取和捕获、非法与灾难回溯、Worker失败恢复、独立空白差异/草稿/20万上限、390px深浅主题统计与高亮。
 - 断网回归先在首页完成真实预缓存，再离线第一次启动新增 Worker / OpenCC 词典和邮箱提取；现有文本处理、EXIF、重命名正则、PDF预览均继续通过。失败注入测试明确阻止 SW，避免离线缓存成功加载造成假失败预期。构建236个本地资源合计约7.89 MiB，包含许可证，功能说明缓存估算同步更新。
 - 转换优化 Actions 40682571825 的 E2E 与 Pages 部署均成功。本批截图 text-extra-*/text-statistics-mobile.png、text-extra-mobile.png。仍未实测 Safari/Firefox / 真实手机输入法，词典不承诺消除专名歧义；图片/PDF扩展及六工具结构最终统一继续推进。
+
+
+## 图片编辑与 HEIC（D 图片项）· 2026-10-28
+
+- 互转 / 压缩共用 prepareImage：原图比例裁剪、旋转、预设 / 百分比 / 精确宽高、批量文字水印；输出前验证原尺寸与结果 2400 万像素 / 16384 边长、裁剪范围、水印字符与不透明度。两边指定为精确尺寸，单边保持比例。编辑值 / 水印留在内存，旧 12 项持久化结构保留，仅 format 接受新 AVIF；原“非法AVIF”测试改为非法GIF，并独立证明新 AVIF 值可保存。
+- libheif-js 1.23.5 固定锁定（实际运行 heif_get_version 为1.23.5），本地专用模块 Worker 内使用嵌入 WASM 的未修改上游包。原生 HEIC 解码失败才加载；句柄尺寸在 display 之前检查，20s / Worker错误停止，不回退到服务器。HEIC / AVIF ISO-BMFF 品牌识别纳入全局任务；图片合 PDF 复用解码器。CSP 只新增 wasm-unsafe-eval，未开放 JS eval；上游根 / 编解码器许可与精确源码/build/replacement链接随静态资源发布。
+- AVIF Canvas 能力检测禁用不支持项，实际编码再校验 MIME；已有 AVIF 偏好在不支持浏览器显示可操作提示，拒绝 PNG 伪装。结果加图片预览；处理期间原生文件输入也禁用。压缩结果尺寸按返回候选 scale 计算，避免“最小候选不是最后一档”时元信息错位。画布与位图在所有异常路径释放。
+- 视觉复核发现新数字 / 水印输入缺少边框，统一使用既有 tool-input（36px、焦点环、主题）；同样修复上批正则提取的两个输入。手机深浅色截图核对所有字段、实际水印像素、文件操作与预览无溢出；新测试显式断言控件36px。切换模式保护弹窗仍按原语义，HEIC合PDF测试先确认切换再上传，未绕过确认。
+- 验证：229/229 单测、116/116 全量 E2E；最后补充质量说明、禁用隐藏文件输入和结果视口截图后，图片与离线11/11通过。lint 零警告、format、TypeScript/Vite/postbuild、git diff --check 通过。新增4单测+7E2E，覆盖组合几何 / 边界 / 品牌识别 / 偏好，真 HEIC 的 WASM 输出尺寸与RGB像素、Worker加载失败恢复、精确 / 单边 / 百分比尺寸、旧URL撤销、两文件水印真实像素与不持久化、透明JPEG白底、AVIF不支持与MIME防伪、压缩与合PDF复用、390px深浅主题。
+- HEIC夹具是sips从自制64×40四象限RGB生成的556字节文件，无个人照片。WASM测试显式让原生HEIC解码拒绝，证明成功来自实际WASM；离线回归在首页预热完后首次加载解码器并断网转换为64×40 JPEG，仍保留原有OpenCC/EXIF/字体/Worker/PDF预览验证。构建238个资源合计约9.89MiB，完整清单含解码器及许可证。
+- 文本扩展 Actions 40684959904 的 E2E 与 Pages 部署均成功。截图 image-upgrade-*/image-edit-mobile.png、image-result-mobile.png。未穷尽不同iPhone/相机HEIC、HDR/ICC色彩与多图容器，Safari/Firefox/真实手机未实测；AVIF按实际浏览器能力可用。剩余PDF扩展与六工具结构最终统一继续执行。

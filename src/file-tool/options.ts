@@ -3,7 +3,7 @@ import type { ImageSize, PdfSheetSize } from '@/lib/media-options'
 import { readFileOptions, saveFileOptions, type FileOptionSchema } from '@/lib/storage'
 
 export type FileOptions = {
-  format: 'png' | 'jpeg' | 'webp'
+  format: 'png' | 'jpeg' | 'webp' | 'avif'
   imageSize: ImageSize
   quality: number
   compressTarget: '100' | '200' | '500' | '1000'
@@ -32,7 +32,7 @@ export const defaultFileOptions: FileOptions = {
 }
 // 参数记忆的 schema：只存选项值（枚举 / 数值 / 布尔），永不存文件内容
 export const fileOptionSchema: FileOptionSchema = {
-  format: (value) => value === 'png' || value === 'jpeg' || value === 'webp',
+  format: (value) => value === 'png' || value === 'jpeg' || value === 'webp' || value === 'avif',
   imageSize: (value) =>
     value === 'original' || value === '1920' || value === '1280' || value === 'half',
   quality: (value) => typeof value === 'number' && value >= 10 && value <= 100,

@@ -108,6 +108,22 @@ test('首次离线准备后，未访问过的六个工具与本地字体都可�
   await expect(page.getByRole('textbox', { name: '新文件名 offline.jpg' })).toHaveValue(
     'renamed_001.jpg',
   )
+  await page.goto('/#/files')
+  await page.getByLabel('选择待转换文件').setInputFiles('e2e/fixtures/colors.heic')
+  await page.getByRole('combobox', { name: '输出格式', exact: true }).click()
+  await page.getByRole('option', { name: 'JPG', exact: true }).click()
+  await page.getByRole('button', { name: '开始转换', exact: true }).click()
+  await expect(page.locator('.file-row a[download]')).toBeVisible()
+  const heicUrl = await page.locator('.file-row a[download]').getAttribute('href')
+  expect(
+    await page.evaluate(async (url) => {
+      const blob = await (await fetch(url!)).blob(),
+        bitmap = await createImageBitmap(blob)
+      const dimensions = [bitmap.width, bitmap.height]
+      bitmap.close()
+      return { type: blob.type, dimensions }
+    }, heicUrl),
+  ).toEqual({ type: 'image/jpeg', dimensions: [64, 40] })
   await context.setOffline(false)
 })
 
