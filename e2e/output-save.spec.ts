@@ -109,7 +109,6 @@ test('手机分享实际 TXT/转换结果；取消不报错、下载继续可用
     location.hash = '#/files?mode=csv-json'
   })
   await page.getByLabel('选择待转换文件').setInputFiles(csvFile('a.csv'))
-  await page.getByRole('button', { name: '开始转换' }).click()
   await page.getByRole('button', { name: '分享 a.json', exact: true }).click()
   await expect.poll(() => page.evaluate(() => window.nativeTest.shared[0]?.name)).toBe('a.json')
   const shared = await page.evaluate(() => window.nativeTest.shared[0])
@@ -121,6 +120,10 @@ test('手机分享实际 TXT/转换结果；取消不报错、下载继续可用
       .locator('.file-tool .file-details')
       .evaluate((element) => element.getBoundingClientRect().width),
   ).toBeGreaterThan(200)
+  await page.getByLabel('选择待转换文件').setInputFiles(csvFile('b.csv'))
+  await expect(page.locator('.file-tool a[download]')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: '打包下载 (2)', exact: true })).toBeEnabled()
+  await noOverflow(page)
   await page.screenshot({ path: testInfo.outputPath('file-native-mobile.png') })
 })
 
@@ -244,7 +247,6 @@ test('不支持原生能力时保留直接下载/ZIP入口，不显示失效按�
   })
   await page.goto('/#/files?mode=csv-json')
   await page.getByLabel('选择待转换文件').setInputFiles([csvFile('a.csv'), csvFile('b.csv')])
-  await page.getByRole('button', { name: '开始转换' }).click()
   await expect(page.locator('.file-tool a[download]')).toHaveCount(2)
   await expect(page.getByRole('button', { name: /^打包下载/ })).toBeEnabled()
   await expect(page.getByRole('button', { name: '保存到文件夹', exact: true })).toHaveCount(0)

@@ -5,8 +5,7 @@ import { useToolTransfer, useTransferReceiver, type ToolTransfer } from './lib/t
 import { ConfirmImport } from './components/ConfirmImport'
 import { ContinueWith } from './components/ContinueWith'
 import { readTextFile, encodingNotices, type TextEncoding } from './lib/text-encoding'
-import { TextEncodingSelect } from './components/TextEncodingSelect'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { ArrowDownToLine, Check, FileUp, Image, LoaderCircle, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -62,6 +61,9 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     if (!active) setIncomingTransfer(null)
   }, [active])
   const [mode, setMode] = useState<Mode>(() => modeFromHash() ?? 'image')
+  const automatic = ['markdown', 'csv-json', 'json-csv', 'csv-markdown', 'markdown-csv'].includes(
+    mode,
+  )
   const isExcelRead = mode === 'excel-csv' || mode === 'excel-json' || mode === 'excel-md'
   const [excel, setExcel] = useState<{ file: File; workbook: WorkbookData } | null>(null)
   const [sheetName, setSheetName] = useState('')
@@ -122,12 +124,12 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       window.history.replaceState(null, '', `#/files?mode=${next}`)
     }
   }
-  const clearOutputs = () => {
+  const clearOutputs = (message = '设置已更改，待重新转换') => {
     setMerged(null)
     for (const url of urls.current) URL.revokeObjectURL(url)
     urls.current.clear()
     setRows((previous) =>
-      previous.map((row) => ({ id: row.id, file: row.file, status: 'waiting' })),
+      previous.map((row) => ({ id: row.id, file: row.file, status: 'waiting', message })),
     )
   }
   const markPreviewError = (id: string) => {
@@ -156,7 +158,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       URL.revokeObjectURL(row.output.url)
       urls.current.delete(row.output.url)
     }
-    if (mode === 'image-pdf' || isExcelRead) clearOutputs()
+    if (mode === 'image-pdf' || isExcelRead) clearOutputs('队列已更新，待重新转换')
     setRows((previous) => previous.filter((item) => item.id !== row.id))
   }
   const addFiles = (files: File[]) => {
@@ -177,7 +179,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       toast.error(error instanceof Error ? error.message : '文件无法添加')
       return
     }
-    if (mode === 'image-pdf') clearOutputs()
+    if (mode === 'image-pdf') clearOutputs('队列已更新，待重新合并')
     setRows((previous) => [
       ...previous,
       ...files.map((file) => ({ id: crypto.randomUUID(), file, status: 'waiting' as const })),
@@ -344,7 +346,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
   }, [rows, mode, csvPreview, readEncoding])
   const moveRow = (id: string, to: number) => {
     if (running.current || packing || to < 0 || to >= rows.length) return
-    clearOutputs()
+    clearOutputs('顺序已更改，待重新合并')
     setRows((previous) => {
       const next = [...previous]
       const from = next.findIndex((row) => row.id === id)
@@ -353,11 +355,11 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       return next
     })
   }
-  const run = async () => {
+  const run = async (waitingOnly = false) => {
     if (running.current || !rows.length) return
     running.current = true
     setBusy(true)
-    let bytes = 0
+    let bytes = rows.reduce((sum, row) => sum + (row.output?.blob.size ?? 0), 0)
     try {
       if (mode === 'image-pdf') {
         setRows((previous) =>
@@ -395,10 +397,8 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       }
       for (const row of rows) {
         if (!mounted.current) break
-        if (row.output) {
-          bytes += row.output.blob.size
-          continue
-        }
+        if (row.output) continue
+        if (waitingOnly && row.status !== 'waiting') continue
         const update = (patch: Partial<Row>) => {
           if (mounted.current)
             setRows((previous) =>
@@ -560,6 +560,31 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       if (mounted.current) setBusy(false)
     }
   }
+  const autoRun = useEffectEvent(() => run(true))
+  useEffect(() => {
+    const requested = modeFromHash()
+    if (
+      active &&
+      automatic &&
+      !busy &&
+      !packing &&
+      !incomingTransfer &&
+      transfers?.pending?.target !== 'files' &&
+      (!requested || requested === mode) &&
+      rows.some((row) => row.status === 'waiting')
+    )
+      void autoRun()
+  }, [
+    active,
+    automatic,
+    busy,
+    packing,
+    rows,
+    mode,
+    incomingTransfer,
+    transfers?.pending?.id,
+    transfers?.pending?.target,
+  ])
   const zip = async () => {
     setPacking(true)
     try {
@@ -591,6 +616,12 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       mode={mode}
       options={fileOptions}
       disabled={busy || packing}
+      encoding={readEncoding}
+      onEncodingChange={(value) => {
+        clearOutputs()
+        setCsvPreview(null)
+        setReadEncoding(value)
+      }}
       onChange={(patch) => {
         clearOutputs()
         setFileOptions((previous) => ({ ...previous, ...patch }))
@@ -598,6 +629,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     />
   )
   const done = rows.filter((row) => row.status === 'done').length
+  const failed = rows.filter((row) => row.status === 'error').length
   return (
     <main className="main-content file-tool">
       <ConfirmImport
@@ -659,24 +691,12 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                     ? '按队列顺序合并'
                     : modes[mode].category === 'image'
                       ? '支持直接粘贴截图'
-                      : '支持多文件依次转换'}
+                      : automatic
+                        ? '添加文件后自动转换'
+                        : '支持多文件依次转换'}
                 </span>
               </div>
-              {mode === 'image' && optionControls}
             </div>
-            {mode !== 'image' && optionControls}
-            {!isExcelRead &&
-              (modes[mode].category === 'text' || modes[mode].category === 'table') && (
-                <TextEncodingSelect
-                  value={readEncoding}
-                  disabled={busy || packing}
-                  onChange={(value) => {
-                    clearOutputs()
-                    setCsvPreview(null)
-                    setReadEncoding(value)
-                  }}
-                />
-              )}
             <button
               type="button"
               className={`file-drop ${dragging ? 'is-dragging' : ''}`}
@@ -699,7 +719,9 @@ export default function FileTool({ active = true }: { active?: boolean }) {
               <strong>
                 {rows.length ? '继续添加文件，或拖到这里' : '点击选择文件，或拖到这里'}
               </strong>
-              <span>{modes[mode].hint}</span>
+              <span>
+                {modes[mode].accept.replaceAll('.', '').split(',').join(' / ').toUpperCase()}
+              </span>
             </button>
             <input
               ref={input}
@@ -738,7 +760,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                 </Button>
               </div>
             )}
-            <p className="conversion-note">{modes[mode].note}</p>
+            {optionControls}
             {!!rows.length && (
               <FileQueue
                 rows={rows}
@@ -793,6 +815,17 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                 清空
               </Button>
               <div>
+                {automatic && (
+                  <span className="conversion-auto" role="status">
+                    {busy
+                      ? '正在自动转换'
+                      : failed > 0
+                        ? `已完成 ${done} 个，失败 ${failed} 个`
+                        : done === rows.length && done > 0
+                          ? `已完成 ${done} 个文件`
+                          : '添加文件后自动转换'}
+                  </span>
+                )}
                 {done > 1 && mode !== 'image-pdf' && (
                   <OutputActions
                     outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
@@ -815,13 +848,32 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                     打包下载 ({done})
                   </Button>
                 )}
-                <Button
-                  disabled={!rows.length || busy || packing || done === rows.length || excelPending}
-                  onClick={run}
-                >
-                  {busy ? <LoaderCircle className="animate-spin" size={14} /> : <Check size={14} />}
-                  {busy ? '正在转换' : mode === 'image-pdf' ? '合并 PDF' : '开始转换'}
-                </Button>
+                {(!automatic || failed > 0) && (
+                  <Button
+                    disabled={
+                      !rows.length ||
+                      busy ||
+                      packing ||
+                      done === rows.length ||
+                      excelPending ||
+                      (automatic && !failed)
+                    }
+                    onClick={() => void run()}
+                  >
+                    {busy ? (
+                      <LoaderCircle className="animate-spin" size={14} />
+                    ) : (
+                      <Check size={14} />
+                    )}
+                    {busy
+                      ? '正在转换'
+                      : automatic
+                        ? '重试失败项'
+                        : mode === 'image-pdf'
+                          ? '合并 PDF'
+                          : '开始转换'}
+                  </Button>
+                )}
               </div>
             </div>
           </section>

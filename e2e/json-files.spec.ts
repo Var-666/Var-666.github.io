@@ -20,7 +20,6 @@ test('嵌套 JSON 导出点路径列，保留前导零/数组/字面点字段，
       '[{"user":{"name":"甲","id":"001"},"user.name":"literal","tags":["a","b"],"note":"=1+1"},{"user":{"name":"乙"}}]',
     ),
   })
-  await page.getByRole('button', { name: '开始转换' }).click()
   expect(await csv(page)).toEqual([
     ['user.name', 'user.id', 'user\\.name', 'tags', 'note'],
     ['甲', '001', 'literal', '["a","b"]', "'=1+1"],
@@ -47,7 +46,6 @@ test('首页识别 JSONL/NDJSON 并逐行转换，坏文件显示行号且不影
     },
   ])
   await page.getByRole('button', { name: 'JSON 转 CSV', exact: true }).click()
-  await page.getByRole('button', { name: '开始转换' }).click()
   expect(await csv(page)).toEqual([
     ['id', 'context.user'],
     ['001', '甲'],
@@ -66,6 +64,5 @@ test('JSONL 任务可搜索直达，单行对象也按 JSON Lines 读取', async
     mimeType: 'application/x-ndjson',
     buffer: Buffer.from('{"id":"001"}'),
   })
-  await page.getByRole('button', { name: '开始转换' }).click()
   expect(await csv(page)).toEqual([['id'], ['001']])
 })

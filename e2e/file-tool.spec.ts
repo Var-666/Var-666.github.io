@@ -106,7 +106,6 @@ test.beforeEach(async ({ page }) => {
 test('CSV → JSON：重复表头加序号去重（与 Excel 一致）并在队列中提示', async ({ page }) => {
   await page.getByRole('tab', { name: '表格' }).click()
   await upload(page, '订单.csv', dupHeadersCsv, 'text/csv')
-  await page.getByRole('button', { name: '开始转换' }).click()
   const { name, text } = await downloadText(page)
   expect(name).toBe('订单.json')
   expect(JSON.parse(text)).toEqual([
@@ -170,6 +169,7 @@ test('切换转换方式清空队列并复位按钮', async ({ page }) => {
   await page.getByRole('tab', { name: '表格' }).click()
   await upload(page, '订单.csv', dupHeadersCsv, 'text/csv')
   await expect(page.getByText('订单.csv')).toBeVisible()
+  await expect(page.locator('a[download]')).toBeVisible()
   await page.getByRole('tab', { name: '表格' }).click()
   await page.getByRole('button', { name: 'Excel → CSV' }).click()
   await expect(page.locator('.file-queue')).toHaveCount(0)

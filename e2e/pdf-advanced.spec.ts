@@ -121,6 +121,7 @@ test('图片合成 PDF：A3 横向页面尺寸写入输出', async ({ page }) =>
   })
   await page.getByRole('combobox', { name: '页面尺寸' }).click()
   await page.getByRole('option', { name: /A3/ }).click()
+  await page.getByText('高级设置与说明', { exact: true }).click()
   await page.getByRole('combobox', { name: '页面方向' }).click()
   await page.getByRole('option', { name: '横向' }).click()
   await page.getByRole('button', { name: '合并 PDF' }).click()
