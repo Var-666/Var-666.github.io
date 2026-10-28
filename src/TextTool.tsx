@@ -1,3 +1,4 @@
+import { TextStatsButton } from './text-tool/TextStatsButton'
 import { useTextProcessing } from './text-tool/useTextProcessing'
 import { OverlayMarks, type DiffMark } from './text-tool/DiffOverlay'
 import {
@@ -756,10 +757,7 @@ export default function TextTool({ active }: { active: boolean }) {
                 )}
               </div>
               <div className="editor-footer">
-                <span>
-                  <b>{sourceStats.chars.toLocaleString()}</b> 字符
-                  <span className="stat-divider" /> <b>{sourceStats.lines.toLocaleString()}</b> 行
-                </span>
+                <TextStatsButton text={source} stats={sourceStats} label="原始文本" />
                 <span className="encoding-label">纯文本 · {sourceEncoding ?? 'UTF-8'}</span>
               </div>
             </section>
@@ -821,11 +819,7 @@ export default function TextTool({ active }: { active: boolean }) {
                 )}
               </div>
               <div className="editor-footer">
-                <span>
-                  <b>{resultStats.chars.toLocaleString()}</b> 字符
-                  <span className="stat-divider" />
-                  <b>{resultStats.lines.toLocaleString()}</b> 行
-                </span>
+                <TextStatsButton text={result.text} stats={resultStats} label="整理结果" />
                 <span className={cn('processing-state', failed && 'error-state')} role="status">
                   {failed ? (
                     <>

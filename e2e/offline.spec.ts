@@ -69,6 +69,21 @@ test('首次离线准备后，未访问过的六个工具与本地字体都可�
   await expect(page.getByRole('textbox', { name: '整理结果', exact: true })).toHaveValue(
     'Offline test',
   )
+  await page.getByRole('button', { name: '更多操作', exact: true }).click()
+  await page
+    .locator('summary')
+    .filter({ hasText: /^简繁转换$/ })
+    .click()
+  await page.getByRole('textbox', { name: '原始文本', exact: true }).fill('头发和软件')
+  await page.getByRole('button', { name: '开始简繁转换', exact: true }).click()
+  await expect(page.getByLabel('简繁转换预览')).toHaveText('頭髮和軟件')
+  await page
+    .locator('summary')
+    .filter({ hasText: /^内容提取$/ })
+    .click()
+  await page.getByRole('textbox', { name: '原始文本', exact: true }).fill('offline@example.com')
+  await page.getByRole('button', { name: '开始提取', exact: true }).click()
+  await expect(page.getByLabel('提取结果预览')).toHaveText('offline@example.com')
   const pdf = await PDFDocument.create()
   pdf.addPage().drawText('Offline PDF preview')
   await page.goto('/#/pdf')
