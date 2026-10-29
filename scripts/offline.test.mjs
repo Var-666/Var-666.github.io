@@ -1,13 +1,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { runInNewContext } from 'node:vm'
 
-const template = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8')
+const template = readFileSync(new URL('../apps/web/public/tools/sw.js', import.meta.url), 'utf8')
 const base = 'https://example.test/'
 const response = (text, status = 200, type = 'text/plain') => {
   const value = new Response(text, { status, headers: { 'content-type': type } })
@@ -115,13 +115,17 @@ const cacheName = 'var-toolbox-__BUILD_VERSION__'
 test('build manifests cover lazy chunks and fonts, version changes with output, sitemap date is generated', () => {
   const directory = mkdtempSync(join(tmpdir(), 'var-offline-'))
   try {
-    for (const path of ['assets', 'pdf-assets/cmaps', 'icons'])
+    for (const path of ['_next/static/chunks', 'pdf-assets/cmaps', 'icons', 'tools'])
       mkdirSync(join(directory, path), { recursive: true })
     const files = {
-      'index.html': '<script src="/assets/index-abc.js"></script>',
+      'index.html':
+        '<html><head><script src="/_next/static/chunks/index-abc.js"></script><script>self.__next_f=[]</script></head></html>',
+      'tools/index.html':
+        '<html><head><script src="/_next/static/chunks/index-abc.js"></script></head></html>',
       'sitemap.xml': '<lastmod>2000-01-01</lastmod>',
-      'assets/index-abc.js': 'main',
-      'assets/PdfTool-def.js': 'pdf',
+      '_next/static/chunks/index-abc.js': 'main',
+      '_next/static/chunks/PdfTool-def.js': 'pdf',
+      '_next/static/chunks/text.worker.abc.js': 'worker',
       'pdf-assets/cmaps/test.bcmap': 'font',
       'manifest.webmanifest': '{}',
       'favicon.svg': 'svg',
@@ -134,18 +138,29 @@ test('build manifests cover lazy chunks and fonts, version changes with output, 
         fileURLToPath(new URL('./build-offline.mjs', import.meta.url)),
         directory,
       ])
-      return readFileSync(join(directory, 'sw.js'), 'utf8')
+      return readFileSync(join(directory, 'tools/sw.js'), 'utf8')
     }
     const initial = build()
     assert.equal(initial, build())
-    assert.match(initial, /\.\/assets\/PdfTool-def.js/)
-    assert.match(initial, /\.\/pdf-assets\/cmaps\/test.bcmap/)
+    assert.equal(
+      readFileSync(join(directory, 'tools/_next/static/chunks/text.worker.abc.js'), 'utf8'),
+      'worker',
+    )
+    assert.equal(existsSync(join(directory, '_next/static/chunks/text.worker.abc.js')), false)
+    assert.match(initial, /\/tools\/_next\/static\/chunks\/text.worker.abc.js/)
+    const html = readFileSync(join(directory, 'index.html'), 'utf8')
+    assert.match(html, /Content-Security-Policy/)
+    assert.match(html, /script-src 'self' 'wasm-unsafe-eval' 'sha256-/)
+    assert.equal((html.match(/Content-Security-Policy/g) ?? []).length, 1)
+    assert.doesNotMatch(html, /script-src[^;]*'unsafe-inline'/)
+    assert.match(initial, /\/_next\/static\/chunks\/PdfTool-def.js/)
+    assert.match(initial, /\/pdf-assets\/cmaps\/test.bcmap/)
     assert.doesNotMatch(initial, /__BUILD_VERSION__|CORE_ASSETS|ALL_ASSETS/)
     assert.match(
       readFileSync(join(directory, 'sitemap.xml'), 'utf8'),
       new RegExp(new Date().toISOString().slice(0, 10)),
     )
-    writeFileSync(join(directory, 'assets/PdfTool-def.js'), 'changed')
+    writeFileSync(join(directory, '_next/static/chunks/PdfTool-def.js'), 'changed')
     assert.notEqual(initial, build())
   } finally {
     rmSync(directory, { recursive: true, force: true })
@@ -164,9 +179,11 @@ test('activation removes only older toolbox caches', async () => {
 test('hashed assets are served from cache without revalidation', async () => {
   const sw = worker(),
     cache = await sw.caches.open(cacheName)
-  await cache.put('./assets/tool-abc.js', response('cached chunk'))
+  await cache.put('./_next/static/chunks/tool-abc.js', response('cached chunk'))
   assert.equal(
-    await (await sw.dispatch('fetch', { request: request('/assets/tool-abc.js') })).text(),
+    await (
+      await sw.dispatch('fetch', { request: request('/_next/static/chunks/tool-abc.js') })
+    ).text(),
     'cached chunk',
   )
   assert.equal(sw.hits.length, 0)
@@ -175,7 +192,7 @@ test('hashed assets are served from cache without revalidation', async () => {
 test('unsuccessful navigation never replaces the last good offline HTML', async () => {
   const sw = worker(),
     cache = await sw.caches.open(cacheName)
-  await cache.put('./index.html', response('<h1>working</h1>', 200, 'text/html'))
+  await cache.put('/tools/index.html', response('<h1>working</h1>', 200, 'text/html'))
   sw.network.set(base, response('<h1>unavailable</h1>', 503, 'text/html'))
   assert.equal((await sw.dispatch('fetch', { request: request('/', 'navigate') })).status, 503)
   sw.network.clear()
@@ -186,15 +203,15 @@ test('unsuccessful navigation never replaces the last good offline HTML', async 
 })
 
 test('offline readiness requires every asset; a retry fills gaps without fetching cached files', async () => {
-  const sw = worker({ assets: ['./assets/a.js', './pdf-assets/font'] })
-  sw.network.set(base + 'assets/a.js', response('a'))
+  const sw = worker({ assets: ['./_next/static/chunks/a.js', './pdf-assets/font'] })
+  sw.network.set(base + '_next/static/chunks/a.js', response('a'))
   await sw.dispatch('message', { data: 'PREPARE_OFFLINE' })
   assert.equal(sw.messages.at(-1).state, 'incomplete')
   assert.equal(await (await sw.caches.open(cacheName)).match('./__offline_ready__'), undefined)
   sw.network.set(base + 'pdf-assets/font', response('font'))
   await sw.dispatch('message', { data: 'PREPARE_OFFLINE' })
   assert.equal(sw.messages.at(-1).state, 'ready')
-  assert.equal(sw.hits.filter((url) => url.endsWith('/assets/a.js')).length, 1)
+  assert.equal(sw.hits.filter((url) => url.endsWith('/_next/static/chunks/a.js')).length, 1)
   assert.equal(
     await (await (await sw.caches.open(cacheName)).match('./__offline_ready__')).text(),
     'ready',
@@ -202,7 +219,7 @@ test('offline readiness requires every asset; a retry fills gaps without fetchin
 })
 
 test('a failed core install does not replace the working service worker', async () => {
-  const sw = worker({ core: ['./index.html', './assets/main.js'] })
+  const sw = worker({ core: ['/tools/index.html', './_next/static/chunks/main.js'] })
   sw.network.set(base + 'index.html', response('index'))
   await assert.rejects(sw.dispatch('install'))
   assert.equal(sw.skipped(), false)

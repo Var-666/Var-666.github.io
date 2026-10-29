@@ -1,10 +1,10 @@
-# VAR · 日常工具箱
+# VAR · 个人网站
 
-**免费、轻量、本地处理的日常办公工具箱——打开即用，文件不上传。**
+网站当前包含一个工具箱模块，位于 `/tools/`：免费、轻量、在浏览器本地处理，文件不上传。
 
-[在线使用 →](https://www.hi-var.top/)
+[在线使用 →](https://www.hi-var.top/tools/)
 
-## 为什么是 VAR
+## 为什么用工具箱
 
 - **本地处理**：所有工具都在你的浏览器里运行，没有服务端、没有上传、没有账号。
 - **打开即用**：无需安装，手机和电脑的浏览器都能用；访问过的工具断网后仍可打开。
@@ -36,14 +36,53 @@ CSV / XLSX 混合处理：同结构或按列名合并、主键连接、去重、
 
 ## 开发
 
+使用 Node.js 22 和项目锁定的 pnpm 11.25.0，在仓库根目录运行：
+
 ```sh
-npm install
-npm run dev      # 本地开发
-npm test         # 单元测试
-npm run test:e2e # 端到端回归
+pnpm install --frozen-lockfile
+pnpm dev          # Next.js 本地开发
+pnpm typecheck    # TypeScript
+pnpm lint
+pnpm test         # 现有单元测试与构建脚本检查
+pnpm test:e2e     # 构建后进行浏览器回归
+pnpm build       # 静态导出至 apps/web/out/
+pnpm preview     # 本地预览静态产物，默认 4173 端口
 ```
 
-技术栈：React + TypeScript + Vite，部署在 GitHub Pages。
+技术栈：Next.js App Router + TypeScript + React + Tailwind CSS + shadcn/ui，部署在 GitHub Pages。使用 Webpack 构建以支持现有模块 Worker，所有文件处理仍在浏览器内完成。
+
+## 目录与边界
+
+按开发手册第 4 节组织为 pnpm Monorepo，只创建实际需要的应用与目录：
+
+```text
+hi-var-site/
+├── AGENTS.md
+├── README.md
+├── pnpm-workspace.yaml
+├── pnpm-lock.yaml
+├── apps/
+│   └── web/
+│       ├── src/
+│       │   ├── app/                 # Next.js 页面、布局、全局样式、浏览器启动入口
+│       │   ├── features/
+│       │   │   └── toolbox/         # 工具箱模块，含六个子工具与内部共享能力
+│       │   ├── components/
+│       │   │   └── ui/              # 网站共享的 shadcn/ui 基础组件
+│       │   └── lib/                # 网站公共基础能力
+│       ├── e2e/
+│       ├── public/
+│       ├── vendor/
+│       └── package.json
+├── docs/
+│   └── architecture.md
+├── scripts/                        # 静态资源、离线构建、本地预览
+└── .github/workflows/deploy.yml
+```
+
+`src/app/page.tsx` 是网站首页，目前仅保留工具箱入口；`src/app/tools/` 是工具箱页面与元信息，调用 `features/toolbox` 的公开入口。工具箱内部维护 text、files、compare、table、pdf、rename 六个子工具，以及 components、lib、types 和 styles.css。其他网站功能以后放在 `features` 下，与 toolbox 平级。当前只有一个前端应用，不创建空的 `packages/shared`。项目没有 Python、数据库或服务端 API，暂不创建 `apps/ai-engine`；有 Python 后端需求时再用 uv 管理。
+
+旧的 `/#/text` 等六工具地址会跳转到 `/tools/#/text`，保留模式参数；当前工具箱标签页内草稿保持原有行为。`output: 'export'` 输出标准静态站点，不包含需要服务器运行的接口。详细责任边界与发布方式见 [架构说明](./docs/architecture.md)。
 
 ## 了解更多
 

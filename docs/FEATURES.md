@@ -67,7 +67,7 @@ README 是产品介绍；这里按工具列出完整的能力边界、文件大�
 - JSON → CSV：支持 JSON 对象数组，以及 `.jsonl` / `.ndjson` 每行一个对象（跳过空白行，错误标出实际行号）。嵌套对象按 `user.name` 点路径展平，字段名自带点或反斜线时用反斜线转义以避免撞列；数组和空对象保留为 JSON 单元格文本，缺失/null 留空。合并所有列，长整数必须写成字符串；深层数组中的超精度整数和超范围数字也会拒绝。最多 10 万条记录、32 层嵌套、1024 列 / 100 万格，仍受单个 2 MB / 200 万字符限制。疑似公式添加单引号保护。
 - Word `.docx` → PDF：浏览器渲染并输出图片版 A4 PDF，文字不能选择。切页优先在边界前 80 像素内寻找连续空白行；无空白的图像和表格边框仍回退固定切页。字体、复杂分页、表格等不保证原样还原，不支持旧 `.doc`。外部资源在隔离渲染区域内禁止加载，文件解压大小受限。转换后可在「结果详情」中查看页数、文件大小、文档分节数、质量提示与逐页 PDF 预览（与下载文件同源）；单个分节渲染失败会计数提示而不会静默丢页。
 - 文字型 PDF → Word `.docx`：提取文字、保留页间分页，不恢复图片、表格与布局。扫描件、含无文字页的混合文档、加密 PDF 不转换，以免无提示地遗漏内容。转换后「结果详情」显示提取字符数、段落数、页数与实际写入 Word 的文本预览，并提示核对关键内容。
-- 文本类文件单个 2 MB，支持 UTF-8 / GBK / GB18030；办公文档单个 10 MB、最多 50 页。所有转换在本地执行，没有服务端或文件上传。转换依赖按需加载。`predev` / `prebuild` 从已安装的 PDF.js 复制中文字符映射与标准字体到 `public/pdf-assets/`，该生成目录不提交 Git。
+- 文本类文件单个 2 MB，支持 UTF-8 / GBK / GB18030；办公文档单个 10 MB、最多 50 页。所有转换在本地执行，没有服务端或文件上传。转换依赖按需加载。`predev` / `prebuild` 从已安装的 PDF.js 复制中文字符映射与标准字体到 `apps/web/public/pdf-assets/`，该生成目录不提交 Git。
 
 ## 表格对比（#/compare）
 
@@ -129,38 +129,28 @@ README 是产品介绍；这里按工具列出完整的能力边界、文件大�
 
 ## 部署与边界
 
-线上地址：https://www.hi-var.top/ 。推送到 `main` 后，GitHub Actions 使用 Node.js 22 安装锁定依赖、运行格式检查、lint、单元测试、Playwright 端到端回归，全部通过后构建并发布 `dist/` 到 GitHub Pages。自定义域名沿用仓库 Pages 设置。回退到此前的 Git 提交并重新发布即可恢复旧版。
+线上地址：https://www.hi-var.top/ 。推送到 `main` 后，GitHub Actions 使用 Node.js 22 安装锁定依赖、运行格式检查、lint、单元测试、Playwright 端到端回归，全部通过后构建并发布 `apps/web/out/` 到 GitHub Pages。自定义域名沿用仓库 Pages 设置。回退到此前的 Git 提交并重新发布即可恢复旧版。
 
-`dist/` 是标准静态网站产物，可以部署在支持 HTTPS 的静态托管或自己的服务器上。剪贴板接口需要 HTTPS 或 localhost，权限不足时会提示使用键盘复制粘贴。
+`apps/web/out/` 是标准静态网站产物，可以部署在支持 HTTPS 的静态托管或自己的服务器上。剪贴板接口需要 HTTPS 或 localhost，权限不足时会提示使用键盘复制粘贴。
 
-离线与安装：生产构建注册 Service Worker。`postbuild` 根据构建内容生成版本及完整预缓存清单（含懒加载工具、转换依赖和 PDF 中文字体），安装先缓存核心入口，页面空闲时补齐全部资源；顶栏显示进度、失败重试与「离线就绪」。当前构建首次准备需约 12 MB 本地缓存（随版本变化），完成后未访问过的工具也能断网使用。缓存写入失败不会妨碍在线操作。可安装到桌面 / 主屏幕（`manifest.webmanifest`），开发模式不注册。
+离线与安装：工具箱生产构建在 `/tools/sw.js` 注册仅控制 `/tools/` 的 Service Worker。`postbuild` 根据构建内容生成版本及完整预缓存清单（含懒加载工具、转换依赖和 PDF 中文字体），安装先缓存核心入口，页面空闲时补齐全部资源；顶栏显示进度、失败重试与「离线就绪」。当前构建首次准备需约 12 MB 本地缓存（随版本变化），完成后未访问过的工具也能断网使用。缓存写入失败不会妨碍在线操作。可安装到桌面 / 主屏幕（`manifest.webmanifest`），开发模式不注册。
 
 - 导航请求网络优先，仅成功 HTML 能更新离线入口；带哈希资源与本地 PDF 资源命中缓存直接返回，其他静态资源后台更新。新 SW 激活只清理本站旧版本缓存，保留其他应用缓存。构建时同步生成 sitemap 的 lastmod。
 - 每个工具独立处理加载失败，显示重试、刷新与返回首页；重试不清空其他工具草稿。旧分块失效时，仅在用户尚未操作且在线的情况下最多自动刷新一次；已有操作时保留当前页面，让用户自行决定何时刷新。刷新/关闭仍会清空当前文件和正文。
-- SheetJS 0.20.3 官方原始 tarball 保存在 vendor/，SHA-512 与既有 lockfile 一致；npm 安装无需请求 SheetJS CDN。来源与许可证见 THIRD_PARTY_NOTICES。
+- SheetJS 0.20.3 官方原始 tarball 保存在 `apps/web/vendor/`，SHA-512 与既有 lockfile 一致；pnpm 安装无需请求 SheetJS CDN。来源与许可证见 THIRD_PARTY_NOTICES。
 
-SEO 与安全：`robots.txt` 与 `sitemap.xml` 随构建发布；页面带 canonical、Open Graph、Twitter 卡片与 JSON-LD 描述。因为使用 hash 路由且 GitHub Pages 对路径路由返回 404 状态，各工具页不单独进站点地图，搜索引擎只收录首页。`index.html` 内置 CSP，脚本仅允许同源，`wasm-unsafe-eval` 仅开放本地 WebAssembly 编译，未启用 JavaScript 的 `unsafe-eval`。
+SEO 与安全：`robots.txt` 与 `sitemap.xml` 随构建发布；页面带 canonical、Open Graph、Twitter 卡片与 JSON-LD 描述。网站首页和 `/tools/` 页面进入站点地图，工具箱内部使用 hash 路由，各子工具不单独进入站点地图。静态导出 HTML 内置 CSP，脚本仅允许同源与构建时计算的内联脚本哈希，`wasm-unsafe-eval` 仅开放本地 WebAssembly 编译，未启用 JavaScript 的 `unsafe-eval`。
 
 ## 代码结构
 
-- `src/App.tsx`：首页（搜索、收藏、最近使用、任务入口）、导航和共用主题。
-- `src/TextTool.tsx` + `src/text-tool/TextBatchOps.tsx`：文本工作台与批量操作面板。
-- `src/FileTool.tsx` + `src/file-tool/`：转换队列、模式元数据、文件队列、结果详情与 Excel / CSV 预览。
-- `src/CompareTool.tsx` + `src/lib/table-compare.ts`：表格差异对比。
-- `src/TableTool.tsx` + `src/table-tool/input.ts` + `src/lib/table-process.ts`：分步参数、受限 CSV/XLSX 导入与工作表选择、合并/连接/列操作/拆分管道。
-- `src/PdfTool.tsx` + `src/pdf-tool/` + `src/lib/pdf-organize.ts`：PDF 编排、缩略图、输出参数与矢量页面复制；`src/lib/pdf-qpdf.ts` 与专用 Worker 承担本地解密和结构压缩。
-- `src/RenameTool.tsx` + `src/lib/rename.ts`：重命名规则、覆盖、冲突检查与文件包。
-- `src/lib/file-convert.ts`：图片转换、openPdf、Word / PDF 互转。
-- `src/lib/file-media.ts`：PDF 图片导出、图片合并 PDF、ZIP 打包。
-- `src/lib/image-compress.ts`：压缩到目标大小的搜索策略与浏览器编码。
-- `src/lib/file-text.ts` / `src/lib/text-ops.ts` / `src/lib/text-batch.ts`：CSV / JSON / Markdown 转换、批量文本操作与批量文件处理。
-- `src/lib/file-excel.ts`：Excel 工作簿读取（显示值保真、zip 预检查、集中上限）与 XLSX 生成。
-- `src/lib/convert-report.ts`：Word / PDF 互转的结果校验与质量报告。
-- `src/lib/text.ts` / `src/lib/text-diff.ts` / `src/lib/text.worker.ts`：纯函数整理规则、差异计算与后台线程。
-- `src/text-tool/TextSettingsDialog.tsx` / `DiffOverlay.tsx` / `useTextProcessing.ts`：设置视图、差异覆盖层和带请求版本保护的后台处理管线。
-- `src/file-tool/ConversionOptions.tsx` / `options.ts`：转换参数视图和原有 12 个参数的校验、默认值与 300ms 本地保存。
-- `src/lib/storage.ts`：本地存储（主题、设置、预设、收藏、最近使用、参数记忆），旧键迁移。
-- `src/lib/home-search.ts`：首页搜索与任务入口索引。
-- `e2e/`：Playwright 端到端回归（文件转换、首页、文本、对比、批处理、PDF、重命名、离线、移动端）。
+- `apps/web/src/app/`：网站首页与布局；`app/tools/`：工具箱路由、元信息与样式入口。
+- `apps/web/src/features/toolbox/index.tsx`：工具箱公开入口。
+- `features/toolbox/`：工具箱首页、导航、文件接入、工具间传递、加载状态。
+- `features/toolbox/text/`、`files/`、`compare/`、`table/`、`pdf/`、`rename/`：六个子工具的业务函数、组件、hooks、Worker 与测试。
+- `features/toolbox/components/`：工具箱共享交互组件；`features/toolbox/lib/`：工具专属公共能力。
+- `features/toolbox/styles.css`：工具箱样式；`src/app/globals.css`：网站基础样式与设计变量。
+- `apps/web/src/components/ui/`：网站共享的 shadcn/ui 基础组件。
+- `apps/web/e2e/`：网站入口和工具箱的浏览器回归。
+- 根目录 `scripts/`：本地资源、静态输出、CSP 哈希、工具箱离线清单与本地预览。
 
 shadcn/ui 组件按 MIT 许可分发，见 `THIRD_PARTY_NOTICES.md`。

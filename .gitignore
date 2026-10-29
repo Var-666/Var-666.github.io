@@ -33,8 +33,13 @@ dist-ssr
 .agents/
 
 # Generated local PDF.js resources
-/public/pdf-assets/
+/apps/web/public/pdf-assets/
+/apps/web/public/tools/pdf-assets/
 
 # Playwright 本地产物
 playwright-report/
 test-results/
+
+# Next.js local build and static export
+apps/web/.next/
+apps/web/out/

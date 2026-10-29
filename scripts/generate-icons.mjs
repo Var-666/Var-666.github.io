@@ -1,11 +1,11 @@
 // 生成 PWA 图标与 OG 分享图。无第三方依赖：按几何形状直接绘制像素后编码为 PNG。
-// 用法：node scripts/generate-icons.mjs（产物写入 public/，需提交到 Git）。
+// 用法：node scripts/generate-icons.mjs（产物写入 apps/web/public/，需提交到 Git）。
 import { deflateSync } from 'node:zlib'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const root = join(dirname(fileURLToPath(import.meta.url)), '../apps/web')
 const SS = 3 // 每像素的超采样倍数，用于抗锯齿
 
 // ---------- PNG 编码 ----------

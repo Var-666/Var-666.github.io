@@ -419,3 +419,25 @@ TextTool「更多操作」第四区块：一次导入多份 TXT/MD，统一应�
 - 真实下载经独立 Python pypdf 复读，确认解密后书签/标题、可选择文字及结构压缩后的内容；Poppler 按 CropBox 渲染四种方向，目视页码均正向底部、水印居中倾斜。未将同一库写入后再读取当作唯一证据。
 - 首页及六工具 1440/800/390px × 深浅色共 42 张基础截图和展开控件 8 张保存在工作区外侧 var-final-ui-20261028；实际 PDF 旋转证明 var-pdf-rotation-proof-20261028.png。当前批次产品清单全部复核；发布结果另见 GitHub Actions。此前图片批次 Actions 40688419799 的 E2E 与部署均成功。
 - 未实测 Safari/Firefox、真实手机和巨型复杂 PDF 峰值内存；qpdf 警告按失败处理而非交付可能被修复过的文档。原文结构/图片本身可能不适合压缩，水印与页码需用户核对结果；特殊文档仍应保留原件。仓库 About 仍等待已打开 GitHub 页登录。
+
+
+## Next.js 与 pnpm 工作区迁移 · 2026-10-29
+
+- 按开发手册第 4 节迁移为 Monorepo：应用位于 `apps/web`，根目录维护 pnpm 工作区、锁文件、开发约定、文档和构建脚本。没有 Python 服务，不创建空后端，uv 留到有需求时使用。
+- Next.js 16.4.3 App Router，保留静态部署、既有六工具 hash 地址、标签页内草稿和浏览器本地处理。移除 Vite 与 npm 锁文件；已有直接依赖版本保留，新增 Next.js 与 Tailwind PostCSS 集成。
+- 业务代码和单元测试按 `features/text/files/compare/table/pdf/rename/toolbox` 就近组织；shadcn/ui 位于 `components/ui`，跨工具组件位于 `components/shared`。
+- 保留 Worker、PDF 字体、PDF.js、qpdf、HEIC 的本地资源，适配 Next.js 构建；静态 HTML 使用每次构建计算的内联脚本 CSP 哈希，离线清单覆盖 Next.js 分块。GitHub Pages 工作流使用 pnpm，发布目录改为 `apps/web/out`。
+- `pnpm install --frozen-lockfile`、TypeScript、lint、格式检查、生产静态构建通过；226 项业务/公共工具单元测试与 8 项构建脚本测试通过。
+- Chromium 全量 126 项端到端回归通过，覆盖六工具、真实输出、跨工具接力、移动视口、失败重试及离线 HEIC/PDF/字体/Worker。测试排除 Next.js 自带的空路由播报区域，以继续精确核对业务 alert。
+- 另验证 Next.js 开发服务器的首页、导航与文本 Worker，没有页面错误；停止已有预览后，由 Playwright 自动构建和启动静态服务器的 4 项首页回归通过。
+- 未部署线上，未覆盖 Safari、Firefox 和真实手机。此前检查发现的 Word 内嵌图片解码失败未提示、禁止访问 localStorage 时应用启动失败，不在本次框架迁移的修复范围内。
+
+
+## 工具箱收拢为网站子模块 · 2026-10-29
+
+- 网站首页与工具箱分离：`/` 目前只保留工具箱入口；`/tools/` 承载全部工具。品牌链接返回网站首页，旧 `/#/<tool>` 地址转到 `/tools/#/<tool>`，保留模式参数。
+- 六个子工具、内部共享组件、工具专属 lib、类型、Worker 和样式统一位于 `apps/web/src/features/toolbox/`。网站级 UI 基础组件与设计变量保留在模块外；对外入口为 `features/toolbox/index.tsx`。
+- 工具箱元信息、canonical、结构化数据与样式在 `app/tools/` 接入，站点地图同时包含网站首页和工具箱。
+- Service Worker 范围收敛至 `/tools/`，旧根路径 Worker 自行注销。生产 Worker 和 PDF.js Worker 同样位于 `/tools/`，确保后台线程内的字典、字体与 WASM 请求也可离线处理。预缓存清单不包含网站首页。
+- 226 项业务/公共能力测试及 8 项构建脚本测试通过；生产静态构建、锁文件安装、类型、lint 与格式检查通过。130 项 Chromium 浏览器回归全部通过，含首页隔离、旧链接、SW 范围、六工具、真实文件导出、草稿保留和离线功能。
+- 开发版实测网站首页 → 工具箱 → 网站首页可用。未发布线上，未新增首页其他栏目。
