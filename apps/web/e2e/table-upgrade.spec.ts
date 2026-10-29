@@ -129,6 +129,42 @@ test('主键左/内/全连接保留一对多和前导零，空键不互相匹配
   await expect(page.getByText('结果 4 行 × 3 列', { exact: true })).toBeVisible()
 })
 
+test('相同主键反复交换左右表后旧下载失效，新下载与预览一致', async ({ page }) => {
+  await page.goto('/tools/#/table')
+  await upload(page, [csv('a.csv', 'id,value\n1,A\n2,B'), csv('b.csv', 'id,value\n1,C\n3,D')])
+  await choose(page, '合并方式', '左连接（保留左表）')
+  await page.getByRole('button', { name: '交换左右表', exact: true }).click()
+  await page.getByRole('button', { name: '导出 CSV', exact: true }).click()
+  await bytes(page)
+  for (const rows of [
+    [
+      ['1', 'A', 'C'],
+      ['2', 'B', ''],
+    ],
+    [
+      ['1', 'C', 'A'],
+      ['3', 'D', ''],
+    ],
+  ]) {
+    const oldUrl = await page.locator('.table-tool a[download]').getAttribute('href')
+    await page.getByRole('button', { name: '交换左右表', exact: true }).click()
+    await expect(page.locator('.table-tool a[download]')).toHaveCount(0)
+    expect(
+      await page.evaluate(async (url) => {
+        try {
+          await fetch(url!)
+          return false
+        } catch {
+          return true
+        }
+      }, oldUrl),
+    ).toBe(true)
+    await expect(page.locator('.table-preview tbody tr').first()).toHaveText(rows[0].join(''))
+    await page.getByRole('button', { name: '导出 CSV', exact: true }).click()
+    expect(parse(await bytes(page))).toEqual([['id', 'value', 'value（右表）'], ...rows])
+  }
+})
+
 test('列删除/改名/重排后按正确字段拆分，导出 CSV 与预览一致', async ({ page }) => {
   await page.goto('/tools/#/table')
   await upload(page, [csv('cols.csv', '编号,部门,姓名\n001,研发,甲\n002,销售,乙')])

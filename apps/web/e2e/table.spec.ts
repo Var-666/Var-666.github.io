@@ -5,6 +5,8 @@ const csvA = '编号,部门,姓名\nA01,研发,甲\nA02,销售,乙\n'
 const csvB = '编号,部门,姓名\nA01,研发,甲\nA03,人事,丙\n'
 
 async function upload(page: Page, name: string, text: string) {
+  // Worker import is asynchronous; match the UI, which disables picking while it reads.
+  await expect(page.getByLabel('添加表格文件', { exact: true })).toBeEnabled()
   await page.setInputFiles('input[aria-label="添加表格文件"]', {
     name,
     mimeType: 'text/csv',

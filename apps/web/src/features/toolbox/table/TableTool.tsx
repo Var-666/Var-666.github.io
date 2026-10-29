@@ -87,6 +87,7 @@ export default function TableTool({ active }: { active: boolean }) {
   useEffect(() => {
     setOutput(null)
   }, [
+    tables,
     mergeMode,
     leftKey,
     rightKey,
@@ -266,7 +267,7 @@ export default function TableTool({ active }: { active: boolean }) {
 
   return (
     <main className="main-content table-tool">
-      <p className="sr-only" role="status" aria-atomic="true">
+      <p className={busy ? 'compare-note' : 'sr-only'} role="status" aria-atomic="true">
         {busy
           ? '正在读取或导出表格，请稍候。'
           : output

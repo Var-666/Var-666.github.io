@@ -1,13 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowUpRight, Moon, Star, Sun } from 'lucide-react'
 import { Toaster } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { readThemePreference } from './lib/theme'
+import { useTheme } from '@/components/ThemeProvider'
+import { preferenceStorage } from '@/lib/storage'
 import {
   readFavoriteTools,
   readRecentTools,
   recordRecentTool,
-  storageKeys,
   toggleFavoriteTool,
 } from './lib/storage'
 import { ToolLoader } from './ToolLoader'
@@ -22,6 +22,18 @@ const loadPdfTool = () => import(/* webpackChunkName: "PdfTool" */ './pdf/PdfToo
 const loadRenameTool = () => import(/* webpackChunkName: "RenameTool" */ './rename/RenameTool')
 const loadCompareTool = () => import(/* webpackChunkName: "CompareTool" */ './compare/CompareTool')
 const loadTableTool = () => import(/* webpackChunkName: "TableTool" */ './table/TableTool')
+const toolLoads: Record<string, () => Promise<unknown>> = {
+  text: loadTextTool,
+  files: loadFileTool,
+  pdf: loadPdfTool,
+  rename: loadRenameTool,
+  compare: loadCompareTool,
+  table: loadTableTool,
+}
+const preloadTool = (id: string) => {
+  // A hover/focus is only a hint; failed preloads must not navigate or poison retry.
+  void toolLoads[id]?.().catch(() => {})
+}
 const toolIds = tools.map((tool) => tool.id)
 type Route = 'home' | 'text' | 'files' | 'compare' | 'table' | 'pdf' | 'rename'
 const routes = new Set(['text', 'files', 'compare', 'table', 'pdf', 'rename'])
@@ -36,28 +48,16 @@ export default function App() {
   const navigated = useRef(false)
   const [route, setRoute] = useState(readRoute)
   const [favorites, setFavorites] = useState<string[]>(() =>
-    readFavoriteTools(localStorage, toolIds),
+    readFavoriteTools(preferenceStorage, toolIds),
   )
-  const [recent, setRecent] = useState<string[]>(() => readRecentTools(localStorage, toolIds))
+  const [recent, setRecent] = useState<string[]>(() => readRecentTools(preferenceStorage, toolIds))
   const [visited, setVisited] = useState<Partial<Record<Route, true>>>(() => {
     const initial = readRoute()
     return initial === 'home' ? {} : { [initial]: true }
   })
-  const [themePreference, setThemePreference] = useState(() =>
-    readThemePreference(() => localStorage.getItem(storageKeys.theme)),
-  )
-  const [systemDark, setSystemDark] = useState(
-    () => window.matchMedia('(prefers-color-scheme: dark)').matches,
-  )
-  const dark = themePreference ?? systemDark
+  const { dark, setDark } = useTheme()
   const toolId = route === 'compare' ? 'table' : route
   const currentTool = tools.find((tool) => tool.id === toolId)
-  useEffect(() => {
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    const changed = (event: MediaQueryListEvent) => setSystemDark(event.matches)
-    media.addEventListener('change', changed)
-    return () => media.removeEventListener('change', changed)
-  }, [])
   useEffect(() => {
     const changed = () => {
       const next = readRoute()
@@ -91,28 +91,14 @@ export default function App() {
     observer.observe(root.current, { childList: true, subtree: true })
     return () => observer.disconnect()
   }, [route])
-  useLayoutEffect(() => {
-    document.documentElement.classList.toggle('dark', dark)
-    document
-      .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', dark ? '#131722' : '#f7f8fa')
-  }, [dark])
-  useEffect(() => {
-    if (themePreference === null) return
-    try {
-      localStorage.setItem(storageKeys.theme, themePreference ? 'dark' : 'light')
-    } catch {
-      /* optional */
-    }
-  }, [themePreference])
   useEffect(() => {
     document.title = `${route === 'home' ? '日常工具箱' : currentTool?.title} · VAR`
   }, [route, currentTool?.title])
   // 表格的两个模式共用一条最近使用记录。
   useEffect(() => {
     if (toolId === 'home') return
-    recordRecentTool(localStorage, toolId, toolIds)
-    setRecent(readRecentTools(localStorage, toolIds))
+    recordRecentTool(preferenceStorage, toolId, toolIds)
+    setRecent(readRecentTools(preferenceStorage, toolIds))
   }, [toolId])
   return (
     <div className="app-shell" ref={root}>
@@ -142,7 +128,13 @@ export default function App() {
                   const tool = tools.find((item) => item.id === id)
                   if (!tool) return null
                   return (
-                    <a key={id} className="task-chip is-favorite" href={`#/${id}`}>
+                    <a
+                      key={id}
+                      className="task-chip is-favorite"
+                      href={`#/${id}`}
+                      onPointerEnter={() => preloadTool(id)}
+                      onFocus={() => preloadTool(id)}
+                    >
                       <Star size={13} fill="currentColor" />
                       {tool.title}
                     </a>
@@ -158,7 +150,13 @@ export default function App() {
                 {recent.map((id) => {
                   const tool = tools.find((item) => item.id === id)
                   return tool ? (
-                    <a key={id} className="task-chip" href={`#/${id}`}>
+                    <a
+                      key={id}
+                      className="task-chip"
+                      href={`#/${id}`}
+                      onPointerEnter={() => preloadTool(id)}
+                      onFocus={() => preloadTool(id)}
+                    >
                       {tool.title}
                     </a>
                   ) : null
@@ -171,7 +169,12 @@ export default function App() {
               const favorite = favorites.includes(id)
               return (
                 <div key={id} className="tool-card-wrap">
-                  <a className="tool-card" href={`#/${id}`}>
+                  <a
+                    className="tool-card"
+                    href={`#/${id}`}
+                    onPointerEnter={() => preloadTool(id)}
+                    onFocus={() => preloadTool(id)}
+                  >
                     <span className={`hub-icon hub-${id}`}>
                       <Icon size={22} />
                     </span>
@@ -193,7 +196,7 @@ export default function App() {
                     className={`tool-favorite${favorite ? ' is-favorite' : ''}`}
                     aria-pressed={favorite}
                     aria-label={`${favorite ? '取消收藏' : '收藏'}${title}`}
-                    onClick={() => setFavorites(toggleFavoriteTool(localStorage, id, toolIds))}
+                    onClick={() => setFavorites(toggleFavoriteTool(preferenceStorage, id, toolIds))}
                   >
                     <Star size={15} fill={favorite ? 'currentColor' : 'none'} />
                   </button>
@@ -233,8 +236,20 @@ export default function App() {
           >
             <div className="main-content table-mode-switch">
               <TabsList aria-label="表格工具功能">
-                <TabsTrigger value="table">批量处理</TabsTrigger>
-                <TabsTrigger value="compare">表格对比</TabsTrigger>
+                <TabsTrigger
+                  value="table"
+                  onPointerEnter={() => preloadTool('table')}
+                  onFocus={() => preloadTool('table')}
+                >
+                  批量处理
+                </TabsTrigger>
+                <TabsTrigger
+                  value="compare"
+                  onPointerEnter={() => preloadTool('compare')}
+                  onFocus={() => preloadTool('compare')}
+                >
+                  表格对比
+                </TabsTrigger>
               </TabsList>
             </div>
             <TabsContent value="table" forceMount hidden={route !== 'table'}>
@@ -256,7 +271,7 @@ export default function App() {
           variant="ghost"
           size="icon"
           aria-label={dark ? '切换浅色主题' : '切换深色主题'}
-          onClick={() => setThemePreference(!dark)}
+          onClick={() => setDark(!dark)}
         >
           {dark ? <Sun size={18} /> : <Moon size={18} />}
         </Button>

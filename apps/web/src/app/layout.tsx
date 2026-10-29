@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import { SiteHeader } from '@/components/SiteHeader'
+import { ThemeProvider } from '@/components/ThemeProvider'
+import { themeScript } from '@/lib/theme'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -14,10 +16,15 @@ export const viewport: Viewport = { themeColor: '#f7f8fa' }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
-        <SiteHeader />
-        {children}
+        <ThemeProvider>
+          <SiteHeader />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )

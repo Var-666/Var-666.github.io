@@ -1,3 +1,4 @@
+import { preferenceStorage } from '@/lib/storage'
 import { useEffect, useState } from 'react'
 import type { ImageSize, PdfSheetSize } from '@/features/toolbox/files/media-options'
 import {
@@ -54,10 +55,13 @@ export const fileOptionSchema: FileOptionSchema = {
 export function useFileOptions() {
   const [options, setOptions] = useState<FileOptions>(() => ({
     ...defaultFileOptions,
-    ...readFileOptions(localStorage, fileOptionSchema),
+    ...readFileOptions(preferenceStorage, fileOptionSchema),
   }))
   useEffect(() => {
-    const timer = setTimeout(() => saveFileOptions(localStorage, options, fileOptionSchema), 300)
+    const timer = setTimeout(
+      () => saveFileOptions(preferenceStorage, options, fileOptionSchema),
+      300,
+    )
     return () => clearTimeout(timer)
   }, [options])
   return [options, setOptions] as const

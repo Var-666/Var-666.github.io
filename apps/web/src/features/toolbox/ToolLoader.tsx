@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense, type ComponentType } from 'react'
+import { PureComponent, type ComponentType } from 'react'
 import { Button } from '@/components/ui/button'
 import { recoverPreloadError } from '@/features/toolbox/lib/preload-recovery'
 import { ToolPlaceholder } from '@/features/toolbox/components/ToolPlaceholder'
@@ -10,8 +10,34 @@ type Props = {
 }
 
 // Each tool owns its failure state so a missing chunk cannot unmount other drafts.
-export class ToolLoader extends Component<Props> {
-  state = { failed: false, Tool: lazy(this.props.load) }
+export class ToolLoader extends PureComponent<Props> {
+  state: { failed: boolean; Tool: ComponentType<{ active: boolean }> | null } = {
+    failed: false,
+    Tool: null,
+  }
+  private mounted = false
+
+  componentDidMount() {
+    this.mounted = true
+    void this.loadTool()
+  }
+
+  componentWillUnmount() {
+    this.mounted = false
+  }
+
+  // Reveal a ready module immediately, without Suspense's fallback reveal delay.
+  loadTool = async () => {
+    this.setState({ failed: false, Tool: null })
+    try {
+      const { default: Tool } = await this.props.load()
+      if (this.mounted) this.setState({ failed: false, Tool })
+    } catch (error) {
+      if (!this.mounted) return
+      this.setState({ failed: true })
+      recoverPreloadError(error instanceof Error ? error : new Error(String(error)))
+    }
+  }
 
   static getDerivedStateFromError() {
     return { failed: true }
@@ -28,9 +54,7 @@ export class ToolLoader extends Component<Props> {
           <h1>{this.props.title}加载失败</h1>
           <p>请检查网络后重试。刷新页面会清空尚未下载的内容。</p>
           <div>
-            <Button onClick={() => this.setState({ failed: false, Tool: lazy(this.props.load) })}>
-              重试加载
-            </Button>
+            <Button onClick={this.loadTool}>重试加载</Button>
             <Button variant="outline" onClick={() => window.location.reload()}>
               刷新页面
             </Button>
@@ -40,10 +64,10 @@ export class ToolLoader extends Component<Props> {
       )
     }
     const Tool = this.state.Tool
-    return (
-      <Suspense fallback={<ToolPlaceholder label={`正在加载${this.props.title}`} />}>
-        <Tool active={this.props.active} />
-      </Suspense>
+    return Tool ? (
+      <Tool active={this.props.active} />
+    ) : (
+      <ToolPlaceholder label={`正在加载${this.props.title}`} />
     )
   }
 }

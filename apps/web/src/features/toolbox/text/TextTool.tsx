@@ -1,3 +1,4 @@
+import { preferenceStorage } from '@/lib/storage'
 import { useUnsavedWork } from '../DraftGuard'
 import { TextStatsButton } from './components/TextStatsButton'
 import { useTextProcessing } from './hooks/useTextProcessing'
@@ -86,7 +87,7 @@ const presetKeys = Object.keys(presets) as Preset[]
 const maxChars = 1_000_000
 function initialSettings(): { preset: Preset; options: Options } {
   try {
-    const saved = JSON.parse(localStorage.getItem(storageKeys.settings) || 'null')
+    const saved = JSON.parse(preferenceStorage.getItem(storageKeys.settings) || 'null')
     const options = { ...baseOptions, ...saved?.options }
     if (
       saved &&
@@ -162,7 +163,7 @@ export default function TextTool({ active }: { active: boolean }) {
   const [importing, setImporting] = useState(false)
   const [recordsOpen, setRecordsOpen] = useState(false)
   const [userPresets, setUserPresets] = useState<StoredUserPreset[]>(() =>
-    readUserPresets(localStorage, Object.keys(presets), sanitizeOptions),
+    readUserPresets(preferenceStorage, Object.keys(presets), sanitizeOptions),
   )
   const [presetName, setPresetName] = useState('')
   const sourceOverlay = useRef<HTMLDivElement>(null)
@@ -189,7 +190,7 @@ export default function TextTool({ active }: { active: boolean }) {
   }, [source, options, composing])
   useEffect(() => {
     try {
-      localStorage.setItem(storageKeys.settings, JSON.stringify(settings))
+      preferenceStorage.setItem(storageKeys.settings, JSON.stringify(settings))
     } catch {
       /* optional */
     }
@@ -221,7 +222,7 @@ export default function TextTool({ active }: { active: boolean }) {
     const name = presetName.trim() || `我的预设 ${userPresets.length + 1}`
     setUserPresets(
       saveUserPreset(
-        localStorage,
+        preferenceStorage,
         { name, preset, options },
         Object.keys(presets),
         sanitizeOptions,
@@ -231,7 +232,7 @@ export default function TextTool({ active }: { active: boolean }) {
     toast.success(`已保存自定义预设「${name}」`)
   }
   const removeUserPreset = (id: string) => {
-    setUserPresets(deleteUserPreset(localStorage, id, Object.keys(presets), sanitizeOptions))
+    setUserPresets(deleteUserPreset(preferenceStorage, id, Object.keys(presets), sanitizeOptions))
   }
   const replaceSource = (text: string) => {
     fileRequest.current++

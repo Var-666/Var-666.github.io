@@ -13,9 +13,12 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'pnpm build && pnpm preview --port 4173',
+    command:
+      process.env.PLAYWRIGHT_SKIP_BUILD === '1'
+        ? 'pnpm preview --port 4173'
+        : 'pnpm build && pnpm preview --port 4173',
     url: 'http://127.0.0.1:4173/',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && process.env.PLAYWRIGHT_SKIP_BUILD !== '1',
     timeout: 180_000,
   },
 })

@@ -1,7 +1,9 @@
+import { themeStorageKey } from '@/lib/theme'
+
 // localStorage 键名统一以 var- 开头；旧版 liwen- 键在启动时迁移一次。
 // 只保存设置、主题偏好与工具使用记录（仅工具 id 与时间戳），正文内容与文件从不持久化。
 export const storageKeys = {
-  theme: 'var-theme',
+  theme: themeStorageKey,
   settings: 'var-settings',
   favoriteTools: 'var-favorite-tools',
   recentTools: 'var-recent-tools',

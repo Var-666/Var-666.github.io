@@ -10,7 +10,7 @@
     "dev": "next dev --webpack --hostname 127.0.0.1",
     "build": "next build --webpack",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/features/toolbox/lib/*.test.ts src/features/toolbox/*.test.ts src/features/toolbox/*/*.test.ts",
+    "test": "tsx --test src/lib/*.test.ts src/features/toolbox/lib/*.test.ts src/features/toolbox/*.test.ts src/features/toolbox/*/*.test.ts",
     "lint": "eslint src e2e playwright.config.ts next.config.ts public/sw.js",
     "preview": "node ../../scripts/serve-static.mjs out",
     "predev": "node ../../scripts/copy-pdf-assets.mjs",

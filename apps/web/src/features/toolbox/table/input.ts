@@ -1,18 +1,13 @@
 import {
   loadWorkbook,
-  parseCsvMatrix,
   sheetNotices,
   unzipTotalSize,
   excelLimits,
   type WorkbookData,
 } from '@/features/toolbox/files/file-excel'
-import {
-  readTextFile,
-  type TextEncoding,
-  type DecodedText,
-} from '@/features/toolbox/lib/text-encoding'
-import { uniqueHeaders } from '@/features/toolbox/files/file-text'
+import { type TextEncoding, type DecodedText } from '@/features/toolbox/lib/text-encoding'
 import { tableLimits, type LoadedTable } from '@/features/toolbox/table/table-process'
+import { inputHeaders, readCsvTable, type CsvTable, type CsvWorkerMessage } from './csv-input'
 
 export type InputTable = LoadedTable & {
   id: string
@@ -24,11 +19,41 @@ export type InputTable = LoadedTable & {
   expandedBytes: number
 }
 
-function inputHeaders(raw: string[], notices: string[]) {
-  const headers = uniqueHeaders(raw, notices)
-  if (headers.some((header) => header.length > tableLimits.maxHeaderChars))
-    throw new Error('列名超过 512 字符，请先缩短表头。')
-  return headers
+async function readCsvInWorker(file: File, encoding: TextEncoding): Promise<CsvTable> {
+  if (typeof Worker === 'undefined') return readCsvTable(file, encoding)
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      /* webpackChunkName: "csv.worker" */ new URL('./workers/csv.worker.ts', import.meta.url),
+      { type: 'module' },
+    )
+    const rows: string[][] = []
+    const stop = () => {
+      clearTimeout(timer)
+      worker.terminate()
+    }
+    const timer = setTimeout(() => {
+      stop()
+      reject(new Error('CSV 读取超过 30 秒，已停止，请减少文件大小后重试。'))
+    }, 30_000)
+    worker.onmessage = ({ data }: MessageEvent<CsvWorkerMessage>) => {
+      if ('rows' in data) rows.push(...data.rows)
+      else {
+        stop()
+        if ('error' in data) reject(new Error(data.error))
+        else resolve({ ...data.result, rows })
+      }
+    }
+    worker.onerror = () => {
+      stop()
+      reject(new Error('无法加载 CSV 处理线程，请刷新或等待离线准备完成后重试。'))
+    }
+    try {
+      worker.postMessage({ file, encoding })
+    } catch (error) {
+      stop()
+      reject(error)
+    }
+  })
 }
 
 export function workbookTable(
@@ -81,19 +106,13 @@ export async function readTable(
     return workbookTable(file, workbook, workbook.sheets[0].name, expandedBytes, id)
   }
   if (!/\.csv$/i.test(file.name)) throw new Error('请选择 CSV 或 XLSX 文件。')
-  const decoded = await readTextFile(file, encoding),
-    parsed = parseCsvMatrix(decoded.text, tableLimits.maxChars)
-  const [raw = [], ...rows] = parsed.rows
-  const notices = [...parsed.notices]
+  const parsed = await readCsvInWorker(file, encoding)
   return {
     id: id ?? crypto.randomUUID(),
     name: file.name,
     file,
     expandedBytes: 0,
-    encoding: decoded.encoding,
-    headers: inputHeaders(raw, notices),
-    rows,
-    notices,
+    ...parsed,
   }
 }
 

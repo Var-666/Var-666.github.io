@@ -54,14 +54,7 @@ for (const theme of ['light', 'dark'] as const) {
   for (const [url, heading] of routes) {
     test(`${theme}: ${heading} WCAG 2.2 AA 自动检查`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' })
-      if (url === '/' && theme === 'dark') {
-        await page.goto('/tools/')
-        await expect(page.getByRole('button', { name: '切换浅色主题', exact: true })).toBeVisible()
-        await page
-          .getByRole('navigation', { name: '网站导航' })
-          .getByRole('link', { name: '首页', exact: true })
-          .click()
-      } else await page.goto(url)
+      await page.goto(url)
       await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
       if (heading === '全部工具')
         await page.getByRole('button', { name: '收藏文本整理', exact: true }).click()

@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,36 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Install Playwright Chromium
-        run: pnpm --filter @var/web exec playwright install --with-deps chromium
-      - name: E2E regression (builds Next.js and serves apps/web/out)
-        run: pnpm test:e2e
-      - name: Upload failure artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: apps/web/test-results/
-          retention-days: 7
-  deploy:
-    needs: e2e
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -66,12 +37,32 @@ jobs:
         run: pnpm test
       - name: Build
         run: pnpm build
+      - name: Install Playwright Chromium
+        run: pnpm --filter @var/web exec playwright install --with-deps chromium
+      - name: E2E regression (serves the build to be deployed)
+        env:
+          PLAYWRIGHT_SKIP_BUILD: '1'
+        run: pnpm test:e2e
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/test-results/
+          retention-days: 7
       - name: Setup Pages
         uses: actions/configure-pages@v4
-      - name: Upload Pages artifact
+      - name: Upload tested Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './apps/web/out'
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

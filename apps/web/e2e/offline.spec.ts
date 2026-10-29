@@ -65,6 +65,22 @@ test('首次离线准备后，未访问过的六个工具与本地字体都可�
     await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
     await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0)
   }
+  await page.goto('/tools/#/table')
+  await page.getByLabel('添加表格文件', { exact: true }).setInputFiles({
+    name: 'offline.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('编号,名称\n001,本地解析'),
+  })
+  await expect(page.locator('.table-preview')).toContainText('001')
+  await page.getByRole('button', { name: '导出 CSV', exact: true }).click()
+  const csvDownload = page.locator('.table-tool a[download]')
+  await expect(csvDownload).toBeVisible()
+  expect(
+    await page.evaluate(
+      async (url) => (await fetch(url!)).text(),
+      await csvDownload.getAttribute('href'),
+    ),
+  ).toContain('001,本地解析')
   await page.goto('/tools/#/text')
   await page.getByRole('textbox', { name: '原始文本', exact: true }).fill('  Offline   test  ')
   await expect(page.getByRole('textbox', { name: '整理结果', exact: true })).toHaveValue(

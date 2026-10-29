@@ -178,6 +178,17 @@ export async function wordToPdf(
   })
   frame.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src blob: data:; font-src blob: data:"><style>body{margin:0;color:#000;background:white}*{box-sizing:border-box}</style></head><body></body></html>`
   document.body.append(frame)
+  // WebKit blocks nested frame load handlers in a sandbox; run the parent's callback when ready.
+  const cloneReady = setInterval(() => {
+    const clone = frame.contentDocument?.querySelector<HTMLIFrameElement>(
+      'iframe.html2canvas-container',
+    )
+    if (
+      clone?.contentDocument?.readyState === 'complete' &&
+      clone.contentDocument.body?.childNodes.length
+    )
+      clone.onload?.call(clone, new Event('load'))
+  }, 50)
   try {
     await loaded
     const doc = frame.contentDocument
@@ -196,7 +207,14 @@ export async function wordToPdf(
       'section.docx td p,section.docx th p{line-height:1.5}section.docx td,section.docx th{padding:4px 6px}'
     doc.head.append(spacing)
     await doc.fonts.ready
-    await Promise.all(Array.from(doc.images).map((image) => image.decode().catch(() => undefined)))
+    try {
+      await Promise.all(Array.from(doc.images).map((image) => image.decode()))
+    } catch (error) {
+      throw new Error(
+        'Word 文档中有图片无法读取，已停止转换以免遗漏内容。请在 Word 中修复图片后重试。',
+        { cause: error },
+      )
+    }
     const sections = Array.from(doc.querySelectorAll<HTMLElement>('section.docx'))
     if (!sections.length || sections.length > 50) throw new Error('文档为空或超过 50 个分页。')
     const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true })
@@ -282,6 +300,7 @@ export async function wordToPdf(
       failedSections,
     }
   } finally {
+    clearInterval(cloneReady)
     frame.remove()
   }
 }
