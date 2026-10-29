@@ -58,6 +58,7 @@ export function FileQueue({
             {mode === 'image-pdf' && (
               <div className="file-order">
                 <span
+                  role="img"
                   draggable={!busy && !packing}
                   aria-label={`拖动排序 ${row.file.name}`}
                   title="拖动排序，或使用下方箭头"

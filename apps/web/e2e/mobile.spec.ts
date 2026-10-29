@@ -11,19 +11,10 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
   expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.innerWidth + 1)
 }
 
-test('首页：工具卡片单列可达，任务入口完整显示', async ({ page }) => {
+test('首页：五个工具卡片单列可达', async ({ page }) => {
   await page.goto('/tools/')
   await expect(page.getByRole('heading', { name: '全部工具' })).toBeVisible()
-  await page.getByRole('button', { name: '更多任务', exact: true }).click()
-  await expect(page.getByRole('link', { name: /比较两份表格差异/ })).toBeVisible()
-  for (const title of [
-    '文本整理',
-    '文件格式转换',
-    '表格对比',
-    '表格批量处理',
-    'PDF 页面整理',
-    '批量重命名',
-  ])
+  for (const title of ['文本整理', '文件格式转换', '表格工具', 'PDF 页面整理', '批量重命名'])
     await expect(page.locator('.tool-card', { hasText: title })).toBeVisible()
   await expectNoHorizontalOverflow(page)
 })

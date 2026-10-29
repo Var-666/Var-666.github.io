@@ -1,3 +1,4 @@
+import { useUnsavedWork } from '../../DraftGuard'
 import { TextExtras } from './TextExtras'
 import { OutputActions } from '@/features/toolbox/components/OutputActions'
 import { useTransferReceiver } from '@/features/toolbox/tool-transfer'
@@ -79,6 +80,7 @@ export function TextBatchOps({
   const [batchEncoding, setBatchEncoding] = useState<TextEncoding>('auto')
   const [batchRunning, setBatchRunning] = useState(false)
   const [batchZip, setBatchZip] = useState<{ url: string; name: string } | null>(null)
+  useUnsavedWork(batchItems.length > 0)
   const batchInput = useRef<HTMLInputElement>(null)
   const batchFiles = useRef<File[]>([])
   const batchUrls = useRef(new Set<string>())
@@ -146,10 +148,14 @@ export function TextBatchOps({
   })
   return (
     <section className="text-ops" aria-label="更多操作">
+      <p className="sr-only" role="status" aria-atomic="true">
+        {batchItems.length
+          ? `批量文本队列：${batchItems.length} 个文件，完成 ${batchItems.filter((item) => item.status === 'done').length} 个，失败 ${batchItems.filter((item) => item.status === 'error').length} 个。${batchRunning ? '正在处理。' : ''}`
+          : ''}
+      </p>
       <button
         type="button"
         className="text-ops-toggle"
-        aria-label="更多操作"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
@@ -406,6 +412,7 @@ export function TextBatchOps({
               <input
                 ref={batchInput}
                 type="file"
+                tabIndex={-1}
                 multiple
                 accept=".txt,.md,text/plain,text/markdown"
                 className="sr-only"

@@ -1,3 +1,4 @@
+import { useUnsavedWork } from '../DraftGuard'
 import { highlightDiffWorkbook } from './xlsx-highlight'
 import { uniqueHeaders } from '../files/file-text'
 import { OutputActions } from '../components/OutputActions'
@@ -83,6 +84,7 @@ export default function CompareTool({ active }: { active: boolean }) {
   const [normalizeSpaces, setNormalizeSpaces] = useState(false)
   const [busy, setBusy] = useState(false)
   const [output, setOutput] = useState<(OutputFile & { url: string }) | null>(null)
+  useUnsavedWork(!!left.file || !!right.file || busy)
   const leftInput = useRef<HTMLInputElement>(null)
   const rightInput = useRef<HTMLInputElement>(null)
   useEffect(
@@ -282,6 +284,7 @@ export default function CompareTool({ active }: { active: boolean }) {
           <input
             ref={input}
             type="file"
+            tabIndex={-1}
             accept=".csv,.xlsx"
             className="sr-only"
             disabled={busy}
@@ -353,6 +356,13 @@ export default function CompareTool({ active }: { active: boolean }) {
 
   return (
     <main className="main-content compare-tool">
+      <p className="sr-only" role="status" aria-atomic="true">
+        {busy
+          ? '正在读取或导出表格，请稍候。'
+          : validReport
+            ? `表格对比：新增 ${validReport.added.length} 行，删除 ${validReport.removed.length} 行，修改 ${validReport.changed.length} 行。`
+            : ''}
+      </p>
       <ConfirmImport
         open={active && !!incomingTransfer}
         description={

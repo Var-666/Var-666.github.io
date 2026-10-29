@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ArrowUpRight, LayoutGrid, Moon, Star, Sun } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ArrowLeft, ArrowUpRight, Moon, Star, Sun } from 'lucide-react'
 import { Toaster } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { readThemePreference } from './lib/theme'
@@ -10,11 +10,11 @@ import {
   storageKeys,
   toggleFavoriteTool,
 } from './lib/storage'
-import { searchHome } from './home-search'
 import { ToolLoader } from './ToolLoader'
 import { OfflineStatus } from './OfflineStatus'
 import { tools } from './tools'
-import { SiteUtilities, HomeFileDrop } from './SiteUtilities'
+import { GlobalFileIntake, HomeFileDrop } from './FileIntake'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 const loadTextTool = () => import(/* webpackChunkName: "TextTool" */ './text/TextTool')
 const loadFileTool = () => import(/* webpackChunkName: "FileTool" */ './files/FileTool')
@@ -32,9 +32,9 @@ const readRoute = (): Route => {
 }
 
 export default function App() {
+  const root = useRef<HTMLDivElement>(null)
+  const navigated = useRef(false)
   const [route, setRoute] = useState(readRoute)
-  const [query, setQuery] = useState('')
-  const [showAllTasks, setShowAllTasks] = useState(false)
   const [favorites, setFavorites] = useState<string[]>(() =>
     readFavoriteTools(localStorage, toolIds),
   )
@@ -50,6 +50,8 @@ export default function App() {
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
   )
   const dark = themePreference ?? systemDark
+  const toolId = route === 'compare' ? 'table' : route
+  const currentTool = tools.find((tool) => tool.id === toolId)
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const changed = (event: MediaQueryListEvent) => setSystemDark(event.matches)
@@ -59,6 +61,7 @@ export default function App() {
   useEffect(() => {
     const changed = () => {
       const next = readRoute()
+      navigated.current = true
       setRoute(next)
       setVisited((previous) =>
         next === 'home' || previous[next] ? previous : { ...previous, [next]: true },
@@ -68,6 +71,27 @@ export default function App() {
     return () => window.removeEventListener('hashchange', changed)
   }, [])
   useEffect(() => {
+    if (!navigated.current || !root.current) return
+    // 标签切换保留标签焦点，让左右方向键仍可连续操作。
+    if (document.activeElement?.closest('[role="tablist"]')) return
+    const focusHeading = () => {
+      const heading = Array.from(root.current?.querySelectorAll('h1') ?? []).find(
+        (element) => element.getClientRects().length > 0,
+      )
+      if (!heading) return false
+      heading.tabIndex = -1
+      heading.focus({ preventScroll: true })
+      heading.scrollIntoView({ block: 'start' })
+      return true
+    }
+    if (focusHeading()) return
+    const observer = new MutationObserver(() => {
+      if (focusHeading()) observer.disconnect()
+    })
+    observer.observe(root.current, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [route])
+  useLayoutEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
     document
       .querySelector('meta[name="theme-color"]')
@@ -82,56 +106,17 @@ export default function App() {
     }
   }, [themePreference])
   useEffect(() => {
-    document.title = `${route === 'home' ? '日常工具箱' : tools.find((tool) => tool.id === route)?.title} · VAR`
-  }, [route])
-  // 进入某个工具时记录最近使用（只存工具 id 与时间戳，不含任何正文）
+    document.title = `${route === 'home' ? '日常工具箱' : currentTool?.title} · VAR`
+  }, [route, currentTool?.title])
+  // 表格的两个模式共用一条最近使用记录。
   useEffect(() => {
-    if (route === 'home') return
-    recordRecentTool(localStorage, route, toolIds)
+    if (toolId === 'home') return
+    recordRecentTool(localStorage, toolId, toolIds)
     setRecent(readRecentTools(localStorage, toolIds))
-  }, [route])
-  const results = useMemo(() => searchHome(query, tools), [query])
+  }, [toolId])
   return (
-    <div className="app-shell">
-      <header className="site-header">
-        <div className="header-inner">
-          <a className="brand" href="/" aria-label="网站首页">
-            <span className="brand-icon">
-              <LayoutGrid size={20} />
-            </span>
-            <span>
-              VAR<span className="brand-en">工具箱</span>
-            </span>
-          </a>
-          <nav className="desktop-nav" aria-label="主导航">
-            <a href="#/" className={route === 'home' ? 'active' : ''}>
-              全部工具
-            </a>
-            {tools.map((tool) => (
-              <a key={tool.id} href={`#/${tool.id}`} className={route === tool.id ? 'active' : ''}>
-                {tool.title}
-              </a>
-            ))}
-          </nav>
-          <div className="header-actions">
-            <span className="local-indicator">
-              <span />
-              本地处理
-            </span>
-            <OfflineStatus />
-            <SiteUtilities route={route} />
-            <span className="header-divider" />
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={dark ? '切换浅色主题' : '切换深色主题'}
-              onClick={() => setThemePreference(!dark)}
-            >
-              {dark ? <Sun size={18} /> : <Moon size={18} />}
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="app-shell" ref={root}>
+      <GlobalFileIntake />
       {route !== 'home' && (
         <div className="tool-breadcrumb">
           <a href="#/">
@@ -139,7 +124,7 @@ export default function App() {
             全部工具
           </a>
           <span>/</span>
-          <span>{tools.find((tool) => tool.id === route)?.title}</span>
+          <span>{currentTool?.title}</span>
         </div>
       )}
       {route === 'home' && (
@@ -149,38 +134,7 @@ export default function App() {
             <span className="tool-count">{tools.length} 个工具</span>
           </section>
           <HomeFileDrop />
-          <input
-            className="home-search"
-            type="search"
-            aria-label="搜索工具"
-            placeholder="搜索工具或任务，如：压缩图片、转 CSV、断行"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          {!!results.tasks.length && (
-            <section className="home-block" aria-label="常见任务">
-              <h2>常见任务</h2>
-              <div
-                className={`task-chips home-task-chips${showAllTasks || query ? ' is-expanded' : ''}`}
-              >
-                {results.tasks.map((task) => (
-                  <a key={task.id} className="task-chip" href={task.hash}>
-                    {task.title}
-                  </a>
-                ))}
-              </div>
-              {!query && results.tasks.length > 5 && (
-                <button
-                  className="more-tasks"
-                  aria-expanded={showAllTasks}
-                  onClick={() => setShowAllTasks((value) => !value)}
-                >
-                  {showAllTasks ? '收起任务' : '更多任务'}
-                </button>
-              )}
-            </section>
-          )}
-          {!query && !!favorites.length && (
+          {!!favorites.length && (
             <section className="home-block" aria-label="常用工具">
               <h2>常用工具</h2>
               <div className="task-chips">
@@ -197,7 +151,7 @@ export default function App() {
               </div>
             </section>
           )}
-          {!query && !!recent.length && (
+          {!!recent.length && (
             <section className="home-block" aria-label="最近使用">
               <h2>最近使用</h2>
               <div className="task-chips">
@@ -212,45 +166,41 @@ export default function App() {
               </div>
             </section>
           )}
-          {results.tools.length ? (
-            <div className="tool-grid">
-              {results.tools.map(({ id, title, description, icon: Icon, tags }) => {
-                const favorite = favorites.includes(id)
-                return (
-                  <div key={id} className="tool-card-wrap">
-                    <a className="tool-card" href={`#/${id}`}>
-                      <span className={`hub-icon hub-${id}`}>
-                        <Icon size={22} />
-                      </span>
-                      <div>
-                        <h2>
-                          {title}
-                          <ArrowUpRight size={16} />
-                        </h2>
-                        <p>{description}</p>
-                        <div className="tool-tags">
-                          {tags.map((tag) => (
-                            <span key={tag}>{tag}</span>
-                          ))}
-                        </div>
+          <div className="tool-grid">
+            {tools.map(({ id, title, description, icon: Icon, tags }) => {
+              const favorite = favorites.includes(id)
+              return (
+                <div key={id} className="tool-card-wrap">
+                  <a className="tool-card" href={`#/${id}`}>
+                    <span className={`hub-icon hub-${id}`}>
+                      <Icon size={22} />
+                    </span>
+                    <div>
+                      <h2>
+                        {title}
+                        <ArrowUpRight size={16} />
+                      </h2>
+                      <p>{description}</p>
+                      <div className="tool-tags">
+                        {tags.map((tag) => (
+                          <span key={tag}>{tag}</span>
+                        ))}
                       </div>
-                    </a>
-                    <button
-                      type="button"
-                      className={`tool-favorite${favorite ? ' is-favorite' : ''}`}
-                      aria-pressed={favorite}
-                      aria-label={`${favorite ? '取消收藏' : '收藏'}${title}`}
-                      onClick={() => setFavorites(toggleFavoriteTool(localStorage, id, toolIds))}
-                    >
-                      <Star size={15} fill={favorite ? 'currentColor' : 'none'} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          ) : !results.tasks.length ? (
-            <p className="home-empty">没有找到匹配的工具，换个关键词试试。</p>
-          ) : null}
+                    </div>
+                  </a>
+                  <button
+                    type="button"
+                    className={`tool-favorite${favorite ? ' is-favorite' : ''}`}
+                    aria-pressed={favorite}
+                    aria-label={`${favorite ? '取消收藏' : '收藏'}${title}`}
+                    onClick={() => setFavorites(toggleFavoriteTool(localStorage, id, toolIds))}
+                  >
+                    <Star size={15} fill={favorite ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
         </main>
       )}
       {visited.text && (
@@ -273,17 +223,51 @@ export default function App() {
           <ToolLoader load={loadRenameTool} active={route === 'rename'} title="批量重命名" />
         </div>
       )}
-      {visited.compare && (
-        <div hidden={route !== 'compare'}>
-          <ToolLoader load={loadCompareTool} active={route === 'compare'} title="表格对比" />
+      {(visited.table || visited.compare) && (
+        <div hidden={route !== 'table' && route !== 'compare'}>
+          <Tabs
+            value={route === 'compare' ? 'compare' : 'table'}
+            onValueChange={(value) => {
+              window.location.hash = `#/${value}`
+            }}
+          >
+            <div className="main-content table-mode-switch">
+              <TabsList aria-label="表格工具功能">
+                <TabsTrigger value="table">批量处理</TabsTrigger>
+                <TabsTrigger value="compare">表格对比</TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="table" forceMount hidden={route !== 'table'}>
+              {visited.table && (
+                <ToolLoader load={loadTableTool} active={route === 'table'} title="表格批量处理" />
+              )}
+            </TabsContent>
+            <TabsContent value="compare" forceMount hidden={route !== 'compare'}>
+              {visited.compare && (
+                <ToolLoader load={loadCompareTool} active={route === 'compare'} title="表格对比" />
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       )}
-      {visited.table && (
-        <div hidden={route !== 'table'}>
-          <ToolLoader load={loadTableTool} active={route === 'table'} title="表格批量处理" />
-        </div>
-      )}
-      <Toaster position="bottom-center" theme={dark ? 'dark' : 'light'} richColors closeButton />
+      <footer className="toolbox-footer">
+        <OfflineStatus />
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={dark ? '切换浅色主题' : '切换深色主题'}
+          onClick={() => setThemePreference(!dark)}
+        >
+          {dark ? <Sun size={18} /> : <Moon size={18} />}
+        </Button>
+      </footer>
+      <Toaster
+        position="bottom-center"
+        theme={dark ? 'dark' : 'light'}
+        closeButton
+        containerAriaLabel="操作通知"
+        toastOptions={{ closeButtonAriaLabel: '关闭通知' }}
+      />
     </div>
   )
 }

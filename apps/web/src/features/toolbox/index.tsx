@@ -6,6 +6,7 @@ import { installPreloadRecovery } from '@/features/toolbox/lib/preload-recovery'
 import { registerOffline } from '@/features/toolbox/lib/offline'
 import { ToolTransferProvider } from '@/features/toolbox/ToolTransferProvider'
 import { ToolPlaceholder } from '@/features/toolbox/components/ToolPlaceholder'
+import { DraftGuard } from './DraftGuard'
 
 // Tool drafts and file APIs belong to the browser, including their initial state.
 const Toolbox = dynamic(
@@ -24,8 +25,12 @@ const Toolbox = dynamic(
 
 export default function ClientToolbox() {
   return (
-    <ToolTransferProvider>
-      <Toolbox />
-    </ToolTransferProvider>
+    <div id="main-content" tabIndex={-1}>
+      <DraftGuard>
+        <ToolTransferProvider>
+          <Toolbox />
+        </ToolTransferProvider>
+      </DraftGuard>
+    </div>
   )
 }

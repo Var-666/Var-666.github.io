@@ -61,6 +61,7 @@ export function PdfPageGrid({
               <span
                 draggable={!busy}
                 className="pdf-drag"
+                role="img"
                 title="拖动排序，也可使用下方箭头"
                 aria-label={`拖动页面 ${index + 1}`}
                 onDragStart={(event) => {

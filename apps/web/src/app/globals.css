@@ -3,10 +3,11 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --website-header-height: 72px;
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', sans-serif;
-  color: #252b39;
+  color: var(--foreground);
   background: #f7f8fa;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,24 +18,27 @@
   --card-foreground: #252b39;
   --popover: #fff;
   --popover-foreground: #252b39;
-  --primary: #4665e8;
+  --primary: #3653cd;
   --primary-foreground: #fff;
   --secondary: #f0f2f6;
   --secondary-foreground: #4c566c;
   --muted: #f5f6f8;
-  --muted-foreground: #8b93a5;
+  --muted-foreground: #606c80;
   --accent: #f0f3ff;
-  --accent-foreground: #4665e8;
-  --destructive: #d34d5f;
+  --accent-foreground: #3653cd;
+  --destructive: #b92f46;
+  --destructive-foreground: #fff;
   --border: #e7eaf0;
-  --input: #e1e5ed;
-  --ring: #7891f5;
+  --input: #7c879a;
+  --ring: #3152ca;
   --radius: 0.625rem;
   --page: #f7f8fa;
   --subtle: #f9fafc;
   --ink: #252b39;
-  --gray: #747f92;
+  --gray: #586477;
   --soft-blue: #f3f6ff;
+  --success: #176a4a;
+  --favorite: #a36600;
   --surface-shadow: 0 3px 16px color-mix(in srgb, var(--ink) 6%, transparent);
 }
 .dark {
@@ -54,13 +58,17 @@
   --accent: #2b3457;
   --accent-foreground: #adbbff;
   --border: #303749;
-  --input: #384157;
-  --ring: #8b9ffe;
+  --input: #78869f;
+  --ring: #9bafff;
+  --destructive: #f28495;
+  --destructive-foreground: #21131a;
   --page: #131722;
   --subtle: #202634;
   --ink: #e4e8f2;
   --gray: #99a4b9;
   --soft-blue: #212a46;
+  --success: #83d6b5;
+  --favorite: #ffc46b;
   --surface-shadow: 0 3px 16px rgb(0 0 0 / 18%);
   background: var(--page);
   color: var(--foreground);
@@ -81,6 +89,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -115,6 +124,7 @@ body {
   margin: 0;
   min-width: 0;
   background: var(--page);
+  color: var(--foreground);
 }
 button,
 a,
@@ -131,9 +141,46 @@ button:disabled {
   cursor: default;
 }
 button:focus-visible,
-a:focus-visible {
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
   outline: 3px solid var(--ring);
   outline-offset: 3px;
+}
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 16px;
+  z-index: 100;
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  transform: translateY(-180%);
+}
+.skip-link:focus {
+  transform: none;
+}
+[id],
+:focus-visible {
+  scroll-margin-block: 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid Highlight !important;
+  }
 }
 button,
 a {
@@ -148,15 +195,171 @@ a {
   color: #21367c;
 }
 
-.site-home {
-  max-width: 960px;
+.website-header {
+  height: var(--website-header-height);
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+}
+.website-header-inner {
+  width: min(100%, 1192px);
+  height: 100%;
   margin: 0 auto;
-  padding: 64px 24px;
+  padding: 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
 }
-.site-home h1 {
-  margin: 0 0 24px;
-  font-size: 32px;
+.website-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: none;
 }
-.site-home a {
+.website-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 18px;
+}
+.website-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.website-nav a {
+  display: grid;
+  place-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  color: var(--gray);
+  font-size: 14px;
+  text-decoration: none;
+}
+.website-nav a:hover,
+.website-nav a[aria-current='page'] {
+  background: var(--soft-blue);
   color: var(--primary);
+}
+.website-nav a[aria-current='page'] {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 2px;
+}
+[role='tab'][data-state='active'] {
+  box-shadow: inset 0 -2px 0 var(--primary);
+}
+.site-home {
+  max-width: 1192px;
+  margin: 0 auto;
+  padding: 0 36px 64px;
+}
+.home-intro {
+  padding: 96px 0 72px;
+}
+.home-intro h1 {
+  margin: 0 0 20px;
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -1px;
+}
+.home-intro > p {
+  margin: 0 0 32px;
+  color: var(--gray);
+  font-size: 17px;
+  line-height: 1.8;
+}
+.home-explore h2 {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.home-module {
+  max-width: 680px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--background);
+  color: var(--ink);
+  text-decoration: none;
+}
+.home-module:hover {
+  border-color: var(--primary);
+}
+.home-module-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--soft-blue);
+  color: var(--primary);
+}
+.home-module h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+.home-module p {
+  margin: 0 0 12px;
+  color: var(--gray);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.home-module div > span {
+  color: var(--gray);
+  font-size: 12px;
+}
+.home-module-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--gray);
+}
+@media (max-width: 650px) {
+  :root {
+    --website-header-height: 64px;
+  }
+  .website-header-inner {
+    padding: 0 20px;
+  }
+  .website-nav a {
+    padding: 0 12px;
+  }
+  .site-home {
+    padding: 0 20px 40px;
+  }
+  .home-intro {
+    padding: 64px 0 48px;
+  }
+  .home-intro > p {
+    font-size: 15px;
+  }
+  .home-module {
+    align-items: flex-start;
+    gap: 14px;
+    padding: 22px 18px;
+  }
+  .home-module-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .home-module h3 {
+    font-size: 18px;
+  }
+  .home-module-arrow {
+    margin-top: 12px;
+  }
 }

@@ -1,3 +1,4 @@
+import { useUnsavedWork } from '../DraftGuard'
 import { RenameRules } from './components/RenameRules'
 import { useRenamePreview } from './hooks/useRenamePreview'
 import { readPhotoDate, sortRenameFiles, type RenameSort } from './rename-metadata'
@@ -43,6 +44,7 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
   const [packing, setPacking] = useState(false)
   const [readingDates, setReadingDates] = useState(false)
   const [dragging, setDragging] = useState(false)
+  useUnsavedWork(files.length > 0 || !!nameList)
   const [result, setResult] = useState('')
   const input = useRef<HTMLInputElement>(null)
   const resultUrl = useRef('')
@@ -131,6 +133,17 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
   }
   return (
     <main className="main-content rename-tool">
+      <p className="sr-only" role="status" aria-atomic="true">
+        {packing
+          ? '正在生成 ZIP，请稍候。'
+          : readingDates
+            ? '正在读取拍摄时间，请稍候。'
+            : result
+              ? '重命名结果已生成，可以下载 ZIP。'
+              : files.length
+                ? `重命名预览：${files.length} 个文件，${errors} 个命名错误。`
+                : ''}
+      </p>
       <section className="intro">
         <h1>批量重命名</h1>
       </section>
@@ -159,6 +172,7 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
         <input
           ref={input}
           type="file"
+          tabIndex={-1}
           multiple
           className="sr-only"
           aria-label="选择需要重命名的文件"
@@ -350,6 +364,10 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
                       <div className="rename-name-cell">
                         <input
                           aria-label={`新文件名 ${entry.file.name}`}
+                          aria-invalid={!!preview[index].error}
+                          aria-describedby={
+                            preview[index].error ? `rename-error-${entry.id}` : undefined
+                          }
                           value={preview[index].name}
                           disabled={packing || readingDates}
                           onChange={(event) => {
@@ -378,7 +396,9 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
                           </Button>
                         )}
                       </div>
-                      {preview[index].error && <small>{preview[index].error}</small>}
+                      {preview[index].error && (
+                        <small id={`rename-error-${entry.id}`}>{preview[index].error}</small>
+                      )}
                     </td>
                     <td>
                       <Button

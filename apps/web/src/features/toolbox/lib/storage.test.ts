@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   migrateStorage,
+  storageKeys,
   readFavoriteTools,
   toggleFavoriteTool,
   readRecentTools,
@@ -13,6 +14,20 @@ import {
   saveFileOptions,
   type FileOptionSchema,
 } from './storage'
+
+test('表格入口合并后，旧对比收藏和最近使用合并为表格工具，仍可取消收藏', () => {
+  const storage = fakeStorage({
+    [storageKeys.favoriteTools]: JSON.stringify(['compare', 'table', 'text']),
+    [storageKeys.recentTools]: JSON.stringify([
+      { id: 'compare', at: 30 },
+      { id: 'text', at: 20 },
+      { id: 'table', at: 10 },
+    ]),
+  })
+  assert.deepEqual(readFavoriteTools(storage, ['table', 'text']), ['table', 'text'])
+  assert.deepEqual(readRecentTools(storage, ['table', 'text']), ['table', 'text'])
+  assert.deepEqual(toggleFavoriteTool(storage, 'table', ['table', 'text']), ['text'])
+})
 
 function fakeStorage(initial: Record<string, string>) {
   const data = new Map(Object.entries(initial))

@@ -1,3 +1,4 @@
+import { useUnsavedWork } from '../DraftGuard'
 import { TextStatsButton } from './components/TextStatsButton'
 import { useTextProcessing } from './hooks/useTextProcessing'
 import { OverlayMarks, type DiffMark } from './components/DiffOverlay'
@@ -154,6 +155,7 @@ export default function TextTool({ active }: { active: boolean }) {
   const [mobileTab, setMobileTab] = useState('source')
   const [copied, setCopied] = useState(false)
   const [undo, setUndo] = useState<string | null>(null)
+  useUnsavedWork(source.length > 0 || !!undo)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -442,6 +444,15 @@ export default function TextTool({ active }: { active: boolean }) {
   return (
     <TooltipProvider delayDuration={200}>
       <main className="main-content">
+        <p className="sr-only" role="status" aria-atomic="true">
+          {failed
+            ? '文本整理失败，请检查错误提示。'
+            : processing
+              ? '正在整理文本。'
+              : source
+                ? '文本整理已完成，可以复制或下载结果。'
+                : ''}
+        </p>
         <section className="intro">
           <h1>文本整理</h1>
           <div className="tool-title-actions">
@@ -816,7 +827,7 @@ export default function TextTool({ active }: { active: boolean }) {
               </div>
               <div className="editor-footer">
                 <TextStatsButton text={result.text} stats={resultStats} label="整理结果" />
-                <span className={cn('processing-state', failed && 'error-state')} role="status">
+                <span className={cn('processing-state', failed && 'error-state')}>
                   {failed ? (
                     <>
                       <X size={12} />
@@ -944,6 +955,7 @@ export default function TextTool({ active }: { active: boolean }) {
       </main>
       <input
         type="file"
+        tabIndex={-1}
         accept=".txt,.md,text/plain,text/markdown"
         className="sr-only"
         aria-label="导入文本文件"

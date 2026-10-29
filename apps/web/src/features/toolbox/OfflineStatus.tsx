@@ -23,15 +23,17 @@ export function OfflineStatus() {
           ? '重试离线准备'
           : '准备离线'
   return (
-    <button
-      type="button"
-      className="offline-status"
-      disabled={status.state === 'preparing' || status.state === 'ready'}
-      onClick={() => navigator.serviceWorker.controller?.postMessage('PREPARE_OFFLINE')}
-      title="缓存工具和本地字体后，可在断网时使用"
-      aria-label={label}
-    >
-      {label}
-    </button>
+    <span role="status" aria-live="polite" aria-atomic="true">
+      <button
+        type="button"
+        className="offline-status"
+        disabled={status.state === 'preparing' || status.state === 'ready'}
+        onClick={() => navigator.serviceWorker.controller?.postMessage('PREPARE_OFFLINE')}
+        title="缓存工具和本地字体后，可在断网时使用"
+        aria-label={label}
+      >
+        {label}
+      </button>
+    </span>
   )
 }

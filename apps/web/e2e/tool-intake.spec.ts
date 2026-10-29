@@ -1,3 +1,4 @@
+import { openTool } from './helpers/navigation'
 import { expect, test, type Page } from '@playwright/test'
 import { PDFDocument } from 'pdf-lib'
 import * as XLSX from 'xlsx'
@@ -20,7 +21,11 @@ async function pdf() {
   }
 }
 async function intake(page: Page, files: Parameters<Page['setInputFiles']>[1]) {
-  await page.setInputFiles('input[aria-label="选择文件并推荐任务"]', files)
+  await page
+    .getByRole('navigation', { name: '网站导航' })
+    .getByRole('link', { name: '工具箱', exact: true })
+    .click()
+  await page.setInputFiles('input[aria-label="首页选择文件"]', files)
   await expect(page.getByRole('dialog', { name: '你想做什么？' })).toBeVisible()
   await expect(page.getByText('正在识别文件…', { exact: true })).toHaveCount(0)
 }
@@ -74,10 +79,7 @@ test('PDF 入口提取文字后整理；PDF 转 Word 的实际文字也可接力
   await expect(page.getByRole('textbox', { name: '原始文本', exact: true })).toHaveValue(
     'Useful PDF text',
   )
-  await page
-    .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '文件格式转换', exact: true })
-    .click()
+  await openTool(page, '文件格式转换')
   await expect(page.locator('.file-row a[download]')).toBeVisible()
 })
 
@@ -106,14 +108,8 @@ test('Excel 转 CSV 后直接接力表格批处理，保留 001 与中文', asyn
   await expect(page.locator('.table-preview')).toContainText('中文')
   await page.getByRole('button', { name: '导出 CSV', exact: true }).click()
   const url = await page.locator('.table-tool a[download]').getAttribute('href')
-  await page
-    .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: 'PDF 页面整理', exact: true })
-    .click()
-  await page
-    .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '表格批量处理', exact: true })
-    .click()
+  await openTool(page, 'PDF 页面整理')
+  await openTool(page, '表格批量处理')
   expect(await page.evaluate(async (url) => (await fetch(url!)).ok, url)).toBe(true)
 })
 
@@ -165,37 +161,17 @@ test('多份文本进入批量面板且 StrictMode 不重复入队；过量任�
   await expect(page.getByRole('button', { name: '比较两份表格差异', exact: true })).toBeEnabled()
 })
 
-test('Ctrl/⌘ K 搜索可用，文本设置保留 Shift 快捷键；手机可直接换工具并保留草稿', async ({
-  page,
-}) => {
+test('文本设置快捷键可用，手机从卡片切换工具保留草稿', async ({ page }) => {
   await page.goto('/tools/#/text')
   await page.getByRole('textbox', { name: '原始文本', exact: true }).fill('保留的草稿')
-  await page.keyboard.press('ControlOrMeta+k')
-  await page.getByRole('combobox', { name: '搜索工具与任务', exact: true }).fill('压缩')
-  await page.keyboard.press('Enter')
-  await expect(page.getByRole('region', { name: '图片压缩', exact: true })).toBeVisible()
-  await page.keyboard.press('ControlOrMeta+k')
-  await page.getByRole('combobox', { name: '搜索工具与任务', exact: true }).fill('Word PDF')
-  await page.keyboard.press('Enter')
-  await expect(page.getByRole('region', { name: 'Word → PDF', exact: true })).toBeVisible()
-  await page.goto('/tools/#/text')
-  await expect(page.getByRole('textbox', { name: '原始文本', exact: true })).toBeVisible()
   await page.keyboard.press('ControlOrMeta+Shift+k')
   await expect(page.getByRole('heading', { name: '整理设置', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '完成', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '整理设置', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.getByRole('button', { name: '切换工具', exact: true }).click()
-  await page
-    .getByRole('navigation', { name: '移动工具导航' })
-    .getByRole('link', { name: 'PDF 页面整理', exact: true })
-    .click()
+  await openTool(page, 'PDF 页面整理')
   await expect(page.getByRole('heading', { name: 'PDF 页面整理', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '切换工具', exact: true }).click()
-  await page
-    .getByRole('navigation', { name: '移动工具导航' })
-    .getByRole('link', { name: '文本整理', exact: true })
-    .click()
+  await openTool(page, '文本整理')
   await expect(page.getByRole('textbox', { name: '原始文本', exact: true })).toHaveValue(
     '保留的草稿',
   )
@@ -218,7 +194,7 @@ test('全局拖放和截图粘贴推荐任务，现有工具的拖放/粘贴仍�
   await page.locator('.file-drop').dispatchEvent('drop', { dataTransfer: data })
   await expect(page.locator('.pdf-thumbnail canvas')).toBeVisible()
   await expect(page.getByRole('dialog', { name: '你想做什么？' })).toHaveCount(0)
-  await page.locator('.site-header').dispatchEvent('drop', { dataTransfer: data })
+  await page.locator('.app-shell').dispatchEvent('drop', { dataTransfer: data })
   await expect(page.getByRole('dialog', { name: '你想做什么？' })).toBeVisible()
   await page.keyboard.press('Escape')
   await page.evaluate(
@@ -248,7 +224,7 @@ test('全局拖放和截图粘贴推荐任务，现有工具的拖放/粘贴仍�
 })
 
 for (const colorScheme of ['light', 'dark'] as const)
-  test(`390px ${colorScheme}: 文件任务面板、搜索与手机菜单无溢出`, async ({ page }, info) => {
+  test(`390px ${colorScheme}: 文件任务面板与表格功能切换无溢出`, async ({ page }, info) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
     await page.goto('/tools/')
@@ -272,14 +248,10 @@ for (const colorScheme of ['light', 'dark'] as const)
     await page.screenshot({ path: info.outputPath('intake-mobile.png'), fullPage: true })
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
-    await page.getByRole('button', { name: '切换工具', exact: true }).click()
+    await openTool(page, '表格工具')
+    await page.getByRole('tab', { name: '表格对比', exact: true }).click()
     await noOverflow()
-    await page.screenshot({ path: info.outputPath('menu-mobile.png'), fullPage: true })
-    await page.keyboard.press('Escape')
-    await page.getByRole('button', { name: '搜索工具与任务', exact: true }).click()
-    await page.getByRole('combobox', { name: '搜索工具与任务', exact: true }).fill('表格')
-    await noOverflow()
-    await page.screenshot({ path: info.outputPath('command-mobile.png'), fullPage: true })
+    await page.screenshot({ path: info.outputPath('table-tools-mobile.png'), fullPage: true })
   })
 
 test.describe('取消未完成的交接', () => {

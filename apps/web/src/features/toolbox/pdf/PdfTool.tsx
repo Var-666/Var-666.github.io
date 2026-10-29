@@ -1,3 +1,4 @@
+import { useUnsavedWork } from '../DraftGuard'
 import { PdfPageGrid } from './components/PdfPageGrid'
 import { PdfOutputSettings, type PdfSettings } from './components/PdfOutputSettings'
 import { createPdfWatermark } from './pdf-decorations'
@@ -71,6 +72,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
   const [result, setResult] = useState<
     (OutputFile & { url: string; compressed?: boolean; info?: string }) | null
   >(null)
+  useUnsavedWork(pages.length > 0 || lockedFiles.length > 0 || busy)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [splitMode, setSplitMode] = useState<'each' | 'every' | 'ranges'>('each')
   const [splitSize, setSplitSize] = useState('5')
@@ -330,6 +332,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
     if (from < 0 || from === to) return
     next.splice(to, 0, next.splice(from, 1)[0])
     commit(next)
+    setMessage(`已将第 ${from + 1} 页移到第 ${to + 1} 位。`)
   }
   const outputOptions = async () => ({
     numbering: settings.numbering ? { start: Number(settings.start) } : undefined,
@@ -472,6 +475,13 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
   const previewSource = sources.find((source) => source.id === previewPage?.sourceId)
   return (
     <main className="main-content pdf-tool">
+      <p className="sr-only" role="status" aria-atomic="true">
+        {busy
+          ? '正在处理 PDF，请稍候。'
+          : result || splitOutput || unlockResult
+            ? 'PDF 处理结果已生成，可以下载。'
+            : message || (pages.length ? `PDF 队列：共 ${pages.length} 页。` : '')}
+      </p>
       <section className="intro">
         <h1>PDF 页面整理</h1>
       </section>
@@ -501,6 +511,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
         </button>
         <input
           type="file"
+          tabIndex={-1}
           ref={input}
           accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,.avif"
           multiple
@@ -522,6 +533,8 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
                 className="tool-input"
                 type="password"
                 aria-label="PDF 打开密码"
+                aria-invalid={!!unlockError}
+                aria-describedby={unlockError ? 'pdf-unlock-error' : undefined}
                 autoComplete="off"
                 value={password}
                 maxLength={1024}
@@ -536,7 +549,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
               仅使用你已知的密码，本地解密；密码不会保存。待解密文件还未加入页面列表。
             </p>
             {unlockError && (
-              <p role="alert" className="file-error">
+              <p role="alert" className="file-error" id="pdf-unlock-error">
                 {unlockError}
               </p>
             )}
@@ -597,11 +610,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
             setSettings(value)
           }}
         />
-        {message && (
-          <p className="tool-status" role="status">
-            {message}
-          </p>
-        )}
+        {message && <p className="tool-status">{message}</p>}
         {!!pages.length && (
           <>
             <div className="pdf-toolbar">

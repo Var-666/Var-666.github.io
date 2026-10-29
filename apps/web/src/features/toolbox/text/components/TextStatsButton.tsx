@@ -24,7 +24,12 @@ export function TextStatsButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button type="button" className="text-stats-button" aria-label={`${label}详细统计`}>
+        <button
+          type="button"
+          className="text-stats-button"
+          onClick={(event) => event.currentTarget.focus({ preventScroll: true })}
+          aria-label={`${label}详细统计 ${stats.chars.toLocaleString()} 字符 ${stats.lines.toLocaleString()} 行`}
+        >
           <b>{stats.chars.toLocaleString()}</b> 字符
           <span className="stat-divider" /> <b>{stats.lines.toLocaleString()}</b> 行{' '}
           <ChevronDown size={11} aria-hidden="true" />

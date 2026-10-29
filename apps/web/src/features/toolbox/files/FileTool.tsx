@@ -1,3 +1,4 @@
+import { useUnsavedWork } from '../DraftGuard'
 import { ImageEditOptions } from './components/ImageEditOptions'
 import { defaultImageEdit } from './image-edit'
 import { ConversionOptions } from './components/ConversionOptions'
@@ -94,6 +95,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
   const [tablePaste, setTablePaste] = useState('')
   const [merged, setMerged] = useState<(OutputFile & { url: string }) | null>(null)
   const [rows, setRows] = useState<Row[]>([])
+  useUnsavedWork(rows.length > 0 || !!tablePaste)
   const [busy, setBusy] = useState(false)
   const [packing, setPacking] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -636,6 +638,13 @@ export default function FileTool({ active = true }: { active?: boolean }) {
   const failed = rows.filter((row) => row.status === 'error').length
   return (
     <main className="main-content file-tool">
+      <p className="sr-only" role="status" aria-atomic="true">
+        {busy
+          ? '正在转换文件，请稍候。'
+          : rows.length
+            ? `文件队列：${rows.length} 个文件，已完成 ${done} 个，失败 ${failed} 个。`
+            : ''}
+      </p>
       <ConfirmImport
         open={active && !!incomingTransfer}
         description="切换转换方式会替换当前文件队列和未下载结果。"
@@ -730,6 +739,7 @@ export default function FileTool({ active = true }: { active?: boolean }) {
             <input
               ref={input}
               type="file"
+              tabIndex={-1}
               multiple
               accept={modes[mode].accept}
               className="sr-only"

@@ -40,7 +40,7 @@ for (const width of [1440, 800, 390]) {
           expect(collisions).toBe(0)
         }
         if (width > 650) {
-          const nav = page.getByRole('navigation', { name: '主导航' })
+          const nav = page.getByRole('navigation', { name: '网站导航' })
           await expect(nav).toBeVisible()
           expect(await nav.evaluate((e) => e.scrollWidth - e.clientWidth)).toBeLessThanOrEqual(1)
         }
@@ -82,7 +82,7 @@ for (const width of [1440, 800, 390]) {
   }
 }
 
-test('编辑器断点两侧持续保持一致，导航不挤压主题按钮', async ({ page }) => {
+test('编辑器断点两侧持续保持一致，网站导航不挤压品牌', async ({ page }) => {
   await page.goto('/tools/#/text')
   await expect(page.getByRole('textbox', { name: '原始文本', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '离线就绪', exact: true })).toBeVisible({
@@ -107,10 +107,10 @@ test('编辑器断点两侧持续保持一致，导航不挤压主题按钮', as
     await noOverflow(page)
     if (width > 650) {
       expect(
-        await page.locator('.desktop-nav').evaluate((nav) => {
+        await page.locator('.website-nav').evaluate((nav) => {
           const a = nav.getBoundingClientRect(),
-            b = document.querySelector('.header-actions')!.getBoundingClientRect()
-          return a.right <= b.left || a.top >= b.bottom
+            b = document.querySelector('.website-brand')!.getBoundingClientRect()
+          return b.right <= a.left && a.right <= window.innerWidth
         }),
       ).toBe(true)
     }

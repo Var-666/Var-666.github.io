@@ -5,20 +5,36 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('heading', { name: '全部工具' })).toBeVisible()
 })
 
-test('搜索命中任务入口并直达图片压缩模式', async ({ page }) => {
-  await page.getByRole('searchbox', { name: '搜索工具' }).fill('压缩')
-  const task = page.getByRole('link', { name: '压缩图片到指定大小' })
-  await expect(task).toBeVisible()
-  await task.click()
-  await expect(page.getByRole('region', { name: '图片压缩' })).toBeVisible()
+test('工具首页只保留网站导航、导入区和五个工具入口', async ({ page }) => {
+  await expect(page.getByRole('navigation', { name: '网站导航' })).toBeVisible()
+  await expect(page.locator('.site-header')).toHaveCount(0)
+  await expect(page.getByRole('searchbox')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: '常见任务', exact: true })).toHaveCount(0)
+  await expect(page.locator('.tool-card')).toHaveCount(5)
+  await expect(page.getByText('5 个工具', { exact: true })).toBeVisible()
+  await expect(
+    page
+      .locator('.tool-card')
+      .filter({ has: page.getByRole('heading', { name: '表格工具', exact: true }) }),
+  ).toHaveCount(1)
 })
 
-test('搜索无结果时给出提示，关键词分词后命中工具卡片', async ({ page }) => {
-  await page.getByRole('searchbox', { name: '搜索工具' }).fill('不存在的功能')
-  await expect(page.getByText('没有找到匹配的工具')).toBeVisible()
-  await page.getByRole('searchbox', { name: '搜索工具' }).fill('提取 页面')
-  await expect(page.locator('.tool-card').filter({ hasText: 'PDF 页面整理' })).toBeVisible()
-  await expect(page.locator('.tool-card').filter({ hasText: '文本整理' })).toHaveCount(0)
+test('统一表格入口可切换两个模式，返回后批量导入草稿保留', async ({ page }) => {
+  await page
+    .locator('.tool-card')
+    .filter({ has: page.getByRole('heading', { name: '表格工具', exact: true }) })
+    .click()
+  await expect(page.getByRole('heading', { name: '表格批量处理', exact: true })).toBeVisible()
+  await page.getByLabel('添加表格文件', { exact: true }).setInputFiles({
+    name: 'draft.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('编号,名称\n001,甲'),
+  })
+  await expect(page.locator('.table-file-row')).toContainText('draft.csv')
+  await page.getByRole('tab', { name: '表格对比', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '表格对比', exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: '批量处理', exact: true }).click()
+  await expect(page.locator('.table-file-row')).toContainText('draft.csv')
 })
 
 test('收藏工具保存到本地，刷新后仍在常用区', async ({ page }) => {

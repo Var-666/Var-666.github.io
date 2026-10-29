@@ -2,7 +2,7 @@
 
 VAR 是单前端应用的 pnpm Monorepo。仓库根目录维护工作区、锁文件、稳定开发约定、文档和公共构建脚本；Next.js 应用及其依赖和运行配置位于 `apps/web`。目录采用开发手册第 4 节，仅创建当前需要的部分。
 
-`src/app/page.tsx` 是网站首页，目前只保留工具箱入口，为以后的网站内容留出位置。`src/app/tools/` 负责工具箱路由、元信息和专属样式入口，通过 `features/toolbox/index.tsx` 启动工具箱。旧的根路径工具 hash 地址会跳转至 `/tools/`，保留具体工具及模式参数。
+`src/app/page.tsx` 是网站首页，包含欢迎区与内容入口。`src/components/SiteHeader.tsx` 提供网站级导航，在首页和工具箱中保持一致，并标明当前栏目。`src/app/tools/` 负责工具箱路由、元信息和专属样式入口，通过 `features/toolbox/index.tsx` 启动工具箱。旧的根路径工具 hash 地址会跳转至 `/tools/`，保留具体工具及模式参数。
 
 工具箱是 `src/features/toolbox` 下的一个独立业务模块。内部的 `text/`、`files/`、`compare/`、`table/`、`pdf/` 和 `rename/` 分别包含对应的业务函数、界面、hooks、Worker 与测试。入口、首页、导航和文件交接仍由 toolbox 自身管理，切换子工具时保持已访问工具挂载，防止丢失尚未下载的草稿。
 

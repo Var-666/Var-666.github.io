@@ -1,3 +1,4 @@
+import { useUnsavedWork } from '../DraftGuard'
 import { OutputActions } from '../components/OutputActions'
 import { useTransferReceiver } from '../tool-transfer'
 import { TextEncodingSelect } from '../components/TextEncodingSelect'
@@ -57,6 +58,7 @@ export default function TableTool({ active }: { active: boolean }) {
   const [format, setFormat] = useState<ExportFormat>('csv')
   const [busy, setBusy] = useState(false)
   const [output, setOutput] = useState<(OutputFile & { url: string }) | null>(null)
+  useUnsavedWork(tables.length > 0 || busy)
   const input = useRef<HTMLInputElement>(null)
   useEffect(
     () => () => {
@@ -264,6 +266,15 @@ export default function TableTool({ active }: { active: boolean }) {
 
   return (
     <main className="main-content table-tool">
+      <p className="sr-only" role="status" aria-atomic="true">
+        {busy
+          ? '正在读取或导出表格，请稍候。'
+          : output
+            ? '表格导出结果已生成，可以下载。'
+            : tables.length
+              ? `已导入 ${tables.length} 份表格。`
+              : ''}
+      </p>
       <section className="intro">
         <h1>表格批量处理</h1>
       </section>
@@ -284,6 +295,7 @@ export default function TableTool({ active }: { active: boolean }) {
         <input
           ref={input}
           type="file"
+          tabIndex={-1}
           disabled={busy}
           multiple
           accept=".csv,.xlsx"
@@ -716,7 +728,7 @@ export default function TableTool({ active }: { active: boolean }) {
       )}
       {validResult && (
         <section className="compare-result" aria-label="处理预览">
-          <div className="compare-summary">
+          <div className="compare-summary" role="status" aria-atomic="true">
             {validResult.stats.join && (
               <span className="chip">
                 匹配 {validResult.stats.join.pairs} 对 · 左表未匹配{' '}

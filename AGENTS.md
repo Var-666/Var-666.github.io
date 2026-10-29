@@ -13,6 +13,7 @@
 - `src/components/ui` 保留 shadcn/ui 基础组件；工具箱内部共享组件放 `src/features/toolbox/components`，不叠加第二套 UI 体系。
 - `src/lib` 仅放网站公共基础能力；工具专属能力放 `features/toolbox/lib`。只有真正跨应用复用时才建立 `packages/shared`。
 - 项目目录和模块责任见 `docs/architecture.md`。
+- 开发说明、功能清单、路线图、验收记录和第三方许可说明集中放在 `docs/`；README 与 AGENTS.md 保留各自入口位置。
 
 ## 修改与验证
 

@@ -14,6 +14,7 @@ const legacyKeys: Partial<Record<string, string>> = {
   [storageKeys.settings]: 'liwen-settings',
 }
 
+const canonicalToolId = (id: string) => (id === 'compare' ? 'table' : id)
 const recentToolsLimit = 8
 const userPresetLimit = 12
 
@@ -54,7 +55,14 @@ export function readFavoriteTools(storage: StorageLike, validIds: readonly strin
   const value = parseJson(storage, storageKeys.favoriteTools)
   if (!Array.isArray(value)) return []
   const valid = new Set(validIds)
-  return [...new Set(value.filter((id): id is string => typeof id === 'string' && valid.has(id)))]
+  return [
+    ...new Set(
+      value
+        .filter((id): id is string => typeof id === 'string')
+        .map(canonicalToolId)
+        .filter((id) => valid.has(id)),
+    ),
+  ]
 }
 
 export function toggleFavoriteTool(
@@ -81,10 +89,10 @@ export function readRecentTools(storage: StorageLike, validIds: readonly string[
         typeof item === 'object' &&
         typeof (item as { id?: unknown }).id === 'string' &&
         typeof (item as { at?: unknown }).at === 'number' &&
-        valid.has((item as { id: string }).id),
+        valid.has(canonicalToolId((item as { id: string }).id)),
     )
     .sort((a, b) => b.at - a.at)
-    .map((item) => item.id)
+    .map((item) => canonicalToolId(item.id))
   return [...new Set(ids)].slice(0, 4)
 }
 

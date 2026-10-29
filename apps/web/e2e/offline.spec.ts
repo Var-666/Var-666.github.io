@@ -1,3 +1,4 @@
+import { openTool } from './helpers/navigation'
 import { exifJpeg } from './fixtures/exif'
 import { expect, test, type Page } from '@playwright/test'
 import { PDFDocument } from 'pdf-lib'
@@ -69,7 +70,7 @@ test('首次离线准备后，未访问过的六个工具与本地字体都可�
   await expect(page.getByRole('textbox', { name: '整理结果', exact: true })).toHaveValue(
     'Offline test',
   )
-  await page.getByRole('button', { name: '更多操作', exact: true }).click()
+  await page.getByRole('button', { name: /^更多操作/ }).click()
   await page
     .locator('summary')
     .filter({ hasText: /^简繁转换$/ })
@@ -156,8 +157,8 @@ test.describe('懒加载失败恢复（不依赖 SW 预热）', () => {
     })
     await page.goto('/tools/#/text')
     await page.getByRole('textbox', { name: '原始文本', exact: true }).fill('切换后仍保留的草稿')
-    const navigation = page.getByRole('navigation', { name: '主导航' })
-    await navigation.getByRole('link', { name: 'PDF 页面整理', exact: true }).click()
+    const navigation = page.getByRole('navigation', { name: '网站导航' })
+    await openTool(page, 'PDF 页面整理')
     try {
       const pending = page.getByRole('status', { name: '正在加载PDF 页面整理', exact: true })
       await expect(pending).toHaveAttribute('aria-busy', 'true')
@@ -167,7 +168,7 @@ test.describe('懒加载失败恢复（不依赖 SW 预热）', () => {
       resume()
     }
     await expect(page.getByRole('heading', { name: 'PDF 页面整理', exact: true })).toBeVisible()
-    await navigation.getByRole('link', { name: '文本整理', exact: true }).click()
+    await openTool(page, '文本整理')
     await expect(page.getByRole('textbox', { name: '原始文本', exact: true })).toHaveValue(
       '切换后仍保留的草稿',
     )
@@ -180,29 +181,20 @@ test.describe('懒加载失败恢复（不依赖 SW 预热）', () => {
     await page.goto('/tools/#/text')
     await page.getByRole('textbox', { name: '原始文本', exact: true }).fill('尚未下载的草稿')
     await context.setOffline(true)
-    await page
-      .getByRole('navigation', { name: '主导航' })
-      .getByRole('link', { name: 'PDF 页面整理', exact: true })
-      .click()
+    await openTool(page, 'PDF 页面整理')
     await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
       'PDF 页面整理加载失败',
     )
     // Wait past transient Suspense UI; the old test passed before the rejection arrived.
     await page.waitForTimeout(3000)
     await expect(page.getByRole('heading', { name: 'PDF 页面整理加载失败' })).toBeVisible()
-    await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: '网站导航' })).toBeVisible()
     await page.screenshot({ path: info.outputPath('recoverable-load-error.png'), fullPage: true })
-    await page
-      .getByRole('navigation', { name: '主导航' })
-      .getByRole('link', { name: '文本整理', exact: true })
-      .click()
+    await openTool(page, '文本整理')
     await expect(page.getByRole('textbox', { name: '原始文本', exact: true })).toHaveValue(
       '尚未下载的草稿',
     )
-    await page
-      .getByRole('navigation', { name: '主导航' })
-      .getByRole('link', { name: 'PDF 页面整理', exact: true })
-      .click()
+    await openTool(page, 'PDF 页面整理')
     await context.setOffline(false)
     await page.getByRole('button', { name: '重试加载', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'PDF 页面整理', exact: true })).toBeVisible()

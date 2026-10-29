@@ -57,10 +57,8 @@ test('首页识别 JSONL/NDJSON 并逐行转换，坏文件显示行号且不影
   await expect(page.locator('.matrix-notice').filter({ hasText: '2 条 JSON Lines' })).toBeVisible()
 })
 
-test('JSONL 任务可搜索直达，单行对象也按 JSON Lines 读取', async ({ page }) => {
-  await page.goto('/tools/')
-  await page.getByRole('searchbox', { name: '搜索工具', exact: true }).fill('JSONL')
-  await page.getByRole('link', { name: 'JSON / JSONL 转 CSV' }).click()
+test('JSONL 转换保留深链接，单行对象也按 JSON Lines 读取', async ({ page }) => {
+  await page.goto('/tools/#/files?mode=json-csv')
   await page.getByLabel('选择待转换文件').setInputFiles({
     name: 'single.ndjson',
     mimeType: 'application/x-ndjson',
