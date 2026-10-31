@@ -5088,7 +5088,86 @@ html:has(.app-shell .workbench-actions) {
   font-size: 13.5px;
 }
 
-/* ---------- 四工具选项右栏化（纯 CSS Grid 定位，≥1024px；窄屏单列不受影响） ---------- */
+/* 断行修复模式：重设计版 Segmented 胶囊（保守 / 标准） */
+.repair-seg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+.repair-seg-group {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--tb-chip);
+}
+.repair-seg-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tb-fg);
+  opacity: 0.72;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    opacity 0.2s;
+}
+.repair-seg-btn:hover {
+  opacity: 1;
+}
+.repair-seg-btn.is-active {
+  background: var(--tb-card);
+  color: var(--tb-fg);
+  opacity: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.dark .repair-seg-btn.is-active {
+  background: var(--tb-raise);
+}
+
+/* 表单控件字号统一对齐设计语言：选择器/输入框 14px（此前被 12px 规则压小，36px 高的框里挤小字） */
+.app-shell [role='combobox'],
+.app-shell .tool-input {
+  font-size: 14px;
+}
+
+/* 按钮字号统一基线（设计语言 text-sm）：全部按钮 14px，刻意小巧的胶囊/辅助类白名单 13px */
+.app-shell button {
+  font-size: 14px;
+}
+.app-shell .tool-aside .preset-card,
+.app-shell .task-chip,
+.app-shell .repair-seg-btn,
+.app-shell .text-stats-button,
+.app-shell .diff-record,
+.app-shell .editor-tools > button,
+.app-shell .editor-tools > label,
+.app-shell .tool-title-actions > button,
+.app-shell .tool-limits-toggle,
+.app-shell .text-link {
+  font-size: 13px;
+}
+[role='dialog'] button {
+  font-size: 14px;
+}
+.app-shell [role='tab'] {
+  font-size: 13.5px;
+}
+.app-shell .input-empty > button:not(.text-link) {
+  font-size: 13px;
+}
+.workbench-actions .copy-button:hover {
+  background: var(--tb-blue-hover);
+}
+[role='dialog'] .intake-tasks button {
+  font-size: 13.5px;
+}
+
+/* ---------- 四工具选项侧栏化（设置面板 JSX 搬入 tool-aside，此处仅做右栏窄卡适配） ---------- */
 @media (min-width: 1024px) {
   .compare-tool,
   .table-tool {
