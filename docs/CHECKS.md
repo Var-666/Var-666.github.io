@@ -659,3 +659,7 @@ PDF 工具的三个折叠块嵌在条件渲染分支内，盲式行号搬移破�
 ### 补充十七：右栏顶对齐修复 + 全页对齐核验
 
 用户截图指出文本页右栏与编辑器卡顶部错位（「读取编码」行 + workbench 旧 24px 上边距把主栏首块压低，右栏从容器顶开始）。修复：≥1024px 时 `.tool-main .workbench/.text-ops` 上边距归零，间距交给 tool-body。实测 text 页 1440/1920 两档 asideTop == 编辑器卡 top（delta=0）；五工具 details 全部位于右栏（detLeft 975–1265、宽 290–340）、无横向溢出。Chromium 全量 e2e 185/185。
+
+### 补充十八：rename 右栏位置修正
+
+rename 的 details 在 `.conversion-panel` 内而非 main 直接子级，此前误加的主级 Grid 造成嵌套双栅格（右列空置、选项落在面板子栅格里 detLeft=615）。修正：rename 移出主级 Grid 选择器，仅保留面板级栅格（同 pdf），detLeft=975/w=340/无溢出。全量 e2e 185/185。
