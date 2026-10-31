@@ -663,3 +663,11 @@ PDF 工具的三个折叠块嵌在条件渲染分支内，盲式行号搬移破�
 ### 补充十八：rename 右栏位置修正
 
 rename 的 details 在 `.conversion-panel` 内而非 main 直接子级，此前误加的主级 Grid 造成嵌套双栅格（右列空置、选项落在面板子栅格里 detLeft=615）。修正：rename 移出主级 Grid 选择器，仅保留面板级栅格（同 pdf），detLeft=975/w=340/无溢出。全量 e2e 185/185。
+
+### 补充十九：四工具设置面板侧栏化（按 FileTool 样板 JSX 搬移，取代纯 CSS Grid 方案）
+
+- 应用户指示按既定方案完成 rename/compare/pdf/table 四工具的侧栏化：设置面板真正搬入右侧 340px 粘性 `tool-aside`（`tool-body`/`tool-main` 包裹 + `tool-aside-card` 卡片），不再是「details 孤条在右、设置面板留主栏」的 CSS Grid 形态。四个 feature-implementer 按文件并行搬移（互不重叠，禁跑 build/prettier/git），主会话统一集成。
+- 各工具 aside 内容：rename=命名规则（RenameRules 含名称导入）+ 使用说明；compare=对比选项（含比较范围 details，`left.matrix && right.matrix` 条件包在卡外侧）+ 使用说明；pdf=页码与水印 + 拆分导出（`pages.length > 1` 条件包在卡外侧）+ 结构压缩 + 使用说明；table=处理选项（table-steps 五步骤整块，`!!tables.length` 条件提到卡外，避免空卡框）+ 使用说明。搬移均为纯位置迁移，props/children/文案/aria 零改动；pdf 逐块校验括号（上批回退教训）。
+- styles.css：删除「四工具选项右栏化」纯 CSS Grid 块（双栅格隐患）；新增右栏适配（≥1024px）：`.tool-aside .compare-options` 放平（边框/背景交由 aside-card 统一承担）、卡内首个 `details.tool-advanced` 去上边距（同 FileTool 卡内 details 先例）、`.tool-aside .rename-rules` 三列改单列。
+- 实测（1440×950）：rename 双卡、pdf 三卡、compare/table 空态仅使用说明卡（条件卡随数据出现），主栏 880 / 右栏 340、无横向溢出、无残留栅格；390×844 aside 落主栏下方全宽堆叠。带文件流程由 e2e 覆盖。
+- 本轮验证：Prettier、TypeScript、ESLint、单测（apps/web 223 + scripts 8）、构建通过；Chromium 全量 e2e 185/185（53.2s，含 tool-intake:86）。

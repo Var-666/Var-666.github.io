@@ -484,366 +484,384 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
             : message || (pages.length ? `PDF 队列：共 ${pages.length} 页。` : '')}
       </p>
       <ToolHead toolId="pdf" />
-      <section className="conversion-panel" aria-label="整理 PDF 页面">
-        <button
-          className={`file-drop ${pages.length ? 'has-files' : ''} ${dragging ? 'is-dragging' : ''}`}
-          disabled={busy}
-          onClick={() => input.current?.click()}
-          onDragOver={(event) => {
-            event.preventDefault()
-            setDragging(true)
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(event) => {
-            event.preventDefault()
-            setDragging(false)
-            void addFiles(Array.from(event.dataTransfer.files))
-          }}
-        >
-          <span className="file-drop-icon">
-            {busy ? <LoaderCircle className="animate-spin" size={25} /> : <FileUp size={25} />}
-          </span>
-          <strong>
-            {pages.length ? '继续添加 PDF 或图片，或拖到这里' : '选择 PDF 或图片，或拖到这里'}
-          </strong>
-          <span>PDF / PNG / JPG / WebP / HEIC / AVIF</span>
-        </button>
-        <input
-          type="file"
-          tabIndex={-1}
-          ref={input}
-          accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,.avif"
-          multiple
-          disabled={busy}
-          className="sr-only"
-          aria-label="选择 PDF 或图片"
-          onChange={(event) => {
-            void addFiles(Array.from(event.target.files || []))
-            event.target.value = ''
-          }}
-        />
-        {!!lockedFiles.length && (
-          <section className="pdf-unlock-panel" aria-label="待解密 PDF">
-            <strong>待解密 {lockedFiles.length} 个文件</strong>
-            <p>{lockedFiles[0].name}</p>
-            <label className="pdf-setting-field">
-              文件打开密码
-              <input
-                className="tool-input"
-                type="password"
-                aria-label="PDF 打开密码"
-                aria-invalid={!!unlockError}
-                aria-describedby={unlockError ? 'pdf-unlock-error' : undefined}
-                autoComplete="off"
-                value={password}
-                maxLength={1024}
-                disabled={busy}
-                onChange={(event) => {
-                  setPassword(event.target.value)
-                  setUnlockError('')
-                }}
-              />
-            </label>
-            <p className="conversion-note">
-              仅使用你已知的密码，本地解密；密码不会保存。待解密文件还未加入页面列表。
-            </p>
-            {unlockError && (
-              <p role="alert" className="file-error" id="pdf-unlock-error">
-                {unlockError}
-              </p>
+      <div className="tool-body">
+        <div className="tool-main">
+          <section className="conversion-panel" aria-label="整理 PDF 页面">
+            <button
+              className={`file-drop ${pages.length ? 'has-files' : ''} ${dragging ? 'is-dragging' : ''}`}
+              disabled={busy}
+              onClick={() => input.current?.click()}
+              onDragOver={(event) => {
+                event.preventDefault()
+                setDragging(true)
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(event) => {
+                event.preventDefault()
+                setDragging(false)
+                void addFiles(Array.from(event.dataTransfer.files))
+              }}
+            >
+              <span className="file-drop-icon">
+                {busy ? <LoaderCircle className="animate-spin" size={25} /> : <FileUp size={25} />}
+              </span>
+              <strong>
+                {pages.length ? '继续添加 PDF 或图片，或拖到这里' : '选择 PDF 或图片，或拖到这里'}
+              </strong>
+              <span>PDF / PNG / JPG / WebP / HEIC / AVIF</span>
+            </button>
+            <input
+              type="file"
+              tabIndex={-1}
+              ref={input}
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,.avif"
+              multiple
+              disabled={busy}
+              className="sr-only"
+              aria-label="选择 PDF 或图片"
+              onChange={(event) => {
+                void addFiles(Array.from(event.target.files || []))
+                event.target.value = ''
+              }}
+            />
+            {!!lockedFiles.length && (
+              <section className="pdf-unlock-panel" aria-label="待解密 PDF">
+                <strong>待解密 {lockedFiles.length} 个文件</strong>
+                <p>{lockedFiles[0].name}</p>
+                <label className="pdf-setting-field">
+                  文件打开密码
+                  <input
+                    className="tool-input"
+                    type="password"
+                    aria-label="PDF 打开密码"
+                    aria-invalid={!!unlockError}
+                    aria-describedby={unlockError ? 'pdf-unlock-error' : undefined}
+                    autoComplete="off"
+                    value={password}
+                    maxLength={1024}
+                    disabled={busy}
+                    onChange={(event) => {
+                      setPassword(event.target.value)
+                      setUnlockError('')
+                    }}
+                  />
+                </label>
+                <p className="conversion-note">
+                  仅使用你已知的密码，本地解密；密码不会保存。待解密文件还未加入页面列表。
+                </p>
+                {unlockError && (
+                  <p role="alert" className="file-error" id="pdf-unlock-error">
+                    {unlockError}
+                  </p>
+                )}
+                <div className="text-ops-actions">
+                  <Button disabled={busy} onClick={unlock}>
+                    解密并导入
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => {
+                      setLockedFiles((previous) => previous.slice(1))
+                      setPassword('')
+                      setUnlockError('')
+                    }}
+                  >
+                    移除此文件
+                  </Button>
+                </div>
+              </section>
             )}
-            <div className="text-ops-actions">
-              <Button disabled={busy} onClick={unlock}>
-                解密并导入
-              </Button>
+            {unlockResult && (
+              <div className="merged-result" aria-label="解密结果">
+                <span>{unlockResult.name}</span>
+                <Button variant="outline" size="sm" asChild>
+                  <a href={unlockResult.url} download={unlockResult.name}>
+                    下载解密 PDF
+                  </a>
+                </Button>
+                <OutputActions outputs={[unlockResult]} disabled={busy} />
+              </div>
+            )}
+            <div className="pdf-insert-actions">
               <Button
+                size="sm"
                 variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  setLockedFiles((previous) => previous.slice(1))
-                  setPassword('')
-                  setUnlockError('')
-                }}
+                disabled={busy || pages.length >= 100}
+                onClick={addBlank}
               >
-                移除此文件
+                添加 A4 空白页
               </Button>
             </div>
-          </section>
-        )}
-        {unlockResult && (
-          <div className="merged-result" aria-label="解密结果">
-            <span>{unlockResult.name}</span>
-            <Button variant="outline" size="sm" asChild>
-              <a href={unlockResult.url} download={unlockResult.name}>
-                下载解密 PDF
-              </a>
-            </Button>
-            <OutputActions outputs={[unlockResult]} disabled={busy} />
-          </div>
-        )}
-        <details className="tool-advanced">
-          <summary>使用说明与限制</summary>
-          <p className="conversion-note">
-            最多 10 个输入文件，单个 20 MB，总计 50 MB / 原文与当前列表各不超过 100 页，导出不超过
-            100 MB。空白页不占文件名额。
-            整理保留页面图文和尺寸，书签不保留；已知密码可先解密，原样解密副本单独下载。表单与数字签名文件仍不支持。
-            图片按 A4 完整显示、144 DPI 上限和 JPG 编码插入，透明区填白；HEIC 只取主图，HDR /
-            元数据不保留。
-          </p>
-        </details>
-        <div className="pdf-insert-actions">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy || pages.length >= 100}
-            onClick={addBlank}
-          >
-            添加 A4 空白页
-          </Button>
-        </div>
-        <PdfOutputSettings
-          value={settings}
-          disabled={busy}
-          onChange={(value) => {
-            invalidate()
-            setSettings(value)
-          }}
-        />
-        {message && <p className="tool-status">{message}</p>}
-        {!!pages.length && (
-          <>
-            <div className="pdf-toolbar">
-              <span aria-live="polite">
-                {sources.filter((source) => !source.blank).length
-                  ? `${sources.filter((source) => !source.blank).length} 个文件 · `
-                  : ''}
-                {pages.length} 页 · 已选 {selected} 页
-              </span>
+            {message && <p className="tool-status">{message}</p>}
+            {!!pages.length && (
+              <>
+                <div className="pdf-toolbar">
+                  <span aria-live="polite">
+                    {sources.filter((source) => !source.blank).length
+                      ? `${sources.filter((source) => !source.blank).length} 个文件 · `
+                      : ''}
+                    {pages.length} 页 · 已选 {selected} 页
+                  </span>
+                  <div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() =>
+                        commit(
+                          pages.map((page) => ({ ...page, selected: selected !== pages.length })),
+                        )
+                      }
+                    >
+                      {selected === pages.length ? '取消全选' : '全选'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy || !selected}
+                      onClick={() =>
+                        commit(
+                          pages.map((page) =>
+                            page.selected
+                              ? { ...page, rotation: (page.rotation + 90) % 360 }
+                              : page,
+                          ),
+                        )
+                      }
+                    >
+                      <RotateCw size={14} />
+                      旋转所选
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy || !selected}
+                      onClick={() => commit(pages.filter((page) => !page.selected))}
+                    >
+                      <Trash2 size={14} />
+                      删除所选
+                    </Button>
+                  </div>
+                </div>
+                <div className="pdf-range">
+                  <label htmlFor="pdf-organize-range">按当前顺序选页</label>
+                  <input
+                    id="pdf-organize-range"
+                    className="tool-input"
+                    disabled={busy}
+                    value={range}
+                    onChange={(event) => setRange(event.target.value)}
+                    placeholder="全部页，如 1,3-5"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => {
+                      try {
+                        const selectedPages = new Set(pdfPageNumbers(range, pages.length))
+                        commit(
+                          pages.map((page, index) => ({
+                            ...page,
+                            selected: selectedPages.has(index + 1),
+                          })),
+                        )
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : '页码无效')
+                      }
+                    }}
+                  >
+                    应用
+                  </Button>
+                </div>
+                <PdfPageGrid
+                  sources={sources}
+                  pages={pages}
+                  busy={busy}
+                  onMove={move}
+                  onChange={commit}
+                  onOpen={(id, button) => {
+                    previewTrigger.current = button
+                    setPreviewId(id)
+                  }}
+                />
+              </>
+            )}
+            {result?.info && (
+              <p className="tool-status" role="status">
+                {result.info}
+              </p>
+            )}
+            <div className="conversion-actions">
+              <Button
+                variant="ghost"
+                disabled={busy || (!pages.length && !lockedFiles.length && !unlockResult)}
+                onClick={() => {
+                  commit([])
+                  setRange('')
+                  setLockedFiles([])
+                  setPassword('')
+                  setUnlockError('')
+                  if (unlockResult) {
+                    URL.revokeObjectURL(unlockResult.url)
+                    urls.current.delete(unlockResult.url)
+                    setUnlockResult(null)
+                  }
+                }}
+              >
+                <Trash2 size={14} />
+                清空
+              </Button>
               <div>
+                {result && (
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={(event) => {
+                      previewTrigger.current = event.currentTarget
+                      void previewOutput()
+                    }}
+                  >
+                    预览导出 PDF
+                  </Button>
+                )}
+                {result && <OutputActions outputs={[result]} disabled={busy} />}
+                {result && (
+                  <Button variant="outline" asChild>
+                    <a href={result.url} download={result.name}>
+                      <ArrowDownToLine size={14} />
+                      下载 PDF
+                    </a>
+                  </Button>
+                )}
                 <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() =>
-                    commit(pages.map((page) => ({ ...page, selected: selected !== pages.length })))
-                  }
+                  disabled={busy || !selected || (!!result && !result.compressed)}
+                  onClick={() => void exportPdf()}
                 >
-                  {selected === pages.length ? '取消全选' : '全选'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={busy || !selected}
-                  onClick={() =>
-                    commit(
-                      pages.map((page) =>
-                        page.selected ? { ...page, rotation: (page.rotation + 90) % 360 } : page,
-                      ),
-                    )
-                  }
-                >
-                  <RotateCw size={14} />
-                  旋转所选
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={busy || !selected}
-                  onClick={() => commit(pages.filter((page) => !page.selected))}
-                >
-                  <Trash2 size={14} />
-                  删除所选
+                  {busy ? (
+                    <LoaderCircle className="animate-spin" size={14} />
+                  ) : (
+                    <ArrowDownToLine size={14} />
+                  )}
+                  {busy ? '正在处理' : `导出所选${selected ? ` (${selected} 页)` : ''}`}
                 </Button>
               </div>
             </div>
-            <div className="pdf-range">
-              <label htmlFor="pdf-organize-range">按当前顺序选页</label>
-              <input
-                id="pdf-organize-range"
-                className="tool-input"
-                disabled={busy}
-                value={range}
-                onChange={(event) => setRange(event.target.value)}
-                placeholder="全部页，如 1,3-5"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busy}
-                onClick={() => {
-                  try {
-                    const selectedPages = new Set(pdfPageNumbers(range, pages.length))
-                    commit(
-                      pages.map((page, index) => ({
-                        ...page,
-                        selected: selectedPages.has(index + 1),
-                      })),
-                    )
-                  } catch (error) {
-                    toast.error(error instanceof Error ? error.message : '页码无效')
-                  }
-                }}
-              >
-                应用
-              </Button>
-            </div>
-            <PdfPageGrid
-              sources={sources}
-              pages={pages}
-              busy={busy}
-              onMove={move}
-              onChange={commit}
-              onOpen={(id, button) => {
-                previewTrigger.current = button
-                setPreviewId(id)
+          </section>
+        </div>
+        <aside className="tool-aside">
+          <div className="tool-aside-card">
+            <PdfOutputSettings
+              value={settings}
+              disabled={busy}
+              onChange={(value) => {
+                invalidate()
+                setSettings(value)
               }}
             />
-          </>
-        )}
-        {pages.length > 1 && (
-          <details className="tool-advanced">
-            <summary>拆分导出</summary>
-            <div className="split-row">
-              <label className="split-field">
-                拆分方式
-                <Select
-                  value={splitMode}
-                  disabled={busy || !selected}
-                  onValueChange={(value) => {
-                    setSplitMode(value as typeof splitMode)
-                    clearSplitOutput()
-                  }}
-                >
-                  <SelectTrigger aria-label="拆分方式">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="each">每页一个文件</SelectItem>
-                    <SelectItem value="every">每 N 页一个文件</SelectItem>
-                    <SelectItem value="ranges">按页码段</SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
-              {splitMode === 'every' && (
-                <label className="split-field">
-                  每份页数
-                  <input
-                    className="page-range"
-                    aria-label="每份页数"
-                    disabled={busy || !selected}
-                    value={splitSize}
-                    onChange={(event) => {
-                      setSplitSize(event.target.value)
-                      clearSplitOutput()
-                    }}
-                  />
-                </label>
-              )}
-              {splitMode === 'ranges' && (
-                <label className="split-field">
-                  页码段（按当前排序，每页恰属一段）
-                  <input
-                    className="page-range"
-                    aria-label="拆分页码段"
-                    disabled={busy || !selected}
-                    placeholder="如 1-3,4-6"
-                    value={splitRanges}
-                    onChange={(event) => {
-                      setSplitRanges(event.target.value)
-                      clearSplitOutput()
-                    }}
-                  />
-                </label>
-              )}
-              <Button variant="outline" disabled={busy || !selected} onClick={splitExport}>
-                拆分导出 ({selected} 页)
-              </Button>
-              {splitOutput && <OutputActions outputs={[splitOutput.output]} disabled={busy} />}
-              {splitOutput && (
-                <Button variant="outline" asChild>
-                  <a href={splitOutput.url} download={splitOutput.name}>
-                    <ArrowDownToLine size={14} />
-                    下载 {splitOutput.name}（{splitOutput.parts} 份）
-                  </a>
-                </Button>
-              )}
+          </div>
+          {pages.length > 1 && (
+            <div className="tool-aside-card">
+              <details className="tool-advanced">
+                <summary>拆分导出</summary>
+                <div className="split-row">
+                  <label className="split-field">
+                    拆分方式
+                    <Select
+                      value={splitMode}
+                      disabled={busy || !selected}
+                      onValueChange={(value) => {
+                        setSplitMode(value as typeof splitMode)
+                        clearSplitOutput()
+                      }}
+                    >
+                      <SelectTrigger aria-label="拆分方式">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="each">每页一个文件</SelectItem>
+                        <SelectItem value="every">每 N 页一个文件</SelectItem>
+                        <SelectItem value="ranges">按页码段</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  {splitMode === 'every' && (
+                    <label className="split-field">
+                      每份页数
+                      <input
+                        className="page-range"
+                        aria-label="每份页数"
+                        disabled={busy || !selected}
+                        value={splitSize}
+                        onChange={(event) => {
+                          setSplitSize(event.target.value)
+                          clearSplitOutput()
+                        }}
+                      />
+                    </label>
+                  )}
+                  {splitMode === 'ranges' && (
+                    <label className="split-field">
+                      页码段（按当前排序，每页恰属一段）
+                      <input
+                        className="page-range"
+                        aria-label="拆分页码段"
+                        disabled={busy || !selected}
+                        placeholder="如 1-3,4-6"
+                        value={splitRanges}
+                        onChange={(event) => {
+                          setSplitRanges(event.target.value)
+                          clearSplitOutput()
+                        }}
+                      />
+                    </label>
+                  )}
+                  <Button variant="outline" disabled={busy || !selected} onClick={splitExport}>
+                    拆分导出 ({selected} 页)
+                  </Button>
+                  {splitOutput && <OutputActions outputs={[splitOutput.output]} disabled={busy} />}
+                  {splitOutput && (
+                    <Button variant="outline" asChild>
+                      <a href={splitOutput.url} download={splitOutput.name}>
+                        <ArrowDownToLine size={14} />
+                        下载 {splitOutput.name}（{splitOutput.parts} 份）
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </details>
             </div>
-          </details>
-        )}
-        <details className="tool-advanced pdf-compress-settings">
-          <summary>PDF 结构压缩</summary>
-          <p className="conversion-note">
-            压缩文档数据流和内部结构，保留文字与图片分辨率，不转成图片。已经压缩的照片或扫描件可能无法继续缩小，未减小时保留输入内容。只压缩当前所选页；未改动的单文件保留其完整结构。
-          </p>
-          <Button
-            variant="outline"
-            disabled={busy || !selected || result?.compressed}
-            onClick={() => void exportPdf(true)}
-          >
-            压缩并导出所选
-          </Button>
-        </details>
-        {result?.info && (
-          <p className="tool-status" role="status">
-            {result.info}
-          </p>
-        )}
-        <div className="conversion-actions">
-          <Button
-            variant="ghost"
-            disabled={busy || (!pages.length && !lockedFiles.length && !unlockResult)}
-            onClick={() => {
-              commit([])
-              setRange('')
-              setLockedFiles([])
-              setPassword('')
-              setUnlockError('')
-              if (unlockResult) {
-                URL.revokeObjectURL(unlockResult.url)
-                urls.current.delete(unlockResult.url)
-                setUnlockResult(null)
-              }
-            }}
-          >
-            <Trash2 size={14} />
-            清空
-          </Button>
-          <div>
-            {result && (
+          )}
+          <div className="tool-aside-card">
+            <details className="tool-advanced pdf-compress-settings">
+              <summary>PDF 结构压缩</summary>
+              <p className="conversion-note">
+                压缩文档数据流和内部结构，保留文字与图片分辨率，不转成图片。已经压缩的照片或扫描件可能无法继续缩小，未减小时保留输入内容。只压缩当前所选页；未改动的单文件保留其完整结构。
+              </p>
               <Button
                 variant="outline"
-                disabled={busy}
-                onClick={(event) => {
-                  previewTrigger.current = event.currentTarget
-                  void previewOutput()
-                }}
+                disabled={busy || !selected || result?.compressed}
+                onClick={() => void exportPdf(true)}
               >
-                预览导出 PDF
+                压缩并导出所选
               </Button>
-            )}
-            {result && <OutputActions outputs={[result]} disabled={busy} />}
-            {result && (
-              <Button variant="outline" asChild>
-                <a href={result.url} download={result.name}>
-                  <ArrowDownToLine size={14} />
-                  下载 PDF
-                </a>
-              </Button>
-            )}
-            <Button
-              disabled={busy || !selected || (!!result && !result.compressed)}
-              onClick={() => void exportPdf()}
-            >
-              {busy ? (
-                <LoaderCircle className="animate-spin" size={14} />
-              ) : (
-                <ArrowDownToLine size={14} />
-              )}
-              {busy ? '正在处理' : `导出所选${selected ? ` (${selected} 页)` : ''}`}
-            </Button>
+            </details>
           </div>
-        </div>
-      </section>
+          <div className="tool-aside-card">
+            <details className="tool-advanced">
+              <summary>使用说明与限制</summary>
+              <p className="conversion-note">
+                最多 10 个输入文件，单个 20 MB，总计 50 MB / 原文与当前列表各不超过 100
+                页，导出不超过 100 MB。空白页不占文件名额。
+                整理保留页面图文和尺寸，书签不保留；已知密码可先解密，原样解密副本单独下载。表单与数字签名文件仍不支持。
+                图片按 A4 完整显示、144 DPI 上限和 JPG 编码插入，透明区填白；HEIC 只取主图，HDR /
+                元数据不保留。
+              </p>
+            </details>
+          </div>
+        </aside>
+      </div>
       {active && exportPreview && (
         <PdfPreview
           document={exportPreview.document}

@@ -5169,50 +5169,22 @@ html:has(.app-shell .workbench-actions) {
 
 /* ---------- 四工具选项侧栏化（设置面板 JSX 搬入 tool-aside，此处仅做右栏窄卡适配） ---------- */
 @media (min-width: 1024px) {
-  .compare-tool,
-  .table-tool {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 12px 20px;
-    align-items: start;
+  /* compare/table 的设置节自带描边卡外壳；右栏由 tool-aside-card 统一承担边框，内层放平 */
+  .tool-aside .compare-options {
+    margin-top: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
   }
-  /* 头部横跨双列，选项块落到下一行与主栏内容顶对齐（对齐设计源：aside 在 header 之下） */
-  .rename-tool > header.intro,
-  .compare-tool > header.intro,
-  .table-tool > header.intro {
-    grid-column: 1 / -1;
-    grid-row: 1;
+  /* 卡内首个子级为折叠块时去掉其上外边距（与 FileTool 卡内 details 先例一致） */
+  .tool-aside-card > details.tool-advanced:first-child {
+    margin-top: 0;
   }
-  .compare-tool > details.tool-advanced,
-  .table-tool > details.tool-advanced {
-    grid-column: 2;
-    align-self: start;
-  }
-  .rename-tool .conversion-panel {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 12px 20px;
-    align-items: start;
-  }
-  .rename-tool .conversion-panel > details.tool-advanced {
-    grid-column: 2;
-    align-self: start;
-  }
-  .rename-tool .conversion-panel > *:not(details.tool-advanced) {
-    grid-column: 1;
-  }
-  .pdf-tool .conversion-panel {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 12px 20px;
-    align-items: start;
-  }
-  .pdf-tool .conversion-panel > details.tool-advanced {
-    grid-column: 2;
-    align-self: start;
-  }
-  .pdf-tool .conversion-panel > *:not(details.tool-advanced) {
-    grid-column: 1;
+  /* rename 规则字段组三列为主栏设计，右栏窄卡内改单列 */
+  .tool-aside .rename-rules {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
   }
 }
 

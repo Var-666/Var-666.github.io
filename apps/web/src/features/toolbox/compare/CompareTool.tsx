@@ -378,315 +378,328 @@ export default function CompareTool({ active }: { active: boolean }) {
         }}
       />
       <ToolHead toolId="table" title="表格对比" />
-      <details className="tool-advanced">
-        <summary>使用说明与限制</summary>
-        <p className="compare-note">
-          导入旧表与新表（CSV 或
-          .xlsx），选择主键列后按主键匹配记录：列出新增、删除与修改（逐列前后对照）。
-          重复主键按首次出现参与匹配并显式提示，主键为空的行不参与匹配；不自动猜测主键。 CSV 单个 2
-          MB、XLSX 单个 10 MB、单表最多 10 万行/100 万格；按显示值比较，不比较公式或样式。
-        </p>
-      </details>
-      <div className="compare-grid">
-        {sidePanel('left', left)}
-        <ArrowRightLeft className="compare-swap-icon" size={18} aria-hidden="true" />
-        {sidePanel('right', right)}
-      </div>
-      {left.matrix && right.matrix && (
-        <section className="compare-options" aria-label="对比选项">
-          <label>
-            主键列
-            <Select value={effectiveKey} onValueChange={setKeyColumn}>
-              <SelectTrigger aria-label="主键列">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {commons.map((column) => (
-                  <SelectItem key={column} value={column}>
-                    {column}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
-          <label className="compare-switch">
-            <Switch
-              aria-label="使用组合主键"
-              checked={compositeOn}
-              disabled={busy}
-              onCheckedChange={setCompositeOn}
-            />
-            使用组合主键
-          </label>
-          {compositeOn && (
-            <div className="compare-columns">
-              <span>追加主键字段（任一字段为空的行不匹配）：</span>
-              {commons
-                .filter((column) => column !== effectiveKey)
-                .map((column) => (
-                  <label key={column} className="compare-column-chip">
-                    <input
-                      type="checkbox"
-                      aria-label={`主键字段 ${column}`}
-                      checked={extraKeys.includes(column)}
-                      disabled={busy}
-                      onChange={() =>
-                        setExtraKeys((previous) =>
-                          previous.includes(column)
-                            ? previous.filter((key) => key !== column)
-                            : [...previous, column],
-                        )
-                      }
-                    />
-                    {column}
-                  </label>
-                ))}
-            </div>
-          )}
-          <details className="tool-advanced">
-            <summary>比较范围与空格规则</summary>
-            <label className="compare-switch">
-              <Switch
-                aria-label="空格规范化"
-                checked={normalizeSpaces}
-                onCheckedChange={(value) => {
-                  setNormalizeSpaces(value)
-                  setOutput(null)
-                }}
-              />
-              空格规范化（仅空白不同的值视为相同）
-            </label>
-            {!!commons.length && (
-              <div className="compare-columns">
-                <span>比较列（取消勾选的列不参与比较）：</span>
-                {commons
-                  .filter((column) => !keyColumns.includes(column))
-                  .map((column) => {
-                    const ignored = ignoredColumns.includes(column)
-                    return (
-                      <label key={column} className="compare-column-chip">
-                        <input
-                          type="checkbox"
-                          checked={!ignored}
-                          onChange={() => {
-                            setIgnoredColumns((previous) =>
-                              ignored
-                                ? previous.filter((item) => item !== column)
-                                : [...previous, column],
-                            )
-                            setOutput(null)
-                          }}
-                        />
-                        {column}
-                      </label>
-                    )
-                  })}
-              </div>
-            )}
-          </details>
-        </section>
-      )}
-      {reportError && (
-        <p className="compare-error" role="alert">
-          {reportError}
-        </p>
-      )}
-      {validReport && (
-        <section className="compare-result" aria-label="对比结果">
-          <div className="compare-summary">
-            <button
-              className="chip"
-              aria-pressed={filter === 'all'}
-              onClick={() => setFilter('all')}
-            >
-              全部差异
-            </button>
-            <button
-              className="chip chip-add"
-              aria-pressed={filter === 'added'}
-              onClick={() => setFilter('added')}
-            >
-              新增 {validReport.added.length}
-            </button>
-            <button
-              className="chip chip-del"
-              aria-pressed={filter === 'removed'}
-              onClick={() => setFilter('removed')}
-            >
-              删除 {validReport.removed.length}
-            </button>
-            <button
-              className="chip chip-mod"
-              aria-pressed={filter === 'changed'}
-              onClick={() => setFilter('changed')}
-            >
-              修改 {validReport.changed.length}
-            </button>
-            <button
-              className="chip"
-              aria-pressed={filter === 'unchanged'}
-              onClick={() => setFilter('unchanged')}
-            >
-              未变 {validReport.unchanged}
-            </button>
-            {(validReport.headersOnlyLeft.length > 0 ||
-              validReport.headersOnlyRight.length > 0) && (
-              <span className="compare-warn" role="status">
-                结构差异：仅旧表有 [{validReport.headersOnlyLeft.join('、')}]，仅新表有 [
-                {validReport.headersOnlyRight.join('、')}]
-              </span>
-            )}
-            {validReport.duplicateKeys.length > 0 && (
-              <span className="compare-warn" role="status">
-                重复主键（按首次出现匹配）：
-                {validReport.duplicateKeys
-                  .map(
-                    (item) =>
-                      `${item.side === 'left' ? '旧' : '新'}表「${item.key}」×${item.count}`,
-                  )
-                  .join('；')}
-              </span>
-            )}
-            {validReport.missingKeys.left + validReport.missingKeys.right > 0 && (
-              <span className="compare-warn" role="status">
-                主键为空：旧表 {validReport.missingKeys.left} 行、新表{' '}
-                {validReport.missingKeys.right} 行，未参与匹配
-              </span>
-            )}
+      <div className="tool-body">
+        <div className="tool-main">
+          <div className="compare-grid">
+            {sidePanel('left', left)}
+            <ArrowRightLeft className="compare-swap-icon" size={18} aria-hidden="true" />
+            {sidePanel('right', right)}
           </div>
-          {diffCount === 0 && filter !== 'unchanged' && (
-            <p className="compare-same">两表按当前设置没有差异。</p>
+          {reportError && (
+            <p className="compare-error" role="alert">
+              {reportError}
+            </p>
           )}
-          {(
-            [
-              {
-                type: 'added',
-                title: `新增记录（${validReport.added.length}）`,
-                rows: validReport.added,
-                matrix: right.matrix!,
-              },
-              {
-                type: 'removed',
-                title: `删除记录（${validReport.removed.length}）`,
-                rows: validReport.removed,
-                matrix: left.matrix!,
-              },
-              {
-                type: 'unchanged',
-                title: `未变记录（${validReport.unchanged}）`,
-                rows: validReport.unchangedRows,
-                matrix: left.matrix!,
-              },
-            ] as const
-          )
-            .filter((block) =>
-              filter === 'all' ? block.type !== 'unchanged' : block.type === filter,
-            )
-            .map((block) =>
-              block.rows.length ? (
-                <div key={block.type} className="compare-block">
-                  <h3>{block.title}</h3>
-                  <div className="table-preview-scroll">
-                    <table className="table-preview" aria-label={block.title}>
-                      <thead>
-                        <tr>
-                          {block.matrix.headers.map((header) => (
-                            <th key={header}>{header}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {block.rows.slice(0, previewLimit).map((entry) => (
-                          <tr key={entry.key}>
-                            {block.matrix.headers.map((header, index) => (
-                              <td key={header}>
-                                {keyColumns.includes(header) ? (
-                                  <span className="compare-key">
-                                    {clip(entry.row[index] ?? '')}
-                                  </span>
-                                ) : (
-                                  clip(entry.row[index] ?? '')
-                                )}
-                              </td>
+          {validReport && (
+            <section className="compare-result" aria-label="对比结果">
+              <div className="compare-summary">
+                <button
+                  className="chip"
+                  aria-pressed={filter === 'all'}
+                  onClick={() => setFilter('all')}
+                >
+                  全部差异
+                </button>
+                <button
+                  className="chip chip-add"
+                  aria-pressed={filter === 'added'}
+                  onClick={() => setFilter('added')}
+                >
+                  新增 {validReport.added.length}
+                </button>
+                <button
+                  className="chip chip-del"
+                  aria-pressed={filter === 'removed'}
+                  onClick={() => setFilter('removed')}
+                >
+                  删除 {validReport.removed.length}
+                </button>
+                <button
+                  className="chip chip-mod"
+                  aria-pressed={filter === 'changed'}
+                  onClick={() => setFilter('changed')}
+                >
+                  修改 {validReport.changed.length}
+                </button>
+                <button
+                  className="chip"
+                  aria-pressed={filter === 'unchanged'}
+                  onClick={() => setFilter('unchanged')}
+                >
+                  未变 {validReport.unchanged}
+                </button>
+                {(validReport.headersOnlyLeft.length > 0 ||
+                  validReport.headersOnlyRight.length > 0) && (
+                  <span className="compare-warn" role="status">
+                    结构差异：仅旧表有 [{validReport.headersOnlyLeft.join('、')}]，仅新表有 [
+                    {validReport.headersOnlyRight.join('、')}]
+                  </span>
+                )}
+                {validReport.duplicateKeys.length > 0 && (
+                  <span className="compare-warn" role="status">
+                    重复主键（按首次出现匹配）：
+                    {validReport.duplicateKeys
+                      .map(
+                        (item) =>
+                          `${item.side === 'left' ? '旧' : '新'}表「${item.key}」×${item.count}`,
+                      )
+                      .join('；')}
+                  </span>
+                )}
+                {validReport.missingKeys.left + validReport.missingKeys.right > 0 && (
+                  <span className="compare-warn" role="status">
+                    主键为空：旧表 {validReport.missingKeys.left} 行、新表{' '}
+                    {validReport.missingKeys.right} 行，未参与匹配
+                  </span>
+                )}
+              </div>
+              {diffCount === 0 && filter !== 'unchanged' && (
+                <p className="compare-same">两表按当前设置没有差异。</p>
+              )}
+              {(
+                [
+                  {
+                    type: 'added',
+                    title: `新增记录（${validReport.added.length}）`,
+                    rows: validReport.added,
+                    matrix: right.matrix!,
+                  },
+                  {
+                    type: 'removed',
+                    title: `删除记录（${validReport.removed.length}）`,
+                    rows: validReport.removed,
+                    matrix: left.matrix!,
+                  },
+                  {
+                    type: 'unchanged',
+                    title: `未变记录（${validReport.unchanged}）`,
+                    rows: validReport.unchangedRows,
+                    matrix: left.matrix!,
+                  },
+                ] as const
+              )
+                .filter((block) =>
+                  filter === 'all' ? block.type !== 'unchanged' : block.type === filter,
+                )
+                .map((block) =>
+                  block.rows.length ? (
+                    <div key={block.type} className="compare-block">
+                      <h3>{block.title}</h3>
+                      <div className="table-preview-scroll">
+                        <table className="table-preview" aria-label={block.title}>
+                          <thead>
+                            <tr>
+                              {block.matrix.headers.map((header) => (
+                                <th key={header}>{header}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {block.rows.slice(0, previewLimit).map((entry) => (
+                              <tr key={entry.key}>
+                                {block.matrix.headers.map((header, index) => (
+                                  <td key={header}>
+                                    {keyColumns.includes(header) ? (
+                                      <span className="compare-key">
+                                        {clip(entry.row[index] ?? '')}
+                                      </span>
+                                    ) : (
+                                      clip(entry.row[index] ?? '')
+                                    )}
+                                  </td>
+                                ))}
+                              </tr>
                             ))}
-                          </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      {block.rows.length > previewLimit && (
+                        <p className="compare-more">…共 {block.rows.length} 条，导出查看全部</p>
+                      )}
+                    </div>
+                  ) : null,
+                )}
+              {(filter === 'all' || filter === 'changed') && !!validReport.changed.length && (
+                <div className="compare-block">
+                  <h3>修改记录（{validReport.changed.length}）</h3>
+                  <ul className="compare-changes">
+                    {validReport.changed.slice(0, previewLimit).map((entry) => (
+                      <li key={entry.key}>
+                        <span className="compare-key">{clip(entry.key)}</span>
+                        {entry.cells.map((cell) => (
+                          <span className="compare-change" key={cell.column}>
+                            <b>{cell.column}</b>
+                            <del>{clip(cell.left) || '（空）'}</del>→
+                            <ins>{clip(cell.right) || '（空）'}</ins>
+                          </span>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {block.rows.length > previewLimit && (
-                    <p className="compare-more">…共 {block.rows.length} 条，导出查看全部</p>
+                      </li>
+                    ))}
+                  </ul>
+                  {validReport.changed.length > previewLimit && (
+                    <p className="compare-more">
+                      …共 {validReport.changed.length} 条，导出查看全部
+                    </p>
                   )}
                 </div>
-              ) : null,
-            )}
-          {(filter === 'all' || filter === 'changed') && !!validReport.changed.length && (
-            <div className="compare-block">
-              <h3>修改记录（{validReport.changed.length}）</h3>
-              <ul className="compare-changes">
-                {validReport.changed.slice(0, previewLimit).map((entry) => (
-                  <li key={entry.key}>
-                    <span className="compare-key">{clip(entry.key)}</span>
-                    {entry.cells.map((cell) => (
-                      <span className="compare-change" key={cell.column}>
-                        <b>{cell.column}</b>
-                        <del>{clip(cell.left) || '（空）'}</del>→
-                        <ins>{clip(cell.right) || '（空）'}</ins>
-                      </span>
-                    ))}
-                  </li>
-                ))}
-              </ul>
-              {validReport.changed.length > previewLimit && (
-                <p className="compare-more">…共 {validReport.changed.length} 条，导出查看全部</p>
               )}
-            </div>
-          )}
-          {filter !== 'all' &&
-            ((filter === 'added' && !validReport.added.length) ||
-              (filter === 'removed' && !validReport.removed.length) ||
-              (filter === 'changed' && !validReport.changed.length) ||
-              (filter === 'unchanged' && !validReport.unchanged)) && (
-              <p className="compare-same">当前类型没有记录。</p>
-            )}
-          <p className="compare-more">
-            每类预览前 50 行，长单元格显示前 160 字；导出包含全部差异，筛选不影响下载。XLSX
-            用红色标出删除/旧值，绿色标出新增/新值。
-          </p>
-          {diffCount > 0 && (
-            <div className="compare-export">
-              <Button
-                size="sm"
-                disabled={busy || !diffCount}
-                onClick={() => void exportFile('xlsx')}
-              >
-                {busy ? (
-                  <LoaderCircle className="animate-spin" size={14} />
-                ) : (
-                  <FileSpreadsheet size={14} />
+              {filter !== 'all' &&
+                ((filter === 'added' && !validReport.added.length) ||
+                  (filter === 'removed' && !validReport.removed.length) ||
+                  (filter === 'changed' && !validReport.changed.length) ||
+                  (filter === 'unchanged' && !validReport.unchanged)) && (
+                  <p className="compare-same">当前类型没有记录。</p>
                 )}
-                导出 XLSX（新增 / 删除 / 修改三个工作表）
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy || !diffCount}
-                onClick={() => void exportFile('csv')}
-              >
-                导出 CSV（ZIP 三个文件）
-              </Button>
-              {output && <OutputActions outputs={[output]} disabled={busy} />}
-              {output && (
-                <Button size="sm" variant="outline" asChild>
-                  <a href={output.url} download={output.name}>
-                    下载 {output.name}
-                  </a>
-                </Button>
+              <p className="compare-more">
+                每类预览前 50 行，长单元格显示前 160 字；导出包含全部差异，筛选不影响下载。XLSX
+                用红色标出删除/旧值，绿色标出新增/新值。
+              </p>
+              {diffCount > 0 && (
+                <div className="compare-export">
+                  <Button
+                    size="sm"
+                    disabled={busy || !diffCount}
+                    onClick={() => void exportFile('xlsx')}
+                  >
+                    {busy ? (
+                      <LoaderCircle className="animate-spin" size={14} />
+                    ) : (
+                      <FileSpreadsheet size={14} />
+                    )}
+                    导出 XLSX（新增 / 删除 / 修改三个工作表）
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || !diffCount}
+                    onClick={() => void exportFile('csv')}
+                  >
+                    导出 CSV（ZIP 三个文件）
+                  </Button>
+                  {output && <OutputActions outputs={[output]} disabled={busy} />}
+                  {output && (
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={output.url} download={output.name}>
+                        下载 {output.name}
+                      </a>
+                    </Button>
+                  )}
+                </div>
               )}
+            </section>
+          )}
+        </div>
+        <aside className="tool-aside">
+          {left.matrix && right.matrix && (
+            <div className="tool-aside-card">
+              <section className="compare-options" aria-label="对比选项">
+                <label>
+                  主键列
+                  <Select value={effectiveKey} onValueChange={setKeyColumn}>
+                    <SelectTrigger aria-label="主键列">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {commons.map((column) => (
+                        <SelectItem key={column} value={column}>
+                          {column}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label className="compare-switch">
+                  <Switch
+                    aria-label="使用组合主键"
+                    checked={compositeOn}
+                    disabled={busy}
+                    onCheckedChange={setCompositeOn}
+                  />
+                  使用组合主键
+                </label>
+                {compositeOn && (
+                  <div className="compare-columns">
+                    <span>追加主键字段（任一字段为空的行不匹配）：</span>
+                    {commons
+                      .filter((column) => column !== effectiveKey)
+                      .map((column) => (
+                        <label key={column} className="compare-column-chip">
+                          <input
+                            type="checkbox"
+                            aria-label={`主键字段 ${column}`}
+                            checked={extraKeys.includes(column)}
+                            disabled={busy}
+                            onChange={() =>
+                              setExtraKeys((previous) =>
+                                previous.includes(column)
+                                  ? previous.filter((key) => key !== column)
+                                  : [...previous, column],
+                              )
+                            }
+                          />
+                          {column}
+                        </label>
+                      ))}
+                  </div>
+                )}
+                <details className="tool-advanced">
+                  <summary>比较范围与空格规则</summary>
+                  <label className="compare-switch">
+                    <Switch
+                      aria-label="空格规范化"
+                      checked={normalizeSpaces}
+                      onCheckedChange={(value) => {
+                        setNormalizeSpaces(value)
+                        setOutput(null)
+                      }}
+                    />
+                    空格规范化（仅空白不同的值视为相同）
+                  </label>
+                  {!!commons.length && (
+                    <div className="compare-columns">
+                      <span>比较列（取消勾选的列不参与比较）：</span>
+                      {commons
+                        .filter((column) => !keyColumns.includes(column))
+                        .map((column) => {
+                          const ignored = ignoredColumns.includes(column)
+                          return (
+                            <label key={column} className="compare-column-chip">
+                              <input
+                                type="checkbox"
+                                checked={!ignored}
+                                onChange={() => {
+                                  setIgnoredColumns((previous) =>
+                                    ignored
+                                      ? previous.filter((item) => item !== column)
+                                      : [...previous, column],
+                                  )
+                                  setOutput(null)
+                                }}
+                              />
+                              {column}
+                            </label>
+                          )
+                        })}
+                    </div>
+                  )}
+                </details>
+              </section>
             </div>
           )}
-        </section>
-      )}
+          <div className="tool-aside-card">
+            <details className="tool-advanced">
+              <summary>使用说明与限制</summary>
+              <p className="compare-note">
+                导入旧表与新表（CSV 或
+                .xlsx），选择主键列后按主键匹配记录：列出新增、删除与修改（逐列前后对照）。
+                重复主键按首次出现参与匹配并显式提示，主键为空的行不参与匹配；不自动猜测主键。 CSV
+                单个 2 MB、XLSX 单个 10 MB、单表最多 10 万行/100
+                万格；按显示值比较，不比较公式或样式。
+              </p>
+            </details>
+          </div>
+        </aside>
+      </div>
     </main>
   )
 }
