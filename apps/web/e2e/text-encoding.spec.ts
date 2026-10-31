@@ -45,7 +45,7 @@ test('TXT/MD 自动识别 GBK，强制 UTF-8 失败不覆盖正文，切回后�
     '# 中文\n\n**测试**',
   )
   await chooseEncoding(page, '读取编码', '自动识别')
-  await page.getByRole('button', { name: 'MD 转纯文本', exact: true }).click()
+  await page.getByRole('button', { name: 'Markdown 转纯文本', exact: true }).click()
   await expect(page.getByRole('textbox', { name: '整理结果', exact: true })).toHaveValue(
     '中文\n\n测试',
   )

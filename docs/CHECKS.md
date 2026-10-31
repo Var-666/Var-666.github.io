@@ -574,3 +574,84 @@ TextTool「更多操作」第四区块：一次导入多份 TXT/MD，统一应�
 - **真实交互全流程驱动**（Playwright 逐步断言）：拖入缩放生效、功能详解锚点定位 64px、分段切换换面板、切换器跨工具导航、浏览器后退回 #/text、主题切换跨页面持久、文本整理实际输出正确、首页导入文件弹出任务面板、1920px 宽屏布局居中。
 - Prettier 全仓格式化通过（顺带修正 history 里 navigation.spec 的既有格式偏差，纯空白差异）。
 - 本轮验证：Chromium 全量 e2e 185/185；WebKit + Firefox 专项 25/25；format:check 通过。
+
+### 2026-10-31 补充七：工具页骨架复刻（应用户反馈「工具页面和重设计版不一样」）
+
+- **六个工具页头部全部复刻**：新增共享组件 `components/ToolHead.tsx`（渐变识别图标 64px + 标题 + 重设计版 tagline，标题可按模式覆盖以保住「表格批量处理/表格对比」测试锚点），替换全部 `<h1>` 旧头部；TextTool 的使用指南/示例按钮保留在头部右侧。
+- **说明与限制折叠统一复刻重设计版 Collapsible**：`details.tool-advanced` 全部改为 18px 圆角描边盒 + 标题行 + CSS 箭头（此前各工具为朴素的 details/summary）。
+- **TextTool 作为骨架样板**：预设区与整理规则栏移入右侧 340px 粘性设置栏（「场景」「整理规则」两张圆角卡，开关行按重设计版右置开关 + 分隔线样式，全部设置附快捷键提示），主栏为编辑器卡；「复制结果」操作栏改粘性毛玻璃底栏；宽屏 `lg:1fr/340px` 网格、窄屏设置栏排在编辑器之后（与重设计版一致）。懒加载导入位置不变。
+- 其余五个工具的内部布局保持单栏（其设置以 Collapsible 盒呈现），侧栏化留待下一轮；工具功能（差异高亮、批量操作、EXIF、qpdf 等）全部保留。
+- 修正两个批量替换引入的语法损伤（TableTool/RenameTool 的多行 import 内插入），typecheck/lint 恢复后进入验证。
+- 本轮验证：TypeScript、ESLint、Prettier、223 单测、生产构建通过；Chromium 全量 e2e 185/185；WebKit + Firefox 专项 46/46；文本/PDF/表格页截图对照重设计版头部、侧栏卡与 Collapsible 一致。
+
+### 2026-10-31 补充八：子智能体审查修复（代码审查 + 设计源码对照，两项并行）
+
+派 code-reviewer 与 architect 两个子智能体对未提交骨架改动做独立审查（含本机实测验证），确认 JSX 嵌套、hooks/refs 作用域、aria 属性、六工具 h1 锚点、aside 粘性、CSS 变量作用域均无问题；抓出并修复：
+
+- **P1 粘性底栏失效**：`.workbench` 的 `overflow: hidden` 使其成为 sticky 的滚动容器，底栏从不吸附（审查者实测滚动 300px 底栏随内容走）。改 `overflow: clip`（保留圆角裁剪，不再产生滚动容器），实测恢复吸附。
+- **P1 折叠盒键盘焦点环不可见**：`details.tool-advanced` 的 `overflow: hidden` 把 summary 的 3px 外置 focus-visible 环整体裁掉（WCAG 2.4.7 回归，axe 不覆盖）。加 `summary:focus-visible { outline-offset: -5px }` 内缩环。
+- **P2 表格批量处理页 tagline 错位**：显示对比模式的「两张表，差异一眼看清。」。ToolHead 增加 tagline 覆盖参数，批量处理页改「多份表格，一次处理到位。」。
+- **重复渲染 bug**（随骨架移动暴露的历史问题）：markdown 预设下「首尾空格」开关渲染两次，删除第二个三元的多余分支。
+- **补回设计源码的防误用提示**：PDF 断行修复选标准模式时，aside 显示橙色警告（重设计版 TextTool 有同款 Notice，移植时遗漏）。
+- 设计对齐小修：ToolHead 改 `<header>` 语义、图标 strokeWidth 1.75、h1 line-height 1.25、tagline margin 2px。
+- 审查确认的合理偏离（不修）：shadcn Switch/Select 替代自研 Toggle/Segmented、preset 卡带图标、全部设置弹窗/用户预设/差异高亮等功能超出；遗留差距：五工具头部右侧动作区空置与其内部设置侧栏化（下一轮）、details 无展开动画（登记为已知差距）。
+- 本轮验证：TypeScript、ESLint、Prettier、223 单测、构建通过；Chromium 全量 e2e 185/185（一次 dark 首页 axe 偶发失败，复跑通过）；WebKit + Firefox 专项 46/46。
+
+### 2026-10-31 补充九：自检发现底栏方案升级为固定通栏
+
+对用户正在查看的文本整理页做实机行为检查（五项：粘性吸附、侧栏粘性、markdown 重复开关、标准模式警告、残条清理——后四项通过）。发现：
+
+- 此前的 sticky 方案有覆盖盲区：底栏只在编辑器卡经过视口时吸附，手机上滚到侧栏/更多操作区域即消失（sticky 受限于所在卡片），与重设计版 `position: fixed` 的「全程常驻」不一致。前两轮的「吸附实测通过」只覆盖了卡片在视口内的场景，是测试方法盲区。
+- 按设计源码改为 `position: fixed; inset-inline: 0; bottom: 0` 通栏玻璃底栏（min-height 64px、内容对齐 1280 容器）；`overflow: clip` 不圈禁 fixed 元素，DOM 无需移出卡片；`:has()` 作用域给页脚与主栏让出底部空间。实测桌面滚动 800px 与 390px 手机滚动 1500px 底栏均恒定钉在视口底部（top 恒为视口高 − 64），390px 无横向溢出。
+- 排查记录：一次「手机底栏消失」为检查脚本判断条件误报（780 = 844 − 64 恰为钉住位置）。
+- 本轮验证：Prettier、TypeScript、223 单测、构建通过；Chromium 全量 e2e 185/185。
+
+### 2026-10-31 补充十：同屏对照抹平与偶发失败排查
+
+- 将重设计版源码真正跑起来（pnpm install + vite），与我们同视口（1440×950）截图逐区对照文本整理页。结论：头部/工具条/侧栏/底栏骨架一致；可见差距五处。当场抹平两处：①头部右侧改为「使用指南 + 说明与限制」折叠（新 tool-limits-toggle/panel 样式，面板含隐私文案与 limits 胶囊，重设计版同款），删除与其重复的「试试示例文本」按钮（面板内已有等价链接，无 e2e 依赖）；②场景卡胶囊化（chips 形态、选中反色，隐藏图标/勾选列）。
+- 顺带修复：markdown 预设「首尾空格」重复渲染（随骨架移动暴露的历史问题）；PDF 断行标准模式警告缺失（对齐设计源码 Notice）。
+- tool-intake.spec.ts:86 偶发失败排查：同代码复跑一次失败一次通过（flaky）；手工驱动全流程正常；基线对照通过；清场（关闭对照用 vite 服务）后连续两轮全量 185/185。归因为本机多服务并发负载放大既有竞态，非本次改动回归。该测试对时序敏感的问题登记为已知事项。
+- 验证：Prettier、TypeScript、ESLint、223 单测、构建通过；Chromium 全量 e2e 连续两轮 185/185。
+
+### 2026-10-31 补充十一：底栏组成对齐设计源码 + 320px 偶发根因修复
+
+- **底栏组成对齐重设计版 TextTool**：状态区（字符 X→Y、行 X→Y、调整 N 处，有调整时绿色）移入底栏左侧，动作区为「撤销上次替换或清空 / 下载 TXT 文件 / 复制结果」（后两者自结果面板头部移入，可访问名不变，output-save 断言不受影响）；原文面板工具栏补「示例」按钮（导入/示例/清空，同设计源码）。
+- **320px 无障碍偶发失败根因修复**：`/tools` 毛玻璃导航半透明，滚动时下层内容（蓝色元素）透出，导航链接灰字（旧 --gray #586477）压在混合底色上的对比度随滚动位置漂移（实测 #586477 on #b3d1f0 = 3.79:1）。按设计源码把导航链接文字改为前景色 `--ink`（近黑，任意透出背景均 ≥10:1），连续三轮全量 185/185 验证稳定。
+- 附带加固：audit() 在审计前把指针移出可悬停元素（布局变化后残留 :hover 会污染对比度采样）；`scroll-padding-bottom`/`scroll-margin-bottom` 为固定底栏预留空间；`.workbench-status .is-changed` 用 --success（#30d158 压玻璃浅底仅 1.88:1）。
+- 排查说明：期间 320px 与 tool-intake:86 的失败一度混有两种机制（对比度违规 + 负载敏感点击超时），通过 stash 归因、合并运行、失败快照逐一区分；tool-intake:86 的负载敏感竞态登记为已知事项（静默环境下连续全绿）。
+- 本轮验证：TypeScript、ESLint、Prettier、223 单测、构建通过；Chromium 全量 e2e 连续三轮 185/185。
+
+### 2026-10-31 补充十二：子智能体逐区域像素对照与批量对齐
+
+- 派 code-reviewer 做两版同视口（1440×950 与 390×844）分区截图 + 30 余处 getComputedStyle 实测对照，产出 32 项此前未发现的差异（R1–R8 分区报告，存于会话记录）；随后三个 feature-implementer 并行修复（文件互不重叠：styles.css / TextTool.tsx+text.ts / App.tsx）。
+- 已对齐：编辑器卡 24px 圆角去边框、等宽 14px/1.75/20px 内边距（diff 覆盖层同步）、≥1024px 编辑区 520px 高、结果区 raise 底 + 绿点/标签、空状态 13px、aside 卡 24px 内边距、规则行 14px 墨色、开关绿色 #30d158 38×22/18、警示条 14px 圆角、底栏状态数值加粗 tabular +「行数」、撤销/下载按钮补文字、复制结果 37px/14px/#0071e3、mobile-tabs 13px chip 底、更多操作条 24px 卡片化并移入主栏（含移动端堆叠顺序）、面包屑「工具箱 ›」+ ChevronRight、「MD 转纯文本」→「Markdown 转纯文本」、水平内边距 20px。
+- 集成期发现并修复四层连锁问题：①窄屏底栏 static 后按钮行最小内容宽 302px 撑破 320px 视口（改纵向堆叠 + 按钮行换行）；②「实时预览」绿标签 #30d158/#15803d 在浅/深底上均不达 AA（浅 #15803d、深 var(--tb-green)）；③「调整 N 处」#30d158 浅色 1.88:1（浅 #166534、深 tb-green）；④断言同步（text-encoding.spec 预设新标题）。
+- 已知残留：底部栏主按钮浅色 #0071e3 vs 设计源相同（--primary #0066cc 为对比度折衷，仅按钮用 --tb-blue）；「使用指南」按钮为设计源没有的实现功能；空状态卡片与 diff 覆盖层为实现增强；站点级 brand 徽标与导航 pill 形态（影响首页，单独评估）。
+- 本轮验证：各子任务 typecheck 通过；集成后 Prettier、223 单测、构建通过；Chromium 全量 e2e 连续两轮 185/185。
+
+### 补充十二更正：tool-intake:86 偶发为既有竞态（基线复现证实）
+
+对 tool-intake.spec.ts:86 的偶发失败做了严格 bisect（stash 后**重新构建**再测，修正此前未重建的无效对照）：在不含本批改动的基线（2184a05）上同样复现失败（3 跑 1 挂），与本批改动下的失败率（5 跑 2 挂）统计上无差异。结论：该用例的「继续处理 → 二次任务对话框未弹出」竞态为**已提交代码中的既有 flaky**，与本次视觉移植无关；手工驱动同流程正常，随机数种子/时序敏感。已登记为独立问题，建议后续单独会话用 trace 定位。本批改动洗清嫌疑。
+
+### 补充十三：全工具箱表单控件字号统一（应用户指出的「不合格下拉框还有很多」）
+
+- 实测枚举五个工具全部 combobox/select/tool-input：Select 触发器与输入框普遍被压成 12px（36px 高的框配 11-12px 小字），源自 `.tool-input { font: inherit }` 继承容器字号及既有小字规则。
+- 修复：`.app-shell [role='combobox'], .app-shell .tool-input { font-size: 14px }`（对齐 TextInput/设计源 text-sm）。
+- 复检：五个路由可见控件字号全部 ≥13px，清零；Prettier/构建通过；Chromium 全量 e2e 185/185。
+
+### 补充十四：按钮字号基线统一
+
+应用户「其他页也有很多」反馈，全面扫描五工具 + 弹窗的全部按钮：工具栏/模式/操作按钮普遍 12px、文本工具面板按钮 11px。零散规则（conversion-modes/conversion-actions/dialog-footer/editor-tools 等）追不全，改为**基线 + 白名单**：`.app-shell button { font-size: 14px }`（对齐设计语言 text-sm），刻意小巧的胶囊/辅助类（场景胶囊、任务胶囊、分段器、统计按钮、修改明细、面板工具栏、头部辅助、text-link）白名单 13px；弹窗（portal 于 .app-shell 外）单独 `[role=dialog] button` 14px。复检五路由可见控件 ≥13px 清零（theme-toggle/offline-status 等图标与页脚辅助字号除外）。Chromium 全量 e2e 185/185。
+
+残留补刀：FileTool 模式 tabs（role=tab）13.5px、文本空状态按钮 13px；「离线就绪」等页脚辅助字号 12px 为刻意设计保留。最终全量 e2e 185/185。
+
+### 补充十五：FileTool 侧栏化（应用户指出选项面板仍占满整行）
+
+- 文件转换页对齐重设计版布局：`optionControls`（转换设置，随当前模式变化）与 ImageEditOptions（图片模式）从模式面板移入右侧 340px 粘性栏（`tool-body` 网格 1fr/340px，窄屏堆叠在编辑区之后）；主栏保留拖放区、模式 tabs、队列、预览与结果。修复移入时误吞的 `</Tabs>` 闭合。185/185。
+- 待办：table/compare/pdf/rename 四工具同款侧栏化（结构更简单，选项均为单一 details 块）。
+
+### 补充十六：PDF 侧栏化尝试回退
+
+PDF 工具的三个折叠块嵌在条件渲染分支内，盲式行号搬移破坏括号结构，已整体回退该文件并重放 ToolHead 头部（其余工具一致），恢复 185/185。PDF/table/compare/rename 四工具的侧栏化留待下一轮按 FileTool 样板执行（需逐分支校验 JSX 括号平衡）。
+
+验证补充：四工具右栏化实测（rename left=1025 / pdf left=975 / table w=340）+ 全量 e2e 185/185；table/compare 首测 w=0 为懒加载渲染前伪影，复测正常。

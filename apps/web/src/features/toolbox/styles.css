@@ -284,7 +284,7 @@
   background: var(--background);
   border: 1px solid var(--border);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: clip;
   box-shadow: var(--surface-shadow);
   scroll-margin-top: 20px;
 }
@@ -4502,4 +4502,620 @@
 .website-header.is-tb .website-nav a:hover,
 .website-header.is-tb .website-nav a[aria-current='page'] {
   color: var(--tb-link);
+}
+
+/* ---------- 重设计版工具页头部（ToolHead）与说明与限制 ---------- */
+.tool-head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+.tool-head-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  color: #ffffff;
+  flex-shrink: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 8px 20px -8px rgba(0, 0, 0, 0.35);
+}
+.tool-head-copy {
+  min-width: 0;
+}
+.tool-head-copy h1 {
+  margin: 0;
+  font-size: clamp(30px, 3.6vw, 40px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+  color: var(--tb-fg);
+}
+.tool-head-tagline {
+  margin: 2px 0 0;
+  font-size: 17px;
+  color: var(--tb-mute);
+}
+/* 说明与限制折叠统一复刻重设计版 Collapsible：18px 描边盒 + 标题行 + 箭头 */
+details.tool-advanced {
+  margin-top: 14px;
+  border-top: 0;
+  padding: 0;
+  border-radius: 18px;
+  box-shadow: 0 0 0 1px var(--tb-line);
+  background: var(--tb-card);
+  overflow: hidden;
+}
+details.tool-advanced > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tb-fg);
+}
+details.tool-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+details.tool-advanced > summary::after {
+  content: '';
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-right: 1.5px solid var(--tb-mute);
+  border-bottom: 1.5px solid var(--tb-mute);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.3s;
+}
+details.tool-advanced[open] > summary::after {
+  transform: rotate(-135deg) translateY(-1px);
+}
+details.tool-advanced > summary:hover {
+  color: var(--tb-link);
+}
+details.tool-advanced > summary:focus-visible {
+  outline-offset: -5px;
+}
+details.tool-advanced[open] {
+  padding-bottom: 14px;
+}
+details.tool-advanced > :not(summary) {
+  margin-left: 16px;
+  margin-right: 16px;
+}
+
+/* ---------- TextTool 骨架：主栏 + 右侧设置栏（重设计版 ToolShell 布局） ---------- */
+.tool-body {
+  display: grid;
+  gap: 20px;
+}
+@media (min-width: 1024px) {
+  .tool-body {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+  }
+}
+.tool-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .tool-aside {
+    position: sticky;
+    top: calc(var(--website-header-height) + 64px);
+  }
+}
+.tool-aside-card {
+  background: var(--tb-card);
+  border-radius: 24px;
+  padding: 18px 20px;
+  box-shadow: var(--tb-card-shadow);
+}
+.tool-aside-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tb-fg);
+}
+.tool-aside .preset-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.tool-aside .preset-card {
+  padding: 9px 12px;
+}
+.tool-aside .user-presets {
+  margin-top: 8px;
+}
+.tool-aside .rules-bar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  min-height: 0;
+  border-bottom: 0;
+  background: transparent;
+}
+.tool-aside .rule-bar-label {
+  margin-bottom: 6px;
+  border-right: 0;
+  padding-right: 0;
+}
+.tool-aside .rule-bar-label span {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tb-fg);
+}
+.tool-aside .quick-rules {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+.tool-aside .quick-rules label {
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--tb-line);
+}
+.tool-aside .quick-rules label:last-of-type {
+  border-bottom: 0;
+}
+.tool-aside .quick-rules .keep-mark-button {
+  margin: 6px 0;
+}
+.tool-aside .advanced-button {
+  margin-top: 10px;
+  justify-content: space-between;
+}
+.repair-mode-warn {
+  margin: 10px 0 2px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 159, 10, 0.12);
+  color: #8a4a00;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.dark .repair-mode-warn {
+  color: var(--tb-orange);
+}
+/* 复制结果操作栏：重设计版固定通栏玻璃底栏（状态左/动作右，内容对齐 1280 容器） */
+.workbench-actions {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+  padding: 12px max(20px, calc((100% - 1280px) / 2 + 20px));
+  border-top: 1px solid var(--tb-line);
+  background: color-mix(in srgb, var(--tb-bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
+  backdrop-filter: blur(40px) saturate(1.5);
+}
+.workbench-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--tb-mute);
+  font-variant-numeric: tabular-nums;
+}
+.workbench-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+/* 底栏常驻后，页脚与其下内容让出空间；滚动定位预留底栏高度（scrollIntoView 与锚点都生效） */
+.app-shell:has(.workbench-actions) .toolbox-footer {
+  padding-bottom: 88px;
+}
+.app-shell:has(.workbench-actions) .main-content {
+  padding-bottom: 24px;
+}
+.app-shell:has(.workbench-actions) .workbench {
+  scroll-margin-bottom: 88px;
+}
+html:has(.app-shell .workbench-actions) {
+  scroll-padding-bottom: 88px;
+}
+@media (max-width: 640px) {
+  /* 窄屏回退为卡内静态底栏：固定栏会持续遮挡底部交互目标（Playwright 滚动不走 scroll-padding）。
+     纵向堆叠 + 按钮行可换行，否则三个按钮的最小内容宽（约 302px）会撑破 320px 视口。 */
+  .workbench-actions {
+    position: static;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 16px;
+  }
+  .workbench-bar-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .workbench-status {
+    font-size: 12px;
+  }
+}
+
+/* ---------- 头部「说明与限制」折叠面板 + 场景胶囊化（对齐重设计版） ---------- */
+.tool-limits-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--tb-link);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+.tool-limits-toggle:hover {
+  background: var(--tb-chip);
+}
+.tool-limits-toggle svg {
+  transition: transform 0.3s;
+}
+.tool-limits-toggle svg.is-open {
+  transform: rotate(180deg);
+}
+.tool-limits-panel {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: var(--tb-card);
+  box-shadow: var(--tb-card-shadow);
+}
+.tool-limits-panel p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--tb-mute);
+}
+.tool-limits-panel ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tool-limits-panel li {
+  border-radius: 999px;
+  background: var(--tb-raise);
+  box-shadow: 0 0 0 1px var(--tb-line);
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--tb-mute);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 900px) {
+  .tool-limits-panel {
+    grid-template-columns: 1fr;
+  }
+}
+.tool-aside .preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tool-aside .preset-card {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: var(--tb-chip);
+  box-shadow: none;
+}
+.tool-aside .preset-icon,
+.tool-aside .preset-check {
+  display: none;
+}
+.tool-aside .preset-copy > strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tb-fg);
+}
+.tool-aside .preset-card.selected {
+  background: var(--tb-fg);
+}
+.tool-aside .preset-card.selected .preset-copy > strong {
+  color: var(--tb-bg);
+}
+
+/* ---------- 文本整理工具页对齐重设计版（数值来自设计源 src/tools/ui.tsx / TextTool.tsx 浏览器实测） ---------- */
+
+/* 1. 工作台卡片：24px 圆角、去边框；阴影保持 --surface-shadow = 0 2px 12px rgba(0,0,0,0.04) */
+.workbench {
+  border-radius: 24px;
+  border: 0;
+}
+
+/* 2. 编辑区与差异覆盖层必须逐项同步（否则 diff 高亮错位）：等宽字体、14px/1.75、20px 内边距 */
+.text-editor,
+.diff-overlay {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  line-height: 1.75;
+  padding: 20px;
+}
+
+/* 3. ≥1024px 编辑区固定高度；640–1023px 仍走 clamp(320px, 37vh, 460px) */
+@media (min-width: 1024px) {
+  .editor-body {
+    height: 520px;
+  }
+}
+
+/* 4. 编辑区头部工具按钮：链接蓝（覆盖继承的 11px 灰；尺寸不动） */
+.editor-panel .editor-tools .button,
+.editor-panel .editor-tools button {
+  color: var(--tb-link);
+}
+
+/* 5. 结果面板头部与绿色「实时预览」标签 */
+.result-panel .editor-header {
+  background: var(--tb-raise);
+}
+.result-dot {
+  background: #30d158;
+}
+.preview-label {
+  color: #15803d;
+}
+.dark .preview-label {
+  color: var(--tb-green);
+}
+
+/* 6. 空状态：说明文案 11px → 13px；图标盒去掉蓝灰底 */
+.input-empty p,
+.output-empty p {
+  font-size: 13px;
+}
+.empty-icon,
+.result-empty-icon {
+  background: var(--tb-raise);
+}
+
+/* 7. 右栏设置卡片：24px 内边距，标题下距 16px */
+.tool-aside-card {
+  padding: 24px;
+}
+.tool-aside-title {
+  margin-bottom: 16px;
+}
+
+/* 8. 场景胶囊 */
+.tool-aside .preset-card {
+  padding: 6px 14px;
+}
+
+/* 9. 规则开关行文案：14px 主文字色 */
+.tool-aside .quick-rules label {
+  font-size: 14px;
+  color: var(--tb-fg);
+}
+
+/* 10. 右栏开关（Radix Switch）：轨道 38×22，选中 #30d158 / 未选 chip；thumb 18px 白色带投影 */
+.tool-aside [role='switch'] {
+  width: 38px;
+  height: 22px;
+  padding: 0 2px;
+  border: 0;
+  box-shadow: none;
+}
+.tool-aside [role='switch'][data-state='unchecked'] {
+  background: var(--tb-chip);
+}
+.tool-aside [role='switch'][data-state='checked'] {
+  background: #30d158;
+}
+.tool-aside [role='switch'] > span {
+  width: 18px;
+  height: 18px;
+  background: #ffffff;
+  transform: none;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+.tool-aside [role='switch'][data-state='checked'] > span {
+  translate: 16px 0;
+}
+.tool-aside [role='switch'][data-state='unchecked'] > span {
+  translate: none;
+}
+
+/* 11. 断行修复警告条 */
+.repair-mode-warn {
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+/* 12. 底栏状态：数值等宽（加粗/上色由 JSX 负责），变更计数绿色 */
+.workbench-status span {
+  font-variant-numeric: tabular-nums;
+}
+.workbench-status .is-changed,
+.workbench-status .is-changed > b {
+  color: #166534;
+  font-weight: 600;
+}
+.dark .workbench-status .is-changed,
+.dark .workbench-status .is-changed > b {
+  color: var(--tb-green);
+}
+
+/* 13. 底栏复制按钮：37px 高、14px 字、无投影、主蓝实底 */
+.workbench-actions .copy-button {
+  height: 37px;
+  font-size: 14px;
+  box-shadow: none;
+  background: var(--tb-blue);
+}
+
+/* 14. 移动端原文/结果切换：chip 底、13px */
+.mobile-tabs [role='tablist'] {
+  background: var(--tb-chip);
+  font-size: 13px;
+}
+.mobile-tabs [role='tab'] {
+  font-size: 13px;
+}
+
+/* 15. 「更多操作」条：与工作台同款 24px 卡片 */
+.text-ops {
+  border: 0;
+  border-radius: 24px;
+  background: var(--tb-card);
+  box-shadow: var(--tb-card-shadow);
+}
+
+/* 16. 主容器左右内边距 36px → 20px（上下保持） */
+.main-content {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* 主栏纵向节奏对齐设计源 space-y-5：工作台与更多操作条之间统一 20px */
+.tool-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 断行修复模式：重设计版 Segmented 胶囊（保守 / 标准） */
+.repair-seg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+.repair-seg-group {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--tb-chip);
+}
+.repair-seg-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tb-fg);
+  opacity: 0.72;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    opacity 0.2s;
+}
+.repair-seg-btn:hover {
+  opacity: 1;
+}
+.repair-seg-btn.is-active {
+  background: var(--tb-card);
+  color: var(--tb-fg);
+  opacity: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.dark .repair-seg-btn.is-active {
+  background: var(--tb-raise);
+}
+
+/* 表单控件字号统一对齐设计语言：选择器/输入框 14px（此前被 12px 规则压小，36px 高的框里挤小字） */
+.app-shell [role='combobox'],
+.app-shell .tool-input {
+  font-size: 14px;
+}
+
+/* 按钮字号统一基线（设计语言 text-sm）：全部按钮 14px，刻意小巧的胶囊/辅助类白名单 13px */
+.app-shell button {
+  font-size: 14px;
+}
+.app-shell .tool-aside .preset-card,
+.app-shell .task-chip,
+.app-shell .repair-seg-btn,
+.app-shell .text-stats-button,
+.app-shell .diff-record,
+.app-shell .editor-tools > button,
+.app-shell .editor-tools > label,
+.app-shell .tool-title-actions > button,
+.app-shell .tool-limits-toggle,
+.app-shell .text-link {
+  font-size: 13px;
+}
+[role='dialog'] button {
+  font-size: 14px;
+}
+.app-shell [role='tab'] {
+  font-size: 13.5px;
+}
+.app-shell .input-empty > button:not(.text-link) {
+  font-size: 13px;
+}
+.workbench-actions .copy-button:hover {
+  background: var(--tb-blue-hover);
+}
+[role='dialog'] .intake-tasks button {
+  font-size: 13.5px;
+}
+
+/* ---------- 四工具选项右栏化（纯 CSS Grid 定位，≥1024px；窄屏单列不受影响） ---------- */
+@media (min-width: 1024px) {
+  .rename-tool,
+  .compare-tool,
+  .table-tool {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 12px 20px;
+    align-items: start;
+  }
+  .rename-tool > details.tool-advanced,
+  .compare-tool > details.tool-advanced,
+  .table-tool > details.tool-advanced {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+  .pdf-tool .conversion-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 12px 20px;
+    align-items: start;
+  }
+  .pdf-tool .conversion-panel > details.tool-advanced {
+    grid-column: 2;
+    align-self: start;
+  }
+  .pdf-tool .conversion-panel > *:not(details.tool-advanced) {
+    grid-column: 1;
+  }
 }

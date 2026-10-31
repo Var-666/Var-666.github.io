@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
-  ArrowLeft,
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
@@ -482,11 +481,8 @@ export default function App() {
       <GlobalFileIntake />
       {route !== 'home' && (
         <div className="tool-breadcrumb">
-          <a href="#/">
-            <ArrowLeft size={14} />
-            全部工具
-          </a>
-          <span aria-hidden="true">/</span>
+          <a href="#/">工具箱</a>
+          <ChevronRight size={13} aria-hidden="true" />
           <span className="tool-breadcrumb-current">{currentTool?.title}</span>
           <nav className="tool-switcher" aria-label="切换工具">
             {tools.map((tool) => (

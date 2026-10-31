@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { packOutputs } from '../files/file-media'
+import { ToolHead } from '../components/ToolHead'
 import {
   defaultRenameOptions,
   parseNameList,
@@ -144,9 +145,7 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
                 ? `重命名预览：${files.length} 个文件，${errors} 个命名错误。`
                 : ''}
       </p>
-      <section className="intro">
-        <h1>批量重命名</h1>
-      </section>
+      <ToolHead toolId="rename" />
       <section className="conversion-panel" aria-label="重命名文件">
         <button
           className={`file-drop ${files.length ? 'has-files' : ''} ${dragging ? 'is-dragging' : ''}`}

@@ -285,7 +285,8 @@ a {
   min-height: 40px;
   padding: 0 16px;
   border-radius: 8px;
-  color: var(--gray);
+  /* 前景色而非灰：/tools 的毛玻璃导航会透出滚动内容，灰字对比度随背景漂移 */
+  color: var(--ink);
   font-size: 14px;
   text-decoration: none;
 }

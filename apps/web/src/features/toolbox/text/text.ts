@@ -63,7 +63,7 @@ export const presets: Record<
       '今天用React完成了第１个小工具。\n设计稿在Figma里，文档写在Notion上。\n\n每天省下１０分钟，就能多读几页书。\n项目版本为v2.1，进度已达到80%。\n\n网址：https://example.com/docs\n邮箱：hello@example.com',
   },
   markdown: {
-    title: 'MD 转纯文本',
+    title: 'Markdown 转纯文本',
     description: '去掉 Markdown 格式，保留文字内容',
     options: { ...baseOptions, trimLines: false, blankLines: 'keep', markdownPlain: true },
     sample:

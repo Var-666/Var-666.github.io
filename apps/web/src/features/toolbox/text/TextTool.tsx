@@ -3,13 +3,7 @@ import { useUnsavedWork } from '../DraftGuard'
 import { TextStatsButton } from './components/TextStatsButton'
 import { useTextProcessing } from './hooks/useTextProcessing'
 import { OverlayMarks, type DiffMark } from './components/DiffOverlay'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import {} from '@/components/ui/select'
 import { TextSettingsDialog } from './components/TextSettingsDialog'
 import { OutputActions } from '../components/OutputActions'
 import { useTransferReceiver } from '../tool-transfer'
@@ -22,6 +16,7 @@ import {
   ArrowRight,
   Check,
   CheckCheck,
+  CircleAlert,
   CircleHelp,
   Clipboard,
   Copy,
@@ -29,12 +24,13 @@ import {
   FileUp,
   Diff,
   ListFilter,
+  ChevronDown,
+  Info,
   LoaderCircle,
   Pin,
   RotateCcw,
   Settings2,
   ShieldCheck,
-  Sparkles,
   Star,
   Trash2,
   Type,
@@ -75,6 +71,8 @@ import { cn } from '@/lib/utils'
 import { clipboardWithTimeout } from '@/features/toolbox/lib/clipboard'
 import { storageKeys } from '@/features/toolbox/lib/storage'
 import { DIFF_MAX_CHARS, type DiffHunk } from '@/features/toolbox/text/text-diff'
+import { ToolHead } from '../components/ToolHead'
+import { tools } from '../tools'
 
 const icons = {
   clean: WandSparkles,
@@ -140,6 +138,8 @@ function recordPreview(source: string, result: string, hunk: DiffHunk) {
     </>
   )
 }
+const toolLimits = tools.find((tool) => tool.id === 'text')!.limits
+
 export default function TextTool({ active }: { active: boolean }) {
   const [settings, setSettings] = useState(initialSettings)
   const { preset, options } = settings
@@ -159,6 +159,7 @@ export default function TextTool({ active }: { active: boolean }) {
   useUnsavedWork(source.length > 0 || !!undo)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [limitsOpen, setLimitsOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [importing, setImporting] = useState(false)
   const [recordsOpen, setRecordsOpen] = useState(false)
@@ -454,19 +455,39 @@ export default function TextTool({ active }: { active: boolean }) {
                 ? '文本整理已完成，可以复制或下载结果。'
                 : ''}
         </p>
-        <section className="intro">
-          <h1>文本整理</h1>
-          <div className="tool-title-actions">
-            <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)}>
-              <CircleHelp size={15} />
-              使用指南
-            </Button>
-            <Button variant="outline" onClick={loadSample} className="sample-top">
-              <Sparkles size={15} />
-              试试示例文本
-            </Button>
+        <ToolHead
+          toolId="text"
+          actions={
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)}>
+                <CircleHelp size={15} />
+                使用指南
+              </Button>
+              <button
+                type="button"
+                className="tool-limits-toggle"
+                aria-expanded={limitsOpen}
+                onClick={() => setLimitsOpen((value) => !value)}
+              >
+                <Info size={15} />
+                说明与限制
+                <ChevronDown size={15} className={limitsOpen ? 'is-open' : undefined} />
+              </button>
+            </>
+          }
+        />
+        {limitsOpen && (
+          <div className="tool-limits-panel">
+            <p>
+              文件只在当前标签页内存中处理，不上传；刷新或关闭标签页即清空。本地仅保存主题、预设与收藏等偏好设置。
+            </p>
+            <ul>
+              {toolLimits.map((limit) => (
+                <li key={limit}>{limit}</li>
+              ))}
+            </ul>
           </div>
-        </section>
+        )}
         <div className="text-import-options">
           <TextEncodingSelect
             value={readEncoding}
@@ -482,477 +503,543 @@ export default function TextTool({ active }: { active: boolean }) {
             </span>
           )}
         </div>
-        <section aria-label="选择整理场景" className="presets">
-          <div className="preset-grid">
-            {presetKeys.map((key) => {
-              const Icon = icons[key]
-              return (
-                <button
-                  key={key}
-                  className={cn('preset-card', preset === key && 'selected')}
-                  onClick={() => choosePreset(key)}
-                  aria-pressed={preset === key}
-                >
-                  <span className={`preset-icon preset-${key}`}>
-                    <Icon size={20} strokeWidth={1.8} />
-                  </span>
-                  <span className="preset-copy">
-                    <strong>{presets[key].title}</strong>
-                  </span>
-                  <span className="preset-check">
-                    {preset === key ? <Check size={12} strokeWidth={3} /> : null}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-          {!!userPresets.length && (
-            <div className="user-presets" aria-label="自定义预设">
-              {userPresets.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  className="user-preset-chip"
-                  aria-label={`应用自定义预设 ${entry.name}`}
-                  onClick={() => applyUserPreset(entry)}
-                >
-                  <Star size={12} />
-                  {entry.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-        <section id="workspace" className="workbench" aria-label="文本整理工作台">
-          <div className="rules-bar">
-            <div className="rule-bar-label">
-              <Settings2 size={15} />
-              <span>整理规则</span>
-            </div>
-            <div className="quick-rules">
-              {preset === 'markdown' ? (
-                <label>
-                  <Switch
-                    aria-label="移除 Markdown 格式"
-                    checked={options.markdownPlain}
-                    onCheckedChange={(value) => update('markdownPlain', value)}
-                  />
-                  <span>移除格式</span>
-                </label>
-              ) : (
-                <label>
-                  <Switch
-                    aria-label="清理首尾空格"
-                    checked={options.trimLines}
-                    onCheckedChange={(value) => update('trimLines', value)}
-                  />
-                  <span>首尾空格</span>
-                </label>
-              )}
-              {preset === 'markdown' ? (
-                <label>
-                  <Switch
-                    aria-label="清理首尾空格"
-                    checked={options.trimLines}
-                    onCheckedChange={(value) => update('trimLines', value)}
-                  />
-                  <span>首尾空格</span>
-                </label>
-              ) : preset === 'pdf' ? (
-                <>
-                  <label>
-                    <Switch
-                      aria-label="连接断行"
-                      checked={options.repairBreaks}
-                      onCheckedChange={(value) => update('repairBreaks', value)}
-                    />
-                    <span>连接断行</span>
-                  </label>
-                  <Select
-                    value={options.repairMode}
-                    onValueChange={(value) => update('repairMode', value as Options['repairMode'])}
+        <div className="tool-body">
+          <div className="tool-main">
+            <section id="workspace" className="workbench" aria-label="文本整理工作台">
+              <Tabs value={mobileTab} onValueChange={setMobileTab} className="mobile-tabs">
+                <TabsList className="w-full" aria-label="编辑视图">
+                  <TabsTrigger
+                    className="flex-1"
+                    value="source"
+                    id="source-tab"
+                    aria-controls="source-panel"
                   >
-                    <SelectTrigger aria-label="断行修复模式" className="repair-mode-trigger">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="conservative">保守修复</SelectItem>
-                      <SelectItem value="standard">标准修复</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+                    原始文本
+                  </TabsTrigger>
+                  <TabsTrigger
+                    className="flex-1"
+                    value="result"
+                    id="result-tab"
+                    aria-controls="result-panel"
+                  >
+                    整理结果{source && <span className="tab-dot" />}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="editors">
+                <section
+                  id="source-panel"
+                  role="tabpanel"
+                  aria-labelledby="source-tab"
+                  className={cn(
+                    'editor-panel source-panel',
+                    mobileTab !== 'source' && 'mobile-hidden',
+                  )}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    setDragging(true)
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    setDragging(false)
+                    void importFile(event.dataTransfer.files[0])
+                  }}
+                >
+                  <div className="editor-header">
+                    <div>
+                      <FileText size={16} />
+                      <h2>原始文本</h2>
+                      <span className="editor-tag">INPUT</span>
+                    </div>
+                    <div className="editor-tools">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="keep-mark-button"
-                        onClick={insertKeepMark}
+                        onClick={() => fileInput.current?.click()}
+                        disabled={importing}
                       >
-                        <Pin size={14} />
-                        <span>保留换行</span>
+                        {importing ? (
+                          <LoaderCircle className="animate-spin" size={14} />
+                        ) : (
+                          <FileUp size={14} />
+                        )}
+                        <span>导入 TXT / MD</span>
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      在光标处插入 ⟦保留换行⟧：标记前的换行不会被合并，结果中自动移除标记
-                    </TooltipContent>
-                  </Tooltip>
-                </>
-              ) : preset === 'dedupe' ? (
-                <label>
-                  <Switch
-                    aria-label="忽略大小写"
-                    checked={options.ignoreCase}
-                    onCheckedChange={(value) => update('ignoreCase', value)}
-                  />
-                  <span>忽略大小写</span>
-                </label>
-              ) : preset === 'chinese' ? (
-                <label>
-                  <Switch
-                    aria-label="中英间距"
-                    checked={options.cjkSpacing}
-                    onCheckedChange={(value) => update('cjkSpacing', value)}
-                  />
-                  <span>中英间距</span>
-                </label>
-              ) : (
-                <label>
-                  <Switch
-                    aria-label="合并多余空格"
-                    checked={options.collapseSpaces}
-                    onCheckedChange={(value) => update('collapseSpaces', value)}
-                  />
-                  <span>多余空格</span>
-                </label>
-              )}
-              <label>
-                <Switch
-                  aria-label="清理多余空行"
-                  checked={options.blankLines !== 'keep'}
-                  onCheckedChange={(value) => update('blankLines', value ? 'single' : 'keep')}
-                />
-                <span>多余空行</span>
-              </label>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="advanced-button"
-              onClick={() => setAdvancedOpen(true)}
-            >
-              <Settings2 size={14} />
-              <span>全部设置</span>
-              <span className="shortcut">⌘ ⇧ K</span>
-            </Button>
-          </div>
-          <Tabs value={mobileTab} onValueChange={setMobileTab} className="mobile-tabs">
-            <TabsList className="w-full" aria-label="编辑视图">
-              <TabsTrigger
-                className="flex-1"
-                value="source"
-                id="source-tab"
-                aria-controls="source-panel"
-              >
-                原始文本
-              </TabsTrigger>
-              <TabsTrigger
-                className="flex-1"
-                value="result"
-                id="result-tab"
-                aria-controls="result-panel"
-              >
-                整理结果{source && <span className="tab-dot" />}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="editors">
-            <section
-              id="source-panel"
-              role="tabpanel"
-              aria-labelledby="source-tab"
-              className={cn('editor-panel source-panel', mobileTab !== 'source' && 'mobile-hidden')}
-              onDragOver={(event) => {
-                event.preventDefault()
-                setDragging(true)
-              }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(event) => {
-                event.preventDefault()
-                setDragging(false)
-                void importFile(event.dataTransfer.files[0])
-              }}
-            >
-              <div className="editor-header">
-                <div>
-                  <FileText size={16} />
-                  <h2>原始文本</h2>
-                  <span className="editor-tag">INPUT</span>
-                </div>
-                <div className="editor-tools">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => fileInput.current?.click()}
-                    disabled={importing}
-                  >
-                    {importing ? (
-                      <LoaderCircle className="animate-spin" size={14} />
-                    ) : (
-                      <FileUp size={14} />
+                      <Button variant="ghost" size="sm" onClick={loadSample}>
+                        <RotateCcw size={14} />
+                        <span>示例</span>
+                      </Button>
+                      <IconButton
+                        label="清空原文"
+                        disabled={!source}
+                        onClick={() => replaceSource('')}
+                      >
+                        <Trash2 size={15} />
+                      </IconButton>
+                    </div>
+                  </div>
+                  <div className={cn('editor-body', dragging && 'is-dragging')}>
+                    <div ref={sourceOverlay} className="diff-overlay" aria-hidden="true">
+                      <OverlayMarks text={source} marks={marksTooMany ? [] : sourceMarks} />
+                    </div>
+                    <Textarea
+                      ref={input}
+                      aria-label="原始文本"
+                      value={source}
+                      className="text-editor"
+                      spellCheck={false}
+                      maxLength={maxChars}
+                      onChange={(event) => {
+                        fileRequest.current++
+                        setImporting(false)
+                        importedFile.current = null
+                        setSourceEncoding(null)
+                        setSource(event.target.value)
+                      }}
+                      onCompositionStart={() => setComposing(true)}
+                      onCompositionEnd={() => setComposing(false)}
+                      onScroll={(event) => {
+                        const overlay = sourceOverlay.current
+                        if (overlay) {
+                          overlay.scrollTop = event.currentTarget.scrollTop
+                          overlay.scrollLeft = event.currentTarget.scrollLeft
+                        }
+                      }}
+                      placeholder={
+                        source ? undefined : '粘贴文字，或把 TXT / Markdown 文件拖到这里'
+                      }
+                    />
+                    {!source && (
+                      <div className="input-empty">
+                        <div className="empty-icon">
+                          <Clipboard size={25} strokeWidth={1.4} />
+                        </div>
+                        <p>粘贴文字，或拖入 TXT / Markdown 文件</p>
+                        <Button variant="outline" onClick={paste}>
+                          <Clipboard size={14} />
+                          粘贴文本<span className="key-hint">⌘ V</span>
+                        </Button>
+                        <button className="text-link" onClick={loadSample}>
+                          试试示例 <ArrowRight size={12} />
+                        </button>
+                      </div>
                     )}
-                    <span>导入</span>
-                  </Button>
+                    {dragging && (
+                      <div className="drop-overlay">
+                        <FileUp size={30} />
+                        <strong>松开鼠标，导入文本</strong>
+                        <span>支持 TXT / Markdown · 最大 2 MB</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="editor-footer">
+                    <TextStatsButton text={source} stats={sourceStats} label="原始文本" />
+                    <span className="encoding-label">纯文本 · {sourceEncoding ?? 'UTF-8'}</span>
+                  </div>
+                </section>
+                <span className="transfer-mark" aria-hidden="true">
+                  <ArrowRight size={16} />
+                </span>
+                <section
+                  id="result-panel"
+                  role="tabpanel"
+                  aria-labelledby="result-tab"
+                  className={cn(
+                    'editor-panel result-panel',
+                    mobileTab !== 'result' && 'mobile-hidden',
+                  )}
+                >
+                  <div className="editor-header">
+                    <div>
+                      <span className="result-dot" />
+                      <h2>整理结果</h2>
+                      <span className="preview-label">实时预览</span>
+                    </div>
+                    <div className="editor-tools">
+                      {ready && <OutputActions outputs={[textOutput]} shareOnly />}
+                    </div>
+                  </div>
+                  <div className="editor-body">
+                    <div ref={resultOverlay} className="diff-overlay" aria-hidden="true">
+                      <OverlayMarks text={result.text} marks={marksTooMany ? [] : resultMarks} />
+                    </div>
+                    <Textarea
+                      ref={output}
+                      aria-label="整理结果"
+                      className="text-editor result-editor"
+                      value={result.text}
+                      readOnly
+                      spellCheck={false}
+                      onScroll={(event) => {
+                        const overlay = resultOverlay.current
+                        if (overlay) {
+                          overlay.scrollTop = event.currentTarget.scrollTop
+                          overlay.scrollLeft = event.currentTarget.scrollLeft
+                        }
+                      }}
+                    />
+                    {!result.text && (
+                      <div className="output-empty">
+                        <span className="result-empty-icon">
+                          <AlignLeft size={26} strokeWidth={1.4} />
+                          <span>
+                            <Check size={10} strokeWidth={3} />
+                          </span>
+                        </span>
+                        <p>整理结果会显示在这里</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="editor-footer">
+                    <TextStatsButton text={result.text} stats={resultStats} label="整理结果" />
+                    <span className={cn('processing-state', failed && 'error-state')}>
+                      {failed ? (
+                        <>
+                          <X size={12} />
+                          处理失败
+                        </>
+                      ) : processing ? (
+                        <>
+                          <LoaderCircle className="animate-spin" size={12} />
+                          整理中
+                        </>
+                      ) : (
+                        <>
+                          <Check size={12} />
+                          {source ? '整理完成' : '等待输入'}
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </section>
+              </div>
+              {source && !processing && !failed && (
+                <>
+                  <div className="workbench-bottom">
+                    <div className="changes-summary" aria-live="polite">
+                      <CheckCheck size={15} />
+                      <span>
+                        {changeCount ? (
+                          <>
+                            已整理 <strong>{changeCount}</strong> 处细节
+                          </>
+                        ) : (
+                          '无需修改'
+                        )}
+                      </span>
+                      {result.changes.slice(0, 2).map((change) => (
+                        <span className="change-chip" key={change.label}>
+                          {change.label} {change.count}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="workbench-bottom-right">
+                      {diff === null && (
+                        <span
+                          className="diff-skip-hint"
+                          title={`差异高亮最多支持 ${DIFF_MAX_CHARS / 10000} 万字符`}
+                        >
+                          文本较长，未生成差异高亮
+                        </span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="records-toggle"
+                        aria-expanded={recordsOpen}
+                        disabled={!diff?.length}
+                        onClick={() => setRecordsOpen((value) => !value)}
+                      >
+                        <Diff size={14} />
+                        修改明细{diff?.length ? `（${diff.length}）` : ''}
+                      </Button>
+                    </div>
+                  </div>
+                  {recordsOpen && !!diff?.length && (
+                    <div className="diff-records" aria-label="修改明细">
+                      <div className="diff-records-head">
+                        <span>
+                          共 {diff.length} 处变化 · 新增{' '}
+                          {diff.filter((h) => h.kind === 'add').length} · 删除{' '}
+                          {diff.filter((h) => h.kind === 'remove').length} · 替换{' '}
+                          {diff.filter((h) => h.kind === 'replace').length}
+                        </span>
+                        <span className="diff-records-tip">
+                          {marksTooMany ? '差异过多，定位已停用' : '点击定位到对应位置'}
+                        </span>
+                      </div>
+                      <ul className="diff-records-list">
+                        {diff.slice(0, 200).map((hunk) => (
+                          <li key={hunk.id}>
+                            <button
+                              className="diff-record"
+                              disabled={marksTooMany}
+                              onClick={() => locate(hunk)}
+                            >
+                              <span
+                                className={`diff-badge ${
+                                  hunk.kind === 'add'
+                                    ? 'diff-badge-ins'
+                                    : hunk.kind === 'remove'
+                                      ? 'diff-badge-del'
+                                      : 'diff-badge-mod'
+                                }`}
+                              >
+                                {hunk.kind === 'add'
+                                  ? '新增'
+                                  : hunk.kind === 'remove'
+                                    ? '删除'
+                                    : '替换'}
+                              </span>
+                              <span className="diff-record-text">
+                                {recordPreview(source, result.text, hunk)}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      {diff.length > 200 && (
+                        <div className="diff-records-more">
+                          仅显示前 200 处，共 {diff.length} 处
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="workbench-actions">
+                <div className="workbench-status">
+                  <span>
+                    字符{' '}
+                    <b>
+                      {source.length} → {result.text.length}
+                    </b>
+                  </span>
+                  <span>
+                    行数{' '}
+                    <b>
+                      {source ? source.split('\n').length : 0} →{' '}
+                      {result.text ? result.text.split('\n').length : 0}
+                    </b>
+                  </span>
+                  <span className={changeCount ? 'is-changed' : undefined}>
+                    调整 <b>{changeCount} 处</b>
+                  </span>
+                </div>
+                <div className="workbench-bar-actions">
                   <IconButton
                     label="撤销上次替换或清空"
+                    size="sm"
                     disabled={undo === null}
                     onClick={() => {
                       if (undo !== null) replaceSource(undo)
                     }}
                   >
                     <RotateCcw size={15} />
+                    撤销
                   </IconButton>
-                  <IconButton label="清空原文" disabled={!source} onClick={() => replaceSource('')}>
-                    <Trash2 size={15} />
+                  <IconButton label="下载 TXT 文件" size="sm" disabled={!ready} onClick={download}>
+                    <ArrowDownToLine size={15} />
+                    下载 TXT
                   </IconButton>
-                </div>
-              </div>
-              <div className={cn('editor-body', dragging && 'is-dragging')}>
-                <div ref={sourceOverlay} className="diff-overlay" aria-hidden="true">
-                  <OverlayMarks text={source} marks={marksTooMany ? [] : sourceMarks} />
-                </div>
-                <Textarea
-                  ref={input}
-                  aria-label="原始文本"
-                  value={source}
-                  className="text-editor"
-                  spellCheck={false}
-                  maxLength={maxChars}
-                  onChange={(event) => {
-                    fileRequest.current++
-                    setImporting(false)
-                    importedFile.current = null
-                    setSourceEncoding(null)
-                    setSource(event.target.value)
-                  }}
-                  onCompositionStart={() => setComposing(true)}
-                  onCompositionEnd={() => setComposing(false)}
-                  onScroll={(event) => {
-                    const overlay = sourceOverlay.current
-                    if (overlay) {
-                      overlay.scrollTop = event.currentTarget.scrollTop
-                      overlay.scrollLeft = event.currentTarget.scrollLeft
-                    }
-                  }}
-                  placeholder={source ? undefined : '在这里输入或粘贴文字…'}
-                />
-                {!source && (
-                  <div className="input-empty">
-                    <div className="empty-icon">
-                      <Clipboard size={25} strokeWidth={1.4} />
-                    </div>
-                    <p>粘贴文字，或拖入 TXT / Markdown 文件</p>
-                    <Button variant="outline" onClick={paste}>
-                      <Clipboard size={14} />
-                      粘贴文本<span className="key-hint">⌘ V</span>
-                    </Button>
-                    <button className="text-link" onClick={loadSample}>
-                      试试示例 <ArrowRight size={12} />
-                    </button>
-                  </div>
-                )}
-                {dragging && (
-                  <div className="drop-overlay">
-                    <FileUp size={30} />
-                    <strong>松开鼠标，导入文本</strong>
-                    <span>支持 TXT / Markdown · 最大 2 MB</span>
-                  </div>
-                )}
-              </div>
-              <div className="editor-footer">
-                <TextStatsButton text={source} stats={sourceStats} label="原始文本" />
-                <span className="encoding-label">纯文本 · {sourceEncoding ?? 'UTF-8'}</span>
-              </div>
-            </section>
-            <span className="transfer-mark" aria-hidden="true">
-              <ArrowRight size={16} />
-            </span>
-            <section
-              id="result-panel"
-              role="tabpanel"
-              aria-labelledby="result-tab"
-              className={cn('editor-panel result-panel', mobileTab !== 'result' && 'mobile-hidden')}
-            >
-              <div className="editor-header">
-                <div>
-                  <span className="result-dot" />
-                  <h2>整理结果</h2>
-                  <span className="preview-label">实时预览</span>
-                </div>
-                <div className="editor-tools">
-                  {ready && <OutputActions outputs={[textOutput]} shareOnly />}
-                  <IconButton label="下载 TXT 文件" disabled={!ready} onClick={download}>
-                    <ArrowDownToLine size={16} />
-                  </IconButton>
-                </div>
-              </div>
-              <div className="editor-body">
-                <div ref={resultOverlay} className="diff-overlay" aria-hidden="true">
-                  <OverlayMarks text={result.text} marks={marksTooMany ? [] : resultMarks} />
-                </div>
-                <Textarea
-                  ref={output}
-                  aria-label="整理结果"
-                  className="text-editor result-editor"
-                  value={result.text}
-                  readOnly
-                  spellCheck={false}
-                  onScroll={(event) => {
-                    const overlay = resultOverlay.current
-                    if (overlay) {
-                      overlay.scrollTop = event.currentTarget.scrollTop
-                      overlay.scrollLeft = event.currentTarget.scrollLeft
-                    }
-                  }}
-                />
-                {!result.text && (
-                  <div className="output-empty">
-                    <span className="result-empty-icon">
-                      <AlignLeft size={26} strokeWidth={1.4} />
-                      <span>
-                        <Check size={10} strokeWidth={3} />
-                      </span>
-                    </span>
-                    <p>整理结果会显示在这里</p>
-                  </div>
-                )}
-              </div>
-              <div className="editor-footer">
-                <TextStatsButton text={result.text} stats={resultStats} label="整理结果" />
-                <span className={cn('processing-state', failed && 'error-state')}>
-                  {failed ? (
-                    <>
-                      <X size={12} />
-                      处理失败
-                    </>
-                  ) : processing ? (
-                    <>
-                      <LoaderCircle className="animate-spin" size={12} />
-                      整理中
-                    </>
-                  ) : (
-                    <>
-                      <Check size={12} />
-                      {source ? '整理完成' : '等待输入'}
-                    </>
-                  )}
-                </span>
-              </div>
-            </section>
-          </div>
-          {source && !processing && !failed && (
-            <>
-              <div className="workbench-bottom">
-                <div className="changes-summary" aria-live="polite">
-                  <CheckCheck size={15} />
-                  <span>
-                    {changeCount ? (
-                      <>
-                        已整理 <strong>{changeCount}</strong> 处细节
-                      </>
-                    ) : (
-                      '无需修改'
-                    )}
-                  </span>
-                  {result.changes.slice(0, 2).map((change) => (
-                    <span className="change-chip" key={change.label}>
-                      {change.label} {change.count}
-                    </span>
-                  ))}
-                </div>
-                <div className="workbench-bottom-right">
-                  {diff === null && (
-                    <span
-                      className="diff-skip-hint"
-                      title={`差异高亮最多支持 ${DIFF_MAX_CHARS / 10000} 万字符`}
-                    >
-                      文本较长，未生成差异高亮
-                    </span>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="records-toggle"
-                    aria-expanded={recordsOpen}
-                    disabled={!diff?.length}
-                    onClick={() => setRecordsOpen((value) => !value)}
-                  >
-                    <Diff size={14} />
-                    修改明细{diff?.length ? `（${diff.length}）` : ''}
+                  <Button size="sm" className="copy-button" disabled={!ready} onClick={copy}>
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    {copied ? '已复制' : '复制结果'}
                   </Button>
                 </div>
               </div>
-              {recordsOpen && !!diff?.length && (
-                <div className="diff-records" aria-label="修改明细">
-                  <div className="diff-records-head">
-                    <span>
-                      共 {diff.length} 处变化 · 新增 {diff.filter((h) => h.kind === 'add').length} ·
-                      删除 {diff.filter((h) => h.kind === 'remove').length} · 替换{' '}
-                      {diff.filter((h) => h.kind === 'replace').length}
-                    </span>
-                    <span className="diff-records-tip">
-                      {marksTooMany ? '差异过多，定位已停用' : '点击定位到对应位置'}
-                    </span>
-                  </div>
-                  <ul className="diff-records-list">
-                    {diff.slice(0, 200).map((hunk) => (
-                      <li key={hunk.id}>
-                        <button
-                          className="diff-record"
-                          disabled={marksTooMany}
-                          onClick={() => locate(hunk)}
-                        >
-                          <span
-                            className={`diff-badge ${
-                              hunk.kind === 'add'
-                                ? 'diff-badge-ins'
-                                : hunk.kind === 'remove'
-                                  ? 'diff-badge-del'
-                                  : 'diff-badge-mod'
-                            }`}
-                          >
-                            {hunk.kind === 'add'
-                              ? '新增'
-                              : hunk.kind === 'remove'
-                                ? '删除'
-                                : '替换'}
-                          </span>
-                          <span className="diff-record-text">
-                            {recordPreview(source, result.text, hunk)}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                  {diff.length > 200 && (
-                    <div className="diff-records-more">仅显示前 200 处，共 {diff.length} 处</div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-          <div className="workbench-actions">
-            <Button size="sm" className="copy-button" disabled={!ready} onClick={copy}>
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? '已复制' : '复制结果'}
-            </Button>
+            </section>
+            <TextBatchOps
+              active={active}
+              source={source}
+              onApply={replaceSource}
+              processOptions={options}
+            />
           </div>
-        </section>
-        <TextBatchOps
-          active={active}
-          source={source}
-          onApply={replaceSource}
-          processOptions={options}
-        />
+          <aside className="tool-aside">
+            <div className="tool-aside-card">
+              <p className="tool-aside-title">场景</p>
+              <section aria-label="选择整理场景" className="presets">
+                <div className="preset-grid">
+                  {presetKeys.map((key) => {
+                    const Icon = icons[key]
+                    return (
+                      <button
+                        key={key}
+                        className={cn('preset-card', preset === key && 'selected')}
+                        onClick={() => choosePreset(key)}
+                        aria-pressed={preset === key}
+                      >
+                        <span className={`preset-icon preset-${key}`}>
+                          <Icon size={20} strokeWidth={1.8} />
+                        </span>
+                        <span className="preset-copy">
+                          <strong>{presets[key].title}</strong>
+                        </span>
+                        <span className="preset-check">
+                          {preset === key ? <Check size={12} strokeWidth={3} /> : null}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {!!userPresets.length && (
+                  <div className="user-presets" aria-label="自定义预设">
+                    {userPresets.map((entry) => (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        className="user-preset-chip"
+                        aria-label={`应用自定义预设 ${entry.name}`}
+                        onClick={() => applyUserPreset(entry)}
+                      >
+                        <Star size={12} />
+                        {entry.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+            <div className="tool-aside-card">
+              <div className="rules-bar">
+                <div className="rule-bar-label">
+                  <Settings2 size={15} />
+                  <span>整理规则</span>
+                </div>
+                <div className="quick-rules">
+                  {preset === 'markdown' ? (
+                    <label>
+                      <Switch
+                        aria-label="移除 Markdown 格式"
+                        checked={options.markdownPlain}
+                        onCheckedChange={(value) => update('markdownPlain', value)}
+                      />
+                      <span>移除格式</span>
+                    </label>
+                  ) : (
+                    <label>
+                      <Switch
+                        aria-label="清理首尾空格"
+                        checked={options.trimLines}
+                        onCheckedChange={(value) => update('trimLines', value)}
+                      />
+                      <span>首尾空格</span>
+                    </label>
+                  )}
+                  {preset === 'pdf' ? (
+                    <>
+                      <label>
+                        <Switch
+                          aria-label="连接断行"
+                          checked={options.repairBreaks}
+                          onCheckedChange={(value) => update('repairBreaks', value)}
+                        />
+                        <span>连接断行</span>
+                      </label>
+                      <div className="repair-seg" role="group" aria-label="断行修复模式">
+                        <div className="repair-seg-group">
+                          <button
+                            type="button"
+                            className={cn(
+                              'repair-seg-btn',
+                              options.repairMode === 'conservative' && 'is-active',
+                            )}
+                            aria-pressed={options.repairMode === 'conservative'}
+                            onClick={() => update('repairMode', 'conservative')}
+                          >
+                            保守
+                          </button>
+                          <button
+                            type="button"
+                            className={cn(
+                              'repair-seg-btn',
+                              options.repairMode === 'standard' && 'is-active',
+                            )}
+                            aria-pressed={options.repairMode === 'standard'}
+                            onClick={() => update('repairMode', 'standard')}
+                          >
+                            标准
+                          </button>
+                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="keep-mark-button"
+                              onClick={insertKeepMark}
+                            >
+                              <Pin size={14} />
+                              <span>保留换行</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            在光标处插入 ⟦保留换行⟧：标记前的换行不会被合并，结果中自动移除标记
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </>
+                  ) : preset === 'dedupe' ? (
+                    <label>
+                      <Switch
+                        aria-label="忽略大小写"
+                        checked={options.ignoreCase}
+                        onCheckedChange={(value) => update('ignoreCase', value)}
+                      />
+                      <span>忽略大小写</span>
+                    </label>
+                  ) : preset === 'chinese' ? (
+                    <label>
+                      <Switch
+                        aria-label="中英间距"
+                        checked={options.cjkSpacing}
+                        onCheckedChange={(value) => update('cjkSpacing', value)}
+                      />
+                      <span>中英间距</span>
+                    </label>
+                  ) : (
+                    <label>
+                      <Switch
+                        aria-label="合并多余空格"
+                        checked={options.collapseSpaces}
+                        onCheckedChange={(value) => update('collapseSpaces', value)}
+                      />
+                      <span>多余空格</span>
+                    </label>
+                  )}
+                  <label>
+                    <Switch
+                      aria-label="清理多余空行"
+                      checked={options.blankLines !== 'keep'}
+                      onCheckedChange={(value) => update('blankLines', value ? 'single' : 'keep')}
+                    />
+                    <span>多余空行</span>
+                  </label>
+                  {preset === 'pdf' &&
+                    options.repairBreaks &&
+                    options.repairMode === 'standard' && (
+                      <p className="repair-mode-warn" role="note">
+                        <CircleAlert size={14} />
+                        标准模式更积极，可能把没有空行分隔的两段合并。重要文档建议先用保守模式。
+                      </p>
+                    )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="advanced-button"
+                  onClick={() => setAdvancedOpen(true)}
+                >
+                  <Settings2 size={14} />
+                  <span>全部设置</span>
+                  <span className="shortcut">⌘ ⇧ K</span>
+                </Button>
+              </div>
+            </div>
+          </aside>
+        </div>
       </main>
       <input
         type="file"

@@ -30,6 +30,7 @@ import {
 } from '../files/file-excel'
 import { packOutputs } from '../files/file-media'
 import { outputName, type OutputFile } from '../files/file-convert'
+import { ToolHead } from '../components/ToolHead'
 
 type Side = 'left' | 'right'
 type SideState = {
@@ -376,9 +377,7 @@ export default function CompareTool({ active }: { active: boolean }) {
           setIncomingTransfer(null)
         }}
       />
-      <section className="intro">
-        <h1>表格对比</h1>
-      </section>
+      <ToolHead toolId="table" title="表格对比" />
       <details className="tool-advanced">
         <summary>使用说明与限制</summary>
         <p className="compare-note">

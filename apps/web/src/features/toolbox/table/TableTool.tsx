@@ -21,6 +21,7 @@ import { matricesToExcelFile } from '../files/file-excel'
 import { packOutputs } from '../files/file-media'
 import type { OutputFile } from '../files/file-convert'
 import { validateQueueFiles } from '../lib/file-queue'
+import { ToolHead } from '../components/ToolHead'
 import {
   groupFileNames,
   joinColumns,
@@ -276,9 +277,7 @@ export default function TableTool({ active }: { active: boolean }) {
               ? `已导入 ${tables.length} 份表格。`
               : ''}
       </p>
-      <section className="intro">
-        <h1>表格批量处理</h1>
-      </section>
+      <ToolHead toolId="table" title="表格批量处理" tagline="多份表格，一次处理到位。" />
       <details className="tool-advanced">
         <summary>使用说明与限制</summary>
         <p className="compare-note">

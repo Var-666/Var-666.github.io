@@ -36,6 +36,9 @@ async function audit(page: Page, theme: 'light' | 'dark') {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
       ),
   )
+  // 把指针移出一切可悬停元素：布局变化后残留的 :hover 会污染对比度审计。
+  await page.mouse.move(0, 200)
+  await page.waitForTimeout(80)
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze()

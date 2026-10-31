@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import PdfPreview from './components/PdfPreview'
+import { ToolHead } from '../components/ToolHead'
 
 type Source = {
   id: string
@@ -482,9 +483,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
             ? 'PDF 处理结果已生成，可以下载。'
             : message || (pages.length ? `PDF 队列：共 ${pages.length} 页。` : '')}
       </p>
-      <section className="intro">
-        <h1>PDF 页面整理</h1>
-      </section>
+      <ToolHead toolId="pdf" />
       <section className="conversion-panel" aria-label="整理 PDF 页面">
         <button
           className={`file-drop ${pages.length ? 'has-files' : ''} ${dragging ? 'is-dragging' : ''}`}

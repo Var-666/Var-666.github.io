@@ -50,6 +50,7 @@ import { sizeLabel, type Row } from './types'
 
 import { FileQueue } from './components/FileQueue'
 import { CsvExcelPreview, ExcelPreview } from './components/ExcelPreview'
+import { ToolHead } from '../components/ToolHead'
 
 // 首页任务入口通过 #/files?mode=xxx 直达具体转换方式；非法值回退默认图片互转
 const modeFromHash = (): Mode | null => {
@@ -657,253 +658,261 @@ export default function FileTool({ active = true }: { active?: boolean }) {
           setIncomingTransfer(null)
         }}
       />
-      <section className="intro">
-        <h1>文件格式转换</h1>
-      </section>
-      <Tabs
-        value={modes[mode].category}
-        onValueChange={(value) => {
-          const first = modeKeys.find((key) => modes[key].category === value)
-          if (first) chooseMode(first)
-        }}
-        className="conversion-groups"
-      >
-        <TabsList className="conversion-categories" aria-label="文件类别">
-          {categories.map(({ id, title, icon: Icon }) => (
-            <TabsTrigger key={id} value={id} disabled={busy || packing}>
-              <Icon size={15} />
-              {title}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        <TabsContent value={modes[mode].category} className="conversion-content">
-          <div
-            className="conversion-modes"
-            role="group"
-            aria-label={`${categories.find((category) => category.id === modes[mode].category)?.title}转换方式`}
+      <ToolHead toolId="files" />
+      <div className="tool-body">
+        <div className="tool-main">
+          <Tabs
+            value={modes[mode].category}
+            onValueChange={(value) => {
+              const first = modeKeys.find((key) => modes[key].category === value)
+              if (first) chooseMode(first)
+            }}
+            className="conversion-groups"
           >
-            {modeKeys
-              .filter((key) => modes[key].category === modes[mode].category)
-              .map((key) => (
-                <button
-                  key={key}
-                  disabled={busy || packing}
-                  aria-pressed={mode === key}
-                  onClick={() => chooseMode(key)}
-                >
-                  {modes[key].title}
-                </button>
+            <TabsList className="conversion-categories" aria-label="文件类别">
+              {categories.map(({ id, title, icon: Icon }) => (
+                <TabsTrigger key={id} value={id} disabled={busy || packing}>
+                  <Icon size={15} />
+                  {title}
+                </TabsTrigger>
               ))}
-          </div>
-          <section className="conversion-panel" aria-label={modes[mode].title}>
-            <div className="conversion-toolbar">
-              <div>
-                <strong>{modes[mode].title}</strong>
-                <span>
-                  {mode === 'image-pdf'
-                    ? '按队列顺序合并'
-                    : modes[mode].category === 'image'
-                      ? '支持直接粘贴截图'
-                      : automatic
-                        ? '添加文件后自动转换'
-                        : '支持多文件依次转换'}
-                </span>
+            </TabsList>
+            <TabsContent value={modes[mode].category} className="conversion-content">
+              <div
+                className="conversion-modes"
+                role="group"
+                aria-label={`${categories.find((category) => category.id === modes[mode].category)?.title}转换方式`}
+              >
+                {modeKeys
+                  .filter((key) => modes[key].category === modes[mode].category)
+                  .map((key) => (
+                    <button
+                      key={key}
+                      disabled={busy || packing}
+                      aria-pressed={mode === key}
+                      onClick={() => chooseMode(key)}
+                    >
+                      {modes[key].title}
+                    </button>
+                  ))}
               </div>
-            </div>
-            <button
-              type="button"
-              className={`file-drop ${dragging ? 'is-dragging' : ''}`}
-              disabled={busy || packing}
-              onClick={() => input.current?.click()}
-              onDragOver={(event) => {
-                event.preventDefault()
-                setDragging(true)
-              }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(event) => {
-                event.preventDefault()
-                setDragging(false)
-                if (!packing) addFiles(Array.from(event.dataTransfer.files))
-              }}
-            >
-              <span className="file-drop-icon">
-                {mode === 'image' ? <Image size={25} /> : <FileUp size={25} />}
-              </span>
-              <strong>
-                {rows.length ? '继续添加文件，或拖到这里' : '点击选择文件，或拖到这里'}
-              </strong>
-              <span>
-                {modes[mode].accept.replaceAll('.', '').split(',').join(' / ').toUpperCase()}
-              </span>
-            </button>
-            <input
-              ref={input}
-              type="file"
-              tabIndex={-1}
-              multiple
-              accept={modes[mode].accept}
-              className="sr-only"
-              disabled={busy || packing}
-              aria-label="选择待转换文件"
-              onChange={(event) => {
-                addFiles(Array.from(event.target.files || []))
-                event.target.value = ''
-              }}
-            />
-            {mode === 'csv-markdown' && (
-              <div className="table-paste">
-                <Textarea
-                  aria-label="粘贴表格内容"
-                  placeholder="在此粘贴从 Excel 复制的表格（首行作为表头）"
-                  value={tablePaste}
+              <section className="conversion-panel" aria-label={modes[mode].title}>
+                <div className="conversion-toolbar">
+                  <div>
+                    <strong>{modes[mode].title}</strong>
+                    <span>
+                      {mode === 'image-pdf'
+                        ? '按队列顺序合并'
+                        : modes[mode].category === 'image'
+                          ? '支持直接粘贴截图'
+                          : automatic
+                            ? '添加文件后自动转换'
+                            : '支持多文件依次转换'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className={`file-drop ${dragging ? 'is-dragging' : ''}`}
                   disabled={busy || packing}
-                  onChange={(event) => setTablePaste(event.target.value)}
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!tablePaste.trim() || busy || packing}
-                  onClick={() => {
-                    addFiles([
-                      new File([tablePaste], `粘贴表格-${Date.now()}.tsv`, {
-                        type: 'text/tab-separated-values',
-                      }),
-                    ])
+                  onClick={() => input.current?.click()}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    setDragging(true)
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    setDragging(false)
+                    if (!packing) addFiles(Array.from(event.dataTransfer.files))
                   }}
                 >
-                  加入队列
-                </Button>
-              </div>
-            )}
-            {optionControls}
-            {(mode === 'image' || mode === 'image-compress') && (
-              <ImageEditOptions
-                value={imageEdit}
-                disabled={busy || packing}
-                onChange={(value) => {
-                  clearOutputs()
-                  setImageEdit(value)
-                }}
-              />
-            )}
-            {!!rows.length && (
-              <FileQueue
-                rows={rows}
-                mode={mode}
-                busy={busy}
-                packing={packing}
-                onMove={moveRow}
-                onRemove={removeRow}
-                onToggleDetail={toggleDetail}
-                onMarkPreviewError={markPreviewError}
-              />
-            )}
-            {mode === 'csv-excel' && csvPreview && (
-              <CsvExcelPreview
-                file={csvPreview.file}
-                rows={csvPreview.rows}
-                notices={csvPreview.notices}
-                detectNumbers={detectNumbers}
-              />
-            )}
-            {isExcelRead && excel && (
-              <ExcelPreview
-                excel={excel}
-                sheetName={sheetName}
-                onSheetChange={(value) => {
-                  clearOutputs()
-                  setSheetName(value)
-                }}
-                mode={mode}
-                disabled={busy || packing}
-              />
-            )}
-            {merged && (
-              <div className="merged-result">
-                <span>
-                  <Check size={16} />
-                  {merged.name} · {sizeLabel(merged.blob.size)}
-                </span>
-                <Button size="sm" variant="outline" asChild>
-                  <a href={merged.url} download={merged.name}>
-                    <ArrowDownToLine size={14} />
-                    下载 PDF
-                  </a>
-                </Button>
-                <ContinueWith outputs={[merged]} disabled={busy || packing} />
-                <OutputActions outputs={[merged]} disabled={busy || packing} />
-              </div>
-            )}
-            <div className="conversion-actions">
-              <Button variant="ghost" disabled={!rows.length || busy || packing} onClick={reset}>
-                <Trash2 size={14} />
-                清空
-              </Button>
-              <div>
-                {automatic && (
-                  <span className="conversion-auto" role="status">
-                    {busy
-                      ? '正在自动转换'
-                      : failed > 0
-                        ? `已完成 ${done} 个，失败 ${failed} 个`
-                        : done === rows.length && done > 0
-                          ? `已完成 ${done} 个文件`
-                          : '添加文件后自动转换'}
+                  <span className="file-drop-icon">
+                    {mode === 'image' ? <Image size={25} /> : <FileUp size={25} />}
                   </span>
+                  <strong>
+                    {rows.length ? '继续添加文件，或拖到这里' : '点击选择文件，或拖到这里'}
+                  </strong>
+                  <span>
+                    {modes[mode].accept.replaceAll('.', '').split(',').join(' / ').toUpperCase()}
+                  </span>
+                </button>
+                <input
+                  ref={input}
+                  type="file"
+                  tabIndex={-1}
+                  multiple
+                  accept={modes[mode].accept}
+                  className="sr-only"
+                  disabled={busy || packing}
+                  aria-label="选择待转换文件"
+                  onChange={(event) => {
+                    addFiles(Array.from(event.target.files || []))
+                    event.target.value = ''
+                  }}
+                />
+                {mode === 'csv-markdown' && (
+                  <div className="table-paste">
+                    <Textarea
+                      aria-label="粘贴表格内容"
+                      placeholder="在此粘贴从 Excel 复制的表格（首行作为表头）"
+                      value={tablePaste}
+                      disabled={busy || packing}
+                      onChange={(event) => setTablePaste(event.target.value)}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!tablePaste.trim() || busy || packing}
+                      onClick={() => {
+                        addFiles([
+                          new File([tablePaste], `粘贴表格-${Date.now()}.tsv`, {
+                            type: 'text/tab-separated-values',
+                          }),
+                        ])
+                      }}
+                    >
+                      加入队列
+                    </Button>
+                  </div>
                 )}
-                {done > 1 && mode !== 'image-pdf' && (
-                  <OutputActions
-                    outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
+                {!!rows.length && (
+                  <FileQueue
+                    rows={rows}
+                    mode={mode}
+                    busy={busy}
+                    packing={packing}
+                    onMove={moveRow}
+                    onRemove={removeRow}
+                    onToggleDetail={toggleDetail}
+                    onMarkPreviewError={markPreviewError}
+                  />
+                )}
+                {mode === 'csv-excel' && csvPreview && (
+                  <CsvExcelPreview
+                    file={csvPreview.file}
+                    rows={csvPreview.rows}
+                    notices={csvPreview.notices}
+                    detectNumbers={detectNumbers}
+                  />
+                )}
+                {isExcelRead && excel && (
+                  <ExcelPreview
+                    excel={excel}
+                    sheetName={sheetName}
+                    onSheetChange={(value) => {
+                      clearOutputs()
+                      setSheetName(value)
+                    }}
+                    mode={mode}
                     disabled={busy || packing}
                   />
                 )}
-                {done > 1 && mode !== 'image-pdf' && (
-                  <ContinueWith
-                    outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
-                    disabled={busy || packing}
-                  />
+                {merged && (
+                  <div className="merged-result">
+                    <span>
+                      <Check size={16} />
+                      {merged.name} · {sizeLabel(merged.blob.size)}
+                    </span>
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={merged.url} download={merged.name}>
+                        <ArrowDownToLine size={14} />
+                        下载 PDF
+                      </a>
+                    </Button>
+                    <ContinueWith outputs={[merged]} disabled={busy || packing} />
+                    <OutputActions outputs={[merged]} disabled={busy || packing} />
+                  </div>
                 )}
-                {done > 1 && mode !== 'image-pdf' && (
-                  <Button variant="outline" disabled={busy || packing} onClick={zip}>
-                    {packing ? (
-                      <LoaderCircle className="animate-spin" size={14} />
-                    ) : (
-                      <ArrowDownToLine size={14} />
-                    )}
-                    打包下载 ({done})
-                  </Button>
-                )}
-                {(!automatic || failed > 0) && (
+                <div className="conversion-actions">
                   <Button
-                    disabled={
-                      !rows.length ||
-                      busy ||
-                      packing ||
-                      done === rows.length ||
-                      excelPending ||
-                      (automatic && !failed)
-                    }
-                    onClick={() => void run()}
+                    variant="ghost"
+                    disabled={!rows.length || busy || packing}
+                    onClick={reset}
                   >
-                    {busy ? (
-                      <LoaderCircle className="animate-spin" size={14} />
-                    ) : (
-                      <Check size={14} />
-                    )}
-                    {busy
-                      ? '正在转换'
-                      : automatic
-                        ? '重试失败项'
-                        : mode === 'image-pdf'
-                          ? '合并 PDF'
-                          : '开始转换'}
+                    <Trash2 size={14} />
+                    清空
                   </Button>
-                )}
-              </div>
-            </div>
-          </section>
-        </TabsContent>
-      </Tabs>
+                  <div>
+                    {automatic && (
+                      <span className="conversion-auto" role="status">
+                        {busy
+                          ? '正在自动转换'
+                          : failed > 0
+                            ? `已完成 ${done} 个，失败 ${failed} 个`
+                            : done === rows.length && done > 0
+                              ? `已完成 ${done} 个文件`
+                              : '添加文件后自动转换'}
+                      </span>
+                    )}
+                    {done > 1 && mode !== 'image-pdf' && (
+                      <OutputActions
+                        outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
+                        disabled={busy || packing}
+                      />
+                    )}
+                    {done > 1 && mode !== 'image-pdf' && (
+                      <ContinueWith
+                        outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
+                        disabled={busy || packing}
+                      />
+                    )}
+                    {done > 1 && mode !== 'image-pdf' && (
+                      <Button variant="outline" disabled={busy || packing} onClick={zip}>
+                        {packing ? (
+                          <LoaderCircle className="animate-spin" size={14} />
+                        ) : (
+                          <ArrowDownToLine size={14} />
+                        )}
+                        打包下载 ({done})
+                      </Button>
+                    )}
+                    {(!automatic || failed > 0) && (
+                      <Button
+                        disabled={
+                          !rows.length ||
+                          busy ||
+                          packing ||
+                          done === rows.length ||
+                          excelPending ||
+                          (automatic && !failed)
+                        }
+                        onClick={() => void run()}
+                      >
+                        {busy ? (
+                          <LoaderCircle className="animate-spin" size={14} />
+                        ) : (
+                          <Check size={14} />
+                        )}
+                        {busy
+                          ? '正在转换'
+                          : automatic
+                            ? '重试失败项'
+                            : mode === 'image-pdf'
+                              ? '合并 PDF'
+                              : '开始转换'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </section>
+            </TabsContent>
+          </Tabs>
+        </div>
+        <aside className="tool-aside">
+          <div className="tool-aside-card">{optionControls}</div>
+          {(mode === 'image' || mode === 'image-compress') && (
+            <ImageEditOptions
+              value={imageEdit}
+              disabled={busy || packing}
+              onChange={(value) => {
+                clearOutputs()
+                setImageEdit(value)
+              }}
+            />
+          )}
+        </aside>
+      </div>
     </main>
   )
 }
