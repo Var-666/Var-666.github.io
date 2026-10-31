@@ -5119,3 +5119,13 @@ html:has(.app-shell .workbench-actions) {
     grid-column: 1;
   }
 }
+
+/* 右栏与编辑器卡顶对齐：工作台在 tool-main 内不再额外上边距（间距由 tool-body/工具栏行提供） */
+@media (min-width: 1024px) {
+  .tool-main .workbench {
+    margin-top: 0;
+  }
+  .tool-main .text-ops {
+    margin-top: 0;
+  }
+}

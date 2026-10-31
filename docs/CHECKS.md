@@ -655,3 +655,7 @@ TextTool「更多操作」第四区块：一次导入多份 TXT/MD，统一应�
 PDF 工具的三个折叠块嵌在条件渲染分支内，盲式行号搬移破坏括号结构，已整体回退该文件并重放 ToolHead 头部（其余工具一致），恢复 185/185。PDF/table/compare/rename 四工具的侧栏化留待下一轮按 FileTool 样板执行（需逐分支校验 JSX 括号平衡）。
 
 验证补充：四工具右栏化实测（rename left=1025 / pdf left=975 / table w=340）+ 全量 e2e 185/185；table/compare 首测 w=0 为懒加载渲染前伪影，复测正常。
+
+### 补充十七：右栏顶对齐修复 + 全页对齐核验
+
+用户截图指出文本页右栏与编辑器卡顶部错位（「读取编码」行 + workbench 旧 24px 上边距把主栏首块压低，右栏从容器顶开始）。修复：≥1024px 时 `.tool-main .workbench/.text-ops` 上边距归零，间距交给 tool-body。实测 text 页 1440/1920 两档 asideTop == 编辑器卡 top（delta=0）；五工具 details 全部位于右栏（detLeft 975–1265、宽 290–340）、无横向溢出。Chromium 全量 e2e 185/185。
