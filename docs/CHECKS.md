@@ -506,3 +506,71 @@ TextTool「更多操作」第四区块：一次导入多份 TXT/MD，统一应�
 - 新增快速切换时迟到模块不抢焦点、草稿/下载/线程保留、键盘预热不挂载工具，以及预热失败后点击恢复的回归。既有断网、过期分块与失败恢复检查保留。
 - 本轮验证：223 项业务/公共能力单测与 8 项构建脚本测试通过；TypeScript、lint、格式与生产静态构建通过。Chromium 全量 185/185 通过；WebKit 导航、离线、网站入口、可靠性、表格与无障碍专项 76/76 通过。新增场景也覆盖预热请求失败后再次真实加载，不以放宽错误断言通过。
 - 小米 15 真机验收按约定后置。上一轮可靠性修复与本轮导航优化一起提交推送；GitHub Actions 新流程随该次推送验证，线上是否更新以发布作业结果为准。
+
+## 2026-10-31 工具箱页风格移植（重设计版）
+
+将 Figma 重设计版（`Redesign Personal Portfolio Website`，风格基准见 REDESIGN-STYLE-2026-10-30.md）的工具箱页视觉移植到 `/tools`：仅样式与最小结构微调，功能、路由、存储与工具内部 UI 不变；网站首页不动。
+
+- `features/toolbox/tools.ts` 增加每工具 `color` 与 `gradient`（重设计版识别色，140deg 双色渐变）。
+- `features/toolbox/styles.css` 新增 `.app-shell` 作用域的 tb 令牌（浅 `#f5f5f7/#1d1d1f`、深 `#000/#f5f5f7` 等，深色由既有 html.dark 驱动）；首页路由（intro、导入卡、常用/最近胶囊、工具卡、收藏星、面包屑、页脚）按重设计版重写：28px 圆角卡片 + 双层阴影悬停升起 + 工具色光晕、渐变图标 + 内高光、主蓝圆钮导入卡与格式 chips、大标题「全部工具。」+ 灰色续句、隐私说明块；`.tool-home` 容器收窄至 1180px（工具路由仍 1352px）。文本对比度按 WCAG AA 校验（chip 底上的次要文字改用 raise 底）。
+- `features/toolbox/App.tsx` 配合调整：句号与说明块按 aria-hidden/独立段落处理，h1 可访问名保持恰为「全部工具」；常用/最近胶囊内嵌渐变 mini 图标；标签改为「·」连接的单行文字。
+- `features/toolbox/FileIntake.tsx` 首页导入卡增加拖入态（描边光晕 + 文案「松手，看看能做什么」），新增「也可以直接粘贴截图 · 文件不上传」提示。
+- `components/SiteHeader.tsx` + `app/globals.css`：仅 `/tools` 路由给站点导航加 `is-tb` 玻璃变体（sticky + 半透明 blur + saturate，浅/深两态），首页导航外观不变。
+- e2e 断言同步：`accessibility.spec.ts` 的 audit() h1 颜色断言改为按路由区分（工具箱 `rgb(29,29,31)`/`rgb(245,245,247)`，首页维持原值），其余断言未放宽。
+- 本轮验证：TypeScript、ESLint、223 项单测、生产静态构建通过；Chromium 全量 e2e 185/185 通过；WebKit + Firefox 专项（无障碍/导入/离线/首页/一致性）62/62 通过；截图抽验工具箱浅/深两态与首页无回归。本机补装 pnpm 11（此前 PATH 缺失）。
+
+### 2026-10-31 补充：整页复刻（首版仅移植皮肤，用户反馈差距大，已按源码整页重抄）
+
+上一节只搬了令牌与卡片观感，缺少重设计版的整页结构。已按 `Redesign Personal Portfolio Website/src/pages/Toolbox.tsx` 逐区复刻：
+
+- 页头：隐私说明块（含「了解隐私」锚点）+「在线 · 本地处理 / 离线中」状态胶囊 + 主题切换按钮（自页脚移入页头；工具路由的切换按钮在面包屑行右侧，aria-label 不变）。
+- 新增图标架（64px 渐变 App 图标 + A↔B 虚线对比入口）、工具一览 bento 拼格（≥1024px 六列跨 3/3/2/2/2，前两张大卡带四项功能清单；卡片底部「打开 / 批量处理+表格对比」主按钮与「功能详解」锚点链接置于 `<a>` 外避免嵌套交互）、功能详解分段器面板（分段选项卡 + 使用限制胶囊 + 六宫格功能说明）、为什么放心横滑卡组（滚动吸附 + 左右箭头）、重设计版页脚（隐私段落 + 版权/离线状态/返回首页行）。
+- `tools.ts` 从重设计版补齐 tagline、六项 features（含图标）、limits 与 PROMISES 文案。
+- 无障碍适配：状态胶囊与虚线入口文字改用通过 WCAG AA 的深色变体（#166534/#8a4a00/#9a5b00 浅色态）；两个横滑区补 tabIndex 与 aria-label；功能详解面板标题用段落而非标题元素，避免与工具页 h1 同名造成导航断言的 strict 冲突（两处 e2e 据此恢复通过，断言未放宽）。
+- 验证：TypeScript、ESLint、223 项单测、生产构建通过；Chromium 全量 e2e 185/185；WebKit + Firefox 专项 63/63；截图逐区对照重设计版（图标架/bento/功能详解/承诺区/页脚/移动端）一致。
+
+### 2026-10-31 补充二：细节复查修正
+
+对照重设计版源码逐区复查，修正首版整页复刻遗漏的细节：
+
+- 悬停升起从卡片移到 `.tool-card-wrap`：此前卡片上浮时底部「打开 / 功能详解」操作行与收藏星不跟随（操作行位于卡片 `<a>` 外，属测试锚点约束的合理结构）。
+- 字号对齐重设计版：首页续句与大标题同字号（clamp 64px，灰色弱化，「5 个工具」小字内联）；大卡标题 32px / tagline 19px；功能详解面板标题 36px / tagline 21px；卡片宽屏 padding 32px。
+- 页头：状态胶囊补 Wifi/WifiOff 图标、「了解隐私」补箭头、功能详解主按钮补 ArrowUpRight；拖放卡提示文案补全实际限制（最多 100 个文件、总计 100 MB，与 file-intake.ts 一致）。
+- 承诺卡补悬停 scale(1.02)+阴影；承诺区箭头 <650px 隐藏（同重设计版）；图标架间距宽屏 44px。
+- 动效：进场 blur-in（页头/图标架/拖放卡/功能详解面板）+ 卡片滚动显现（CSS view() 时间轴渐进增强，不支持的引擎与 prefers-reduced-motion 均静态可见，globals 全局动效开关继续生效）。
+- `body:has(.app-shell)` 让工具箱路由页面底色跟随 tb 令牌（浅 #f5f5f7 / 深 #000），首页不受影响。
+- 验证：TypeScript、ESLint、223 项单测、构建通过；Chromium 全量 e2e 185/185；WebKit + Firefox 专项 50/50；悬停态与页头截图核对。
+- 已知的有意保留差异（测试锚点约束）：首页标题文案为「全部工具」而非重设计版「工具箱」；常用/最近使用保留小节标题结构而非重设计版的行内标签；标签行用弱化灰而非工具色文字（WCAG AA 对比度）；工具页仍为原面包屑而非重设计版毛玻璃工具条（属工具页范围，未动）。
+
+### 2026-10-31 补充三：工具内部换肤
+
+用户要求工具内部样式同步重设计版。工具内部样式全部引用 globals.css 旧令牌名，在 `.app-shell` 作用域整体重映射（`styles.css` 末段），不改任何工具的结构与逻辑：
+
+- 色板：`--background/--card` 白/#1c1c1e、`--page` #f5f5f7/#000、`--subtle/--muted` raise 色、`--gray/--muted-foreground` 工具箱灰、`--border` 半透明线、`--soft-blue/--accent/--secondary` 统一为中性 chip、`--primary` 浅色 #0066cc（链接蓝；#0071e3 在 chip 底上仅 3.84:1 不达标）、深色 #2997ff（文字用）+ 实心按钮覆盖回 #0071e3 白字、`--ring` 对应蓝、`--success/--favorite/--destructive` 换 AA 达标的重设计色值。
+- 形状：shadcn Button 在工具区胶囊化（`.app-shell :is(button,a).rounded-md`，首页共用组件不受影响）；`[role=tablist]` 统一 chip 底胶囊分段样式，选中项白底投影（替换 globals 的下划线式选中），未选中项文字降透明度保对比度。
+- 站点导航（/tools 玻璃变体）悬停/当前项文字改链接蓝。
+- 验证：a11y 套件首轮 7 处对比度失败（#0071e3 on #e8e8ed），按上述主色修正后 33/33；TypeScript、ESLint、223 单测、构建通过；Chromium 全量 185/185；WebKit + Firefox 专项 59/59；文本/PDF 工具浅深截图核对。
+
+### 2026-10-31 补充四：第二轮细节复查
+
+- **修复真 bug**：滚动显现 `tb-reveal` 以 `fill: both` 的 view() 时间轴动画 transform，会永久锁死该属性、压住卡片悬停上移。已拆为两层——透明度/模糊在 `.tool-card-wrap`（含操作行与收藏星），位移在卡片 `.tb-reveal-y`；两者都不再与悬停 transform 冲突。
+- **补上工具页毛玻璃工具条**（重设计版 ToolShell 的核心 chrome）：面包屑行改为 sticky 吸附玻璃条（blur+saturate、随主题），新增六个工具的渐变小图标切换器（当前工具蓝环标记，≥640px 显示，窄屏隐藏保无溢出）与分隔线；`/tools` 站点导航由 72px 收窄为 48px（`--website-header-height` 经 `body:has(.app-shell)` 作用域重定义，品牌同步缩小），焦点标题的 scroll-margin 适配两层吸附。
+- **a11y 三连修**：①工具切换器 0.55 透明度把虚线块 10px 文字混成 3.48/2.24:1——弱化只作用于纯图形图标；②切换器 `aria-label=表格对比` 与可见文字 A↔B 触发 label-content-name-mismatch——小图标改用 GitCompare 图形（首页图标架的大 A↔B 保留文字，其可访问名来自内容无冲突）；③`reliability.spec` 的 `.tool-breadcrumb a` 收紧为 `.tool-breadcrumb > a`（工具条内新增切换器链接属预期，断言语义不变）。
+- **杂项**：预设图标/hover 边框的旧靛蓝硬编码换新令牌；`::selection` 在工具箱路由改中性蓝（首页维持原样）；工具页与页脚宽度 1352→1280 对齐重设计版；「了解隐私」箭头对齐修正；cap 面板补 aria-controls。
+- **验证工具修正**：此前截图脚本 `newPage({ viewportSize })` 参数无效（正确为 `viewport` 或 `setViewportSize`），此前"移动端截图"实为 1280px 误检；本轮以真实 390px 目检工具页与首页，无溢出与错位。
+- 本轮验证：TypeScript、ESLint、223 单测、构建通过；Chromium 全量 e2e 185/185；WebKit + Firefox 专项 68/68；工具条浅/深与 390px 截图核对。
+
+### 2026-10-31 补充五：第三轮复查（深色/中间宽度/跨切面）
+
+- `ThemeProvider` 的 `theme-color` 元信息按路由区分：工具箱浅 #f5f5f7 / 深 #000，首页维持 #f7f8fa / #131722（移动端浏览器边栏色跟随实际底色）。
+- 承诺卡横滑区补隐藏滚动条（此前只有图标架隐藏了）；功能详解面板切换的 blur-in 缩短为 0.7s。
+- 目检补全：深色首页/深色表格工具、800px 首页/文件转换工具——切换器当前项、深色分段器、FileTool 模式分段胶囊、空态布局均正常；上一轮截图脚本视口参数问题已修，本轮全部为真实视口。
+- 本轮验证：Chromium 全量 e2e 185/185；WebKit + Firefox 专项 41/41。
+
+### 2026-10-31 补充六：第四轮复查（动态行为与同类 bug 排查）
+
+- **同类 bug 排查发现第二处 transform 锁死**：首页拖放卡的 blur-in 同样以 fill:both 锁死 transform，拖入态的 scale(1.01) 会被吞掉（描边光晕仍生效）。动画移到包裹层 div，按钮的拖入缩放恢复。
+- 锚点 scroll-margin 修正为 `calc(var(--website-header-height) + 16px)`：「了解隐私」跳转不再被 48px 玻璃导航遮挡。验证时发现承诺区跳转后停在 430px——排查确认是页面最大滚动位置钳制（区块离页底仅 470px，物理上无法更靠上），属正常表现，非缺陷。
+- **真实交互全流程驱动**（Playwright 逐步断言）：拖入缩放生效、功能详解锚点定位 64px、分段切换换面板、切换器跨工具导航、浏览器后退回 #/text、主题切换跨页面持久、文本整理实际输出正确、首页导入文件弹出任务面板、1920px 宽屏布局居中。
+- Prettier 全仓格式化通过（顺带修正 history 里 navigation.spec 的既有格式偏差，纯空白差异）。
+- 本轮验证：Chromium 全量 e2e 185/185；WebKit + Firefox 专项 25/25；format:check 通过。

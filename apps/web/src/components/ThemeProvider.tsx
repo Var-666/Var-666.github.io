@@ -20,9 +20,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [dark, updateDark] = useState(false)
   const apply = useCallback((next: boolean) => {
     document.documentElement.classList.toggle('dark', next)
+    // 工具箱路由随重设计版令牌（浅 #f5f5f7 / 深 #000），首页保持原配色
+    const toolbox = document.querySelector('.app-shell') !== null
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', next ? '#131722' : '#f7f8fa')
+      ?.setAttribute(
+        'content',
+        next ? (toolbox ? '#000000' : '#131722') : toolbox ? '#f5f5f7' : '#f7f8fa',
+      )
     updateDark(next)
   }, [])
   useLayoutEffect(() => {

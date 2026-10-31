@@ -126,6 +126,37 @@ body {
   background: var(--page);
   color: var(--foreground);
 }
+/* 工具箱路由的底色随重设计版令牌（浅 #f5f5f7 / 深 #000），站点导航同步收窄为 48px */
+body:has(.app-shell) {
+  background: #f5f5f7;
+  --website-header-height: 48px;
+}
+.dark body:has(.app-shell) {
+  background: #000;
+}
+/* /tools 下品牌与导航按 48px 高度收紧 */
+.website-header.is-tb .website-brand {
+  gap: 8px;
+  font-size: 16px;
+}
+.website-header.is-tb .website-brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+.website-header.is-tb .website-brand-mark svg {
+  width: 15px;
+  height: 15px;
+}
+/* 工具箱内选中文本用中性蓝，替换首页的靛蓝选区 */
+body:has(.app-shell) ::selection {
+  background: #b4d7f8;
+  color: #1d1d1f;
+}
+.dark body:has(.app-shell) ::selection {
+  background: #0058b0;
+  color: #f5f5f7;
+}
 button,
 a,
 input,
@@ -199,6 +230,20 @@ a {
   height: var(--website-header-height);
   background: var(--background);
   border-bottom: 1px solid var(--border);
+}
+/* /tools 专用玻璃导航（重设计版风格）；首页外观不变 */
+.website-header.is-tb {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.7);
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
+  backdrop-filter: blur(40px) saturate(1.5);
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+.dark .website-header.is-tb {
+  background: rgba(0, 0, 0, 0.6);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 .website-header-inner {
   width: min(100%, 1192px);

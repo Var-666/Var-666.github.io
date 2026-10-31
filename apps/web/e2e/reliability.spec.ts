@@ -29,7 +29,8 @@ for (const blocked of ['object', 'methods'] as const) {
     await expect(page.getByRole('textbox', { name: '整理结果', exact: true })).toHaveValue(
       'hello world',
     )
-    await page.locator('.tool-breadcrumb a').click()
+    // 直接子级 = 面包屑返回链接；工具条内的工具切换器也是链接，不能混入
+    await page.locator('.tool-breadcrumb > a').click()
     await page.locator('.tool-card').filter({ hasText: '文件格式转换' }).click()
     await expect(page.getByRole('combobox', { name: '输出格式', exact: true })).toBeVisible()
     expect(errors).toEqual([])

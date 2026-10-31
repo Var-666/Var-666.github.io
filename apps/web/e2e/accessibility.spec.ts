@@ -17,9 +17,17 @@ async function audit(page: Page, theme: 'light' | 'dark') {
     'color',
     theme === 'dark' ? 'rgb(228, 232, 242)' : 'rgb(37, 43, 57)',
   )
+  // 工具箱自 2026-10-31 起使用重设计版前景色（docs/REDESIGN-STYLE-2026-10-30.md），网站首页保持原配色。
+  const toolsShell = new URL(page.url()).pathname.startsWith('/tools')
   await expect(page.locator('h1:visible')).toHaveCSS(
     'color',
-    theme === 'dark' ? 'rgb(228, 232, 242)' : 'rgb(37, 43, 57)',
+    toolsShell
+      ? theme === 'dark'
+        ? 'rgb(245, 245, 247)'
+        : 'rgb(29, 29, 31)'
+      : theme === 'dark'
+        ? 'rgb(228, 232, 242)'
+        : 'rgb(37, 43, 57)',
   )
   // WebKit 需完成主题重绘，避免在切换帧采到旧的继承色。
   await page.evaluate(

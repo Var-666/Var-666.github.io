@@ -20,7 +20,7 @@ export function SiteHeader() {
       >
         跳到主要内容
       </a>
-      <header className="website-header">
+      <header className={`website-header${pathname.startsWith('/tools') ? ' is-tb' : ''}`}>
         <div className="website-header-inner">
           <Link className="website-brand" href="/" aria-label="VAR 网站首页">
             <span className="website-brand-mark" aria-hidden="true">

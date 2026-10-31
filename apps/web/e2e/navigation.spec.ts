@@ -51,13 +51,11 @@ test('多工具往返复用模块与线程，并保留已生成的下载', async
   })
   page.on('worker', (worker) => workers.push(worker.url()))
   await page.goto('/tools/#/files?mode=json-csv')
-  await page
-    .getByLabel('选择待转换文件')
-    .setInputFiles({
-      name: 'keep.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from('[{"编号":"001"}]'),
-    })
+  await page.getByLabel('选择待转换文件').setInputFiles({
+    name: 'keep.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('[{"编号":"001"}]'),
+  })
   const download = page.locator('.file-row a[download]')
   await expect(download).toBeVisible()
   const url = await download.getAttribute('href')
