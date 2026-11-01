@@ -5,10 +5,8 @@ test.use({ serviceWorkers: 'block' })
 const original = (page: Page) => page.getByRole('textbox', { name: '原始文本', exact: true })
 async function extras(page: Page, panel: string) {
   await page.getByRole('button', { name: /^更多操作/ }).click()
-  await page
-    .locator('summary')
-    .filter({ hasText: new RegExp('^' + panel + '$') })
-    .click()
+  // 折叠分区已对齐设计源 Collapsible（按钮 + aria-expanded），按按钮可访问名精确匹配分区名
+  await page.getByRole('button', { name: new RegExp('^' + panel + '$') }).click()
 }
 async function select(page: Page, label: string, option: string) {
   await page.getByRole('combobox', { name: label, exact: true }).click()

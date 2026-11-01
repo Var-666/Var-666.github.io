@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { CircleAlert } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ChevronDown, CircleAlert } from 'lucide-react'
 
 /**
  * 工具箱页面对齐设计源一律使用 Tailwind 工具类 + tb-* 令牌（globals.css @theme 映射），
@@ -82,5 +82,84 @@ export function TbStat({ label, value, tone }: { label: string; value: ReactNode
         {value}
       </span>
     </span>
+  )
+}
+
+/**
+ * 设计源 Collapsible（src/tools/ui.tsx 逐字移植）：18px 圆角描边盒 + 标题/hint 按钮 +
+ * ChevronDown 180° 旋转 + grid-template-rows 0fr/1fr 行高展开动画（300ms ease-out）。
+ * 收起态内容在动画容器上加 invisible：visibility:hidden 过渡到末帧才隐藏，
+ * 既保留收起动画，又让 Playwright toBeHidden 与无障碍树语义与旧条件渲染一致。
+ * 内容常驻挂载（收起不丢草稿）；open 由内部 useState 管理，onToggle 在状态变化时回调。
+ */
+export function TbCollapsible({
+  title,
+  hint,
+  defaultOpen = false,
+  onToggle,
+  className = '',
+  children,
+}: {
+  title: ReactNode
+  hint?: ReactNode
+  defaultOpen?: boolean
+  /** 展开状态变化时回调（text 侧栏分区用于按需启用处理线程） */
+  onToggle?: (open: boolean) => void
+  className?: string
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  const toggle = () => {
+    const next = !open
+    setOpen(next)
+    onToggle?.(next)
+  }
+  return (
+    <div className={`rounded-[18px] ring-1 ring-tb-line ${className}`}>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="tb-collapsible-toggle flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <span className="min-w-0">
+          <span className="block text-[14px] font-medium">{title}</span>
+          {hint && <span className="mt-0.5 block text-[12px] text-tb-mute">{hint}</span>}
+        </span>
+        <ChevronDown
+          size={16}
+          className={`shrink-0 text-tb-mute transition motion-reduce:transition-none ${
+            open ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+      <div
+        className={`grid grid-cols-[minmax(0,1fr)] transition-all duration-300 ease-out motion-reduce:transition-none ${
+          open ? '' : 'invisible'
+        }`}
+        style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
+      >
+        <div className="overflow-hidden">
+          <div className="px-4 pb-4">{children}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Toggle 行下展开体的 grid 行高动画包装（机制同 TbCollapsible：0fr/1fr + 300ms ease-out +
+ * 收起态 invisible，展开 state 由调用方传入）。列保持显式单列 minmax(0,1fr)，禁隐式 auto 轨道。
+ */
+export function TbReveal({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <div
+      className={`grid grid-cols-[minmax(0,1fr)] transition-all duration-300 ease-out motion-reduce:transition-none ${
+        open ? '' : 'invisible'
+      }`}
+      style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
+    >
+      <div className="overflow-hidden">{children}</div>
+    </div>
   )
 }

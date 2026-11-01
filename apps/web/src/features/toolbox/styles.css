@@ -4976,14 +4976,43 @@ html:has(.app-shell .workbench-actions) {
   color: #30d158;
 }
 
-/* 设计源 Collapsible：展开时箭头旋转（group-open 变体的 files 作用域兜底） */
-.file-tool details[open] > summary svg {
-  rotate: 180deg;
-}
-
 /* 底栏动作组中窄视口换行兜底：>640px 仍为固定单行时（约 641-720px），分享/继续处理/
    打包下载/主按钮可能放不下，允许在动作组内换行，避免页面级横向溢出 */
 .file-tool .workbench-bar-actions {
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+/* ================================================================== */
+/* ---------- 头部「说明与限制」面板 grid 行高展开动画 ---------- */
+/* 对齐设计源 ToolShell notes 面板：外层 grid 承载 grid-template-rows 0fr/1fr 过渡
+   （500ms ease-out，说明面板规格），内层面板卡 overflow-hidden 随行高收放。
+   收起态 visibility:hidden —— visibility 过渡到末帧才隐藏，既保留收起动画，
+   又让 Playwright toBeHidden 与无障碍树语义与旧条件渲染一致。 */
+/* 原面板 margin-top: 8px 移到外层：grid item 的 margin 会计入 0fr 轨道最小尺寸
+   （收起残留 8px），且不再与 .intro 的 margin-bottom 折叠；外层承载后两种状态
+   的相邻兄弟折叠结果与旧条件渲染逐像素一致。 */
+.tool-limits-reveal {
+  display: grid;
+  /* 显式单列 minmax(0,1fr)：禁隐式 auto 轨道（宽内容不会被 max-content 撑破） */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  margin-top: 8px;
+  transition:
+    grid-template-rows 500ms ease-out,
+    visibility 500ms ease-out;
+}
+.tool-limits-reveal > .tool-limits-panel {
+  overflow: hidden;
+  min-height: 0;
+  margin-top: 0;
+}
+.tool-limits-reveal.is-closed {
+  grid-template-rows: 0fr;
+  visibility: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tool-limits-reveal {
+    transition: none;
+  }
 }

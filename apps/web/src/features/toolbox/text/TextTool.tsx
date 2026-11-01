@@ -464,7 +464,7 @@ export default function TextTool({ active }: { active: boolean }) {
             </>
           }
         />
-        {limitsOpen && (
+        <div className={limitsOpen ? 'tool-limits-reveal' : 'tool-limits-reveal is-closed'}>
           <div className="tool-limits-panel">
             <ul>
               {toolLimits.map((limit) => (
@@ -472,7 +472,7 @@ export default function TextTool({ active }: { active: boolean }) {
               ))}
             </ul>
           </div>
-        )}
+        </div>
         <div className="text-import-options">
           <TextEncodingSelect
             value={readEncoding}

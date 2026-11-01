@@ -535,7 +535,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
           </button>
         }
       />
-      {limitsOpen && (
+      <div className={limitsOpen ? 'tool-limits-reveal' : 'tool-limits-reveal is-closed'}>
         <div className="tool-limits-panel">
           <p>
             最多 10 个输入文件，单个 20 MB，总计 50 MB / 原文与当前列表各不超过 100 页，导出不超过
@@ -550,7 +550,7 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
             ))}
           </ul>
         </div>
-      )}
+      </div>
       <div className="tool-body">
         <div className="tool-main">
           <TbCard>

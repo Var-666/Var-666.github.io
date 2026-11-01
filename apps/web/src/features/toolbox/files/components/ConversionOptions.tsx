@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { supportsImageEncoding } from '@/features/toolbox/files/image-decode'
 import {
   Select,
@@ -14,9 +13,10 @@ import type { FileOptions } from '../options'
 import { modes, type Mode } from '../modes'
 import { TextEncodingSelect } from '@/features/toolbox/components/TextEncodingSelect'
 import type { TextEncoding } from '@/features/toolbox/lib/text-encoding'
+import { TbCollapsible } from '@/features/toolbox/components/tb'
 
-// 右栏「设置」卡的选项区：结构对齐设计源 aside（TbLabel 行 + 设计源 Collapsible 观感的
-// 折叠块）。可访问名 / 选项 / 文案逐字保留（e2e 依赖 aria-label 与 summary 文字）。
+// 右栏「设置」卡的选项区：结构对齐设计源 aside（TbLabel 行 + 设计源 Collapsible 的
+// 折叠块）。可访问名 / 选项 / 文案逐字保留（e2e 依赖 aria-label 与折叠块标题文字）。
 export function ConversionOptions({
   mode,
   options,
@@ -228,15 +228,8 @@ export function ConversionOptions({
           当前浏览器不支持 AVIF 编码，请改用 PNG、JPG 或 WebP。
         </p>
       )}
-      <details key={mode} className="group rounded-[18px] ring-1 ring-tb-line">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-[14px] font-medium [&::-webkit-details-marker]:hidden">
-          高级设置与说明
-          <ChevronDown
-            size={16}
-            className="shrink-0 text-tb-mute transition group-open:rotate-180"
-          />
-        </summary>
-        <div className="flex flex-col gap-4 px-4 pb-4">
+      <TbCollapsible key={mode} title="高级设置与说明">
+        <div className="flex flex-col gap-4">
           {mode === 'image' && format !== 'png' && (
             <label className={fieldLabel}>
               质量 {quality}%
@@ -379,7 +372,7 @@ export function ConversionOptions({
           )}
           <p className="text-[12px] leading-[1.5] text-tb-mute">{modes[mode].hint}</p>
         </div>
-      </details>
+      </TbCollapsible>
     </div>
   )
 }

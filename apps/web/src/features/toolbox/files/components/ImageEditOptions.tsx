@@ -1,4 +1,3 @@
-import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -12,9 +11,10 @@ import {
   defaultImageEdit,
   type ImageEditOptions as Options,
 } from '@/features/toolbox/files/image-edit'
+import { TbCollapsible } from '@/features/toolbox/components/tb'
 
-// 右栏「设置」卡的图片编辑折叠块：设计源 Collapsible 观感（18px 圆角 ring + 旋转箭头）。
-// summary 文字与全部表单 aria-label 逐字保留；tool-input 保持 36px 高（e2e 断言）。
+// 右栏「设置」卡的图片编辑折叠块：设计源 Collapsible（18px 圆角 ring + 旋转箭头 + grid 行高动画）。
+// 折叠块标题文字与全部表单 aria-label 逐字保留；tool-input 保持 36px 高（e2e 断言）。
 export function ImageEditOptions({
   value,
   disabled,
@@ -48,12 +48,8 @@ export function ImageEditOptions({
     </label>
   )
   return (
-    <details className="group mt-4 rounded-[18px] ring-1 ring-tb-line">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-[14px] font-medium [&::-webkit-details-marker]:hidden">
-        裁剪、旋转与水印
-        <ChevronDown size={16} className="shrink-0 text-tb-mute transition group-open:rotate-180" />
-      </summary>
-      <div className="flex flex-col gap-4 px-4 pb-4">
+    <TbCollapsible className="mt-4" title="裁剪、旋转与水印">
+      <div className="flex flex-col gap-4">
         <fieldset disabled={disabled} className="flex flex-col gap-3">
           <legend className="text-[12px] font-semibold text-tb-mute">尺寸与旋转</legend>
           <div className="flex flex-col gap-3">
@@ -176,6 +172,6 @@ export function ImageEditOptions({
           重置图片编辑
         </Button>
       </div>
-    </details>
+    </TbCollapsible>
   )
 }

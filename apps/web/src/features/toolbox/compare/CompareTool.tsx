@@ -487,7 +487,7 @@ export default function CompareTool({ active }: { active: boolean }) {
           </button>
         }
       />
-      {limitsOpen && (
+      <div className={limitsOpen ? 'tool-limits-reveal' : 'tool-limits-reveal is-closed'}>
         <div className="tool-limits-panel">
           <p>
             导入旧表与新表（CSV 或
@@ -496,7 +496,7 @@ export default function CompareTool({ active }: { active: boolean }) {
             2 MB、XLSX 单个 10 MB、单表最多 10 万行/100 万格；按显示值比较，不比较公式或样式。
           </p>
         </div>
-      )}
+      </div>
       <div className="tool-body">
         <div className="tool-main">
           <TbCard

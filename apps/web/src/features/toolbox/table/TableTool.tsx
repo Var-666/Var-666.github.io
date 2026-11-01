@@ -1,6 +1,6 @@
 import { useUnsavedWork } from '../DraftGuard'
 import { OutputActions } from '../components/OutputActions'
-import { TbCard } from '../components/tb'
+import { TbCard, TbCollapsible } from '../components/tb'
 import { useTransferReceiver } from '../tool-transfer'
 import { TextEncodingSelect } from '../components/TextEncodingSelect'
 import type { TextEncoding } from '../lib/text-encoding'
@@ -316,7 +316,7 @@ export default function TableTool({ active }: { active: boolean }) {
           </button>
         }
       />
-      {limitsOpen && (
+      <div className={limitsOpen ? 'tool-limits-reveal' : 'tool-limits-reveal is-closed'}>
         <div className="tool-limits-panel">
           <p>
             导入 CSV / XLSX（可选工作表），单个 10 MB（CSV 最多 1000 万字符），总计 50
@@ -325,7 +325,7 @@ export default function TableTool({ active }: { active: boolean }) {
             按字段拆分。每一步的影响在预览中给出数量，可导出 CSV 或 XLSX（拆分为 ZIP / 多工作表）。
           </p>
         </div>
-      )}
+      </div>
       <div className="tool-body">
         <div className="tool-main">
           <TbCard
@@ -927,8 +927,7 @@ export default function TableTool({ active }: { active: boolean }) {
                         )
                       })}
                     </div>
-                    <details className="tool-advanced mt-0.5!">
-                      <summary>列改名和顺序</summary>
+                    <TbCollapsible className="mt-0.5" title="列改名和顺序">
                       <div className="table-column-editor">
                         {[
                           ...columnOrder.filter((column) => headers.includes(column)),
@@ -975,7 +974,7 @@ export default function TableTool({ active }: { active: boolean }) {
                           </div>
                         ))}
                       </div>
-                    </details>
+                    </TbCollapsible>
                   </div>
                 )}
               </div>

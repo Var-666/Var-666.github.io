@@ -193,7 +193,7 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
           </button>
         }
       />
-      {limitsOpen && (
+      <div className={limitsOpen ? 'tool-limits-reveal' : 'tool-limits-reveal is-closed'}>
         <div className="tool-limits-panel">
           <ul>
             {toolLimits.map((limit) => (
@@ -201,7 +201,7 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
             ))}
           </ul>
         </div>
-      )}
+      </div>
       <div className="tool-body">
         <div className="tool-main">
           <TbCard aria-label="重命名文件">

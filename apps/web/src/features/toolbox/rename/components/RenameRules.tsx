@@ -1,5 +1,4 @@
 import { useState, type ReactNode } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import {
   Select,
@@ -9,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { RenameOptions } from '@/features/toolbox/rename/rename'
+import { TbCollapsible, TbReveal } from '@/features/toolbox/components/tb'
 
 /**
  * 批量重命名侧栏，对齐设计源（Redesign Personal Portfolio Website / RenameTool）：
@@ -108,6 +108,7 @@ export function RenameRules({
   const numbering = (
     <>
       {switchRow('添加编号', options.numbered, busy, (value) => update({ numbered: value }))}
+      {/* 保持条件渲染：外层 fieldset 是 flex gap 容器，常驻 0 高展开体也会占一格 gap */}
       {options.numbered && (
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
           <label className={labelCls}>
@@ -221,7 +222,6 @@ export function RenameMore({
   sortRow?: ReactNode
   children?: ReactNode
 }) {
-  const [importOpen, setImportOpen] = useState(false)
   return (
     <div className="flex flex-col gap-2.5">
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
@@ -255,7 +255,7 @@ export function RenameMore({
         {switchRow('修改时间', options.dateSource !== 'none', busy, (on) =>
           update({ dateSource: on ? 'modified' : 'none' }),
         )}
-        {options.dateSource !== 'none' && (
+        <TbReveal open={options.dateSource !== 'none'}>
           <div className="flex flex-col gap-2.5 pt-1.5 pb-1">
             {choiceField('dateSource', options, update, busy, '日期来源', [
               ['modified', '文件修改时间'],
@@ -272,13 +272,13 @@ export function RenameMore({
               ['compact', '20261027_143000'],
             ])}
           </div>
-        )}
+        </TbReveal>
       </div>
       <div className="border-t border-tb-line pt-1.5">
         {switchRow('特殊字符换成空格', options.cleanup.specialChars, busy, (on) =>
           update({ cleanup: { ...options.cleanup, specialChars: on } }),
         )}
-        {options.cleanup.specialChars && (
+        <TbReveal open={options.cleanup.specialChars}>
           <div className="flex flex-col pt-1 pb-1">
             {switchRow('折叠空格', options.cleanup.spaces, busy, (on) =>
               update({ cleanup: { ...options.cleanup, spaces: on } }),
@@ -287,28 +287,12 @@ export function RenameMore({
               update({ cleanup: { ...options.cleanup, duplicateSeparators: on } }),
             )}
           </div>
-        )}
+        </TbReveal>
       </div>
       {sortRow}
-      <div className="rounded-[18px] ring-1 ring-tb-line">
-        <button
-          type="button"
-          onClick={() => setImportOpen((open) => !open)}
-          aria-expanded={importOpen}
-          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-        >
-          <span>
-            <span className="block text-[14px] font-medium">从名称清单导入</span>
-            <span className="mt-0.5 block text-[12px] text-tb-mute">每行一个，按当前顺序对应</span>
-          </span>
-          <ChevronDown
-            size={16}
-            className={`shrink-0 text-tb-mute transition ${importOpen ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {/* 条件渲染（而非 0fr 动画折叠）：收起时 textarea 需对 Playwright 呈现真隐藏（toBeHidden 断言） */}
-        {importOpen && <div className="px-4 pb-4">{children}</div>}
-      </div>
+      <TbCollapsible title="从名称清单导入" hint="每行一个，按当前顺序对应">
+        {children}
+      </TbCollapsible>
     </div>
   )
 }

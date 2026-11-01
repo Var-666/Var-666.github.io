@@ -3,6 +3,7 @@ import { ArrowDownToLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { OutputActions } from '../../components/OutputActions'
+import { TbReveal } from '../../components/tb'
 import type { OutputFile } from '../../files/file-convert'
 
 export type PdfSettings = { numbering: boolean; start: string; watermark: string; opacity: number }
@@ -102,7 +103,7 @@ export function PdfOutputSettings({
           label="页码与水印"
           hint="按导出顺序添加底部页码，可另加居中斜向水印"
         />
-        {decorationsOpen && (
+        <TbReveal open={decorationsOpen}>
           <div className="flex flex-col gap-2.5 pb-2">
             <label className="flex cursor-pointer items-center justify-between gap-3 py-0.5 text-[14px] text-tb-fg">
               <span>添加页码</span>
@@ -163,7 +164,7 @@ export function PdfOutputSettings({
               按导出顺序添加底部页码和居中斜向水印，保留原有的可选文字；导出后可预览。拆分的每个文件分别从起始页码编号。水印和密码不保存到浏览器设置。
             </p>
           </div>
-        )}
+        </TbReveal>
       </div>
       {pageCount > 1 && (
         <div>
@@ -173,7 +174,7 @@ export function PdfOutputSettings({
             label="拆分导出"
             hint="每页 / 每 N 页 / 按页码段拆分并打包 ZIP"
           />
-          {splitOpen && (
+          <TbReveal open={splitOpen}>
             <div className="flex flex-col gap-2.5 pb-2">
               <div
                 role="group"
@@ -241,7 +242,7 @@ export function PdfOutputSettings({
                 )}
               </div>
             </div>
-          )}
+          </TbReveal>
         </div>
       )}
       <div>
@@ -251,7 +252,7 @@ export function PdfOutputSettings({
           label="PDF 结构压缩"
           hint="压缩结构与数据流，保留文字与图片分辨率"
         />
-        {compressOpen && (
+        <TbReveal open={compressOpen}>
           <div className="flex flex-col gap-2.5 pb-2">
             <p className={note}>
               压缩文档数据流和内部结构，保留文字与图片分辨率，不转成图片。已经压缩的照片或扫描件可能无法继续缩小，未减小时保留输入内容。只压缩当前所选页；未改动的单文件保留其完整结构。
@@ -262,7 +263,7 @@ export function PdfOutputSettings({
               </Button>
             </div>
           </div>
-        )}
+        </TbReveal>
       </div>
     </div>
   )

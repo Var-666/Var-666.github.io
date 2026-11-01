@@ -735,3 +735,11 @@ rename 的 details 在 `.conversion-panel` 内而非 main 直接子级，此前�
 - **工具页「说明与限制」面板**：files/text/rename 三处面板内的同款隐私段落删除（limits 胶囊保留；table/compare/pdf 面板本无此段）。
 - home.spec 同步：「5 个工具」断言改为 `.tool-count` 不存在。
 - 本轮验证：Prettier、TypeScript、ESLint、构建通过；Chromium 全量 e2e **185/185**（55.8s）。
+
+### 补充二十六：交互动效对齐设计源（应用户「交互可以加一点动画」）
+
+- **机制**（时长/缓动以设计源 ui.tsx 为准）：折叠展开 = `grid-template-rows 0fr↔1fr` + `ease-out`（Collapsible 300ms、头部说明面板 500ms）+ 内层 overflow-hidden；箭头 ChevronDown 过渡 + 开启 rotate-180；**收起态加 visibility:hidden**（visibility 参与过渡、末帧才隐——动画与 Playwright toBeHidden/无障碍树语义兼得）；全部动效尊重 prefers-reduced-motion。
+- **落位**：tb.tsx 新增 `TbCollapsible`（设计源逐字）与 `TbReveal`（Toggle 行下展开体包装）；files 高级设置与说明/裁剪旋转水印、table 列改名和顺序、rename 名称清单导入与修改时间/特殊字符展开体、pdf 页码与水印/拆分导出/结构压缩、text 更多操作分区——全部从「条件渲染/原生 details」迁到动画组件（details→button aria-expanded，可访问名逐字保留）；六工具头部「说明与限制」面板常驻 + `.tool-limits-reveal` 动画（500ms）。
+- 边界保持：页面切换/toast/Segmented 选中/开关滑块/hover 不加新动效；「添加编号」展开体保留条件渲染（fieldset gap 会占位的取舍已注释）。
+- e2e 同步三处：text-extra/offline 的 summary 定位→按钮、accessibility 的 files 审计展开方式（`.tb-collapsible-toggle, .tool-limits-toggle`），其余「收起态 toBeHidden」用例经 visibility 语义自然通过。
+- 本轮验证：Prettier、TypeScript、ESLint、单测 223、构建通过；Chromium 全量 e2e **185/185**（53.6s，一次通过）。

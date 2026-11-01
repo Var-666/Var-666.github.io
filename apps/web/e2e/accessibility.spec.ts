@@ -188,7 +188,8 @@ for (const theme of ['light', 'dark'] as const) {
     for (const [mode, meta] of Object.entries(modes)) {
       await page.goto(`/tools/#/files?mode=${mode}`)
       await expect(page.getByRole('region', { name: meta.title, exact: true })).toBeVisible()
-      await page.locator('details > summary').evaluateAll((elements) => {
+      // 折叠块已从 details/summary 迁移为 TbCollapsible 按钮，展开全部（含头部说明与限制）
+      await page.locator('.tb-collapsible-toggle, .tool-limits-toggle').evaluateAll((elements) => {
         for (const element of elements) (element as HTMLElement).click()
       })
       await audit(page, theme)

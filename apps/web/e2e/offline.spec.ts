@@ -87,17 +87,12 @@ test('首次离线准备后，未访问过的六个工具与本地字体都可�
     'Offline test',
   )
   await page.getByRole('button', { name: /^更多操作/ }).click()
-  await page
-    .locator('summary')
-    .filter({ hasText: /^简繁转换$/ })
-    .click()
+  // 折叠分区已对齐设计源 Collapsible（按钮 + aria-expanded），按按钮可访问名精确匹配分区名
+  await page.getByRole('button', { name: '简繁转换', exact: true }).click()
   await page.getByRole('textbox', { name: '原始文本', exact: true }).fill('头发和软件')
   await page.getByRole('button', { name: '开始简繁转换', exact: true }).click()
   await expect(page.getByLabel('简繁转换预览')).toHaveText('頭髮和軟件')
-  await page
-    .locator('summary')
-    .filter({ hasText: /^内容提取$/ })
-    .click()
+  await page.getByRole('button', { name: '内容提取', exact: true }).click()
   await page.getByRole('textbox', { name: '原始文本', exact: true }).fill('offline@example.com')
   await page.getByRole('button', { name: '开始提取', exact: true }).click()
   await expect(page.getByLabel('提取结果预览')).toHaveText('offline@example.com')
