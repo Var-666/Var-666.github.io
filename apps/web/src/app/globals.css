@@ -115,6 +115,19 @@
       height: 0;
     }
   }
+  /* 重设计工具箱令牌（变量定义在 styles.css 的 .app-shell 作用域，仅工具箱路由内可用）：
+     与 Figma 设计源 index.css 的 @theme 映射一致，bg-tb-card / text-tb-mute / ring-tb-line 等可直接用 */
+  --color-tb-bg: var(--tb-bg);
+  --color-tb-card: var(--tb-card);
+  --color-tb-raise: var(--tb-raise);
+  --color-tb-fg: var(--tb-fg);
+  --color-tb-mute: var(--tb-mute);
+  --color-tb-line: var(--tb-line);
+  --color-tb-link: var(--tb-link);
+  --color-tb-chip: var(--tb-chip);
+  --color-tb-blue: var(--tb-blue);
+  --color-tb-green: var(--tb-green);
+  --color-tb-orange: var(--tb-orange);
 }
 * {
   box-sizing: border-box;
