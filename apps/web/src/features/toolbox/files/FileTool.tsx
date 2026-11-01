@@ -61,7 +61,7 @@ import { sizeLabel, type Row } from './types'
 import { FileQueue } from './components/FileQueue'
 import { CsvExcelPreview, ExcelPreview } from './components/ExcelPreview'
 import { ToolHead } from '../components/ToolHead'
-import { TbCard } from '../components/tb'
+import { TbCard, revealCard } from '../components/tb'
 import { tools } from '../tools'
 
 // 首页任务入口通过 #/files?mode=xxx 直达具体转换方式；非法值回退默认图片互转
@@ -791,7 +791,10 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                       variant="ghost"
                       className="text-tb-link! hover:bg-tb-chip! hover:text-tb-link!"
                       disabled={!rows.length || busy || packing}
-                      onClick={reset}
+                      onClick={(event) => {
+                        reset()
+                        revealCard(event.currentTarget)
+                      }}
                     >
                       <Trash2 size={14} />
                       清空

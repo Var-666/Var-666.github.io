@@ -3,7 +3,7 @@ import { RenameMore, RenameRules } from './components/RenameRules'
 import { useRenamePreview } from './hooks/useRenamePreview'
 import { readPhotoDate, sortRenameFiles, type RenameSort } from './rename-metadata'
 import { OutputActions } from '../components/OutputActions'
-import { TbCard, TbNotice } from '../components/tb'
+import { TbCard, TbNotice, revealCard } from '../components/tb'
 import { useTransferReceiver } from '../tool-transfer'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -281,11 +281,12 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
                   variant="ghost"
                   size="sm"
                   disabled={packing || readingDates}
-                  onClick={() => {
+                  onClick={(event) => {
                     invalidate()
                     setOverrides({})
                     setNameList('')
                     setFiles([])
+                    revealCard(event.currentTarget)
                   }}
                 >
                   <Trash2 size={14} />

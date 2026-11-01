@@ -10,6 +10,14 @@ import { ChevronDown, CircleAlert } from 'lucide-react'
  * shadcn 组件的 className 上，不用这里的基础控件替换它们（e2e 依赖其 Radix 行为与角色）。
  */
 
+/** 清空等整块内容塌缩后，把所在卡片平滑带回视口顶部（高度骤变的滚动钳制会显得像整页跳动） */
+export function revealCard(button: HTMLElement) {
+  const card = button.closest('section')
+  requestAnimationFrame(() => {
+    card?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
 /** 设计源 Card：24px 圆角白卡 + title/extra 头部行 */
 export function TbCard({
   children,

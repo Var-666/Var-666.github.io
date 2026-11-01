@@ -1,6 +1,6 @@
 import { useUnsavedWork } from '../DraftGuard'
 import { OutputActions } from '../components/OutputActions'
-import { TbCard, TbCollapsible } from '../components/tb'
+import { TbCard, TbCollapsible, revealCard } from '../components/tb'
 import { useTransferReceiver } from '../tool-transfer'
 import { TextEncodingSelect } from '../components/TextEncodingSelect'
 import type { TextEncoding } from '../lib/text-encoding'
@@ -344,10 +344,11 @@ export default function TableTool({ active }: { active: boolean }) {
                       size="sm"
                       className="text-tb-link! hover:bg-tb-chip! hover:text-tb-link!"
                       disabled={busy}
-                      onClick={() => {
+                      onClick={(event) => {
                         setTables([])
                         setDroppedColumns([])
                         setOutput(null)
+                        revealCard(event.currentTarget)
                       }}
                     >
                       <Trash2 size={14} />

@@ -743,3 +743,9 @@ rename 的 details 在 `.conversion-panel` 内而非 main 直接子级，此前�
 - 边界保持：页面切换/toast/Segmented 选中/开关滑块/hover 不加新动效；「添加编号」展开体保留条件渲染（fieldset gap 会占位的取舍已注释）。
 - e2e 同步三处：text-extra/offline 的 summary 定位→按钮、accessibility 的 files 审计展开方式（`.tb-collapsible-toggle, .tool-limits-toggle`），其余「收起态 toBeHidden」用例经 visibility 语义自然通过。
 - 本轮验证：Prettier、TypeScript、ESLint、单测 223、构建通过；Chromium 全量 e2e **185/185**（53.6s，一次通过）。
+
+### 补充二十七：点击后「页面整体会动」定位与修复（应用户反馈）
+
+- **探针定位**（Playwright 滚动 API 挂钩 + MutationObserver + 视口内按钮逐点测量）：无脚本化滚动、无导航、无重载；跳动全部来自**内容高度瞬变触发浏览器滚动钳制**——files 类别切换整块替换（29→0）、rename 清空塌缩（250→129）、切工具整页替换（回顶部）。
+- **修复**：①切工具入场动效——新路由内容 220ms 淡入上移（App.tsx 路由 effect，`prefers-reduced-motion` 尊重），整页瞬换变柔和；②rename/files/table 三处「清空」后调用 `revealCard()`（tb.tsx 新增）：所在卡片 smooth scrollIntoView 回视口顶部（自动遵守顶部 96px scroll-padding），塌缩从被动钳制变成有意图的定位。
+- 本轮验证：Prettier、TypeScript、ESLint、构建通过；Chromium 全量 e2e **185/185**（1.0m）；位移探针复测——files 类别切换零位移、清空为平滑滑动。

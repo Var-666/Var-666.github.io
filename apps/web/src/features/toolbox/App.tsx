@@ -419,6 +419,17 @@ export default function App() {
     window.addEventListener('hashchange', changed)
     return () => window.removeEventListener('hashchange', changed)
   }, [])
+  // 工具切换入场：新内容淡入上移，缓和整页瞬换（尊重系统「减弱动态」设置）
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    document.querySelector<HTMLElement>('main.main-content:not([hidden])')?.animate(
+      [
+        { opacity: 0, transform: 'translateY(10px)' },
+        { opacity: 1, transform: 'none' },
+      ],
+      { duration: 220, easing: 'ease-out' },
+    )
+  }, [route])
   useEffect(() => {
     if (!navigated.current || !root.current) return
     // 标签切换保留标签焦点，让左右方向键仍可连续操作。
