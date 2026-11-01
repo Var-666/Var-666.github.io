@@ -1,5 +1,6 @@
 import { useUnsavedWork } from '../../DraftGuard'
-import { TextExtras } from './TextExtras'
+import { TextConvertOps, TextDiffOps, TextExtractOps } from './TextExtras'
+import { OpsCollapsible } from './OpsCollapsible'
 import { OutputActions } from '@/features/toolbox/components/OutputActions'
 import { useTransferReceiver } from '@/features/toolbox/tool-transfer'
 import { TextEncodingSelect } from '@/features/toolbox/components/TextEncodingSelect'
@@ -167,8 +168,7 @@ export function TextBatchOps({
       <div className="text-ops-body" hidden={!open}>
         {!source && <p className="text-ops-empty">在原文框输入内容后，这里的预览会实时更新。</p>}
         {/* 批量查找替换 */}
-        <div className="text-ops-block">
-          <h3>批量查找替换</h3>
+        <OpsCollapsible title="批量查找替换" hint="支持正则与捕获组，预览命中后再应用" defaultOpen>
           {rules.map((rule, index) => (
             <div className="replace-rule" key={index}>
               <input
@@ -270,10 +270,11 @@ export function TextBatchOps({
               {clip(replace.text)}
             </pre>
           )}
-        </div>
+        </OpsCollapsible>
+        {/* 内容提取 */}
+        <TextExtractOps active={active && open} source={source} onApply={apply} />
         {/* 列表处理 */}
-        <div className="text-ops-block">
-          <h3>列表处理（按行）</h3>
+        <OpsCollapsible title="列表处理" hint="排序、编号、行前后缀" defaultOpen>
           <div className="list-options">
             <label>
               排序
@@ -373,10 +374,59 @@ export function TextBatchOps({
               </pre>
             </>
           )}
-        </div>
+        </OpsCollapsible>
+        {/* 格式转换 */}
+        <OpsCollapsible
+          title="格式转换"
+          hint="多行 ↔ 逗号 / 分号 / 制表符 / SQL IN 等单行格式"
+          defaultOpen
+        >
+          <div className="list-options">
+            <label>
+              输出格式
+              <Select value={format} onValueChange={(value) => setFormat(value as LineJoinFormat)}>
+                <SelectTrigger aria-label="输出格式">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(lineFormatLabels) as LineJoinFormat[]).map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {lineFormatLabels[key]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          </div>
+          {formatResult && !!formatResult.count && (
+            <>
+              <p className="text-ops-meta">
+                {formatResult.count} 个条目
+                {formatResult.dropped ? `（丢弃 ${formatResult.dropped} 个空条目）` : ''}
+                ；单行输入会按逗号 / 分号 / 制表符自动拆分
+              </p>
+              <div className="text-ops-actions">
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    apply(`格式转换（${lineFormatLabels[format]}）`, formatResult.text)
+                  }
+                >
+                  应用格式转换
+                </Button>
+              </div>
+              <pre className="text-ops-preview" aria-label="格式转换预览">
+                {clip(formatResult.text)}
+              </pre>
+            </>
+          )}
+        </OpsCollapsible>
         {processOptions && (
-          <div className="text-ops-block">
-            <h3>批量文件处理</h3>
+          <OpsCollapsible
+            title="批量文件处理"
+            hint="多份 TXT / MD 统一应用主编辑器当前的整理规则"
+            defaultOpen
+          >
             <TextEncodingSelect
               label="批量读取编码"
               value={batchEncoding}
@@ -650,52 +700,12 @@ export function TextBatchOps({
                 ))}
               </div>
             )}
-          </div>
+          </OpsCollapsible>
         )}
-        {/* 格式转换 */}
-        <div className="text-ops-block">
-          <h3>格式转换</h3>
-          <div className="list-options">
-            <label>
-              输出格式
-              <Select value={format} onValueChange={(value) => setFormat(value as LineJoinFormat)}>
-                <SelectTrigger aria-label="输出格式">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(lineFormatLabels) as LineJoinFormat[]).map((key) => (
-                    <SelectItem key={key} value={key}>
-                      {lineFormatLabels[key]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          </div>
-          {formatResult && !!formatResult.count && (
-            <>
-              <p className="text-ops-meta">
-                {formatResult.count} 个条目
-                {formatResult.dropped ? `（丢弃 ${formatResult.dropped} 个空条目）` : ''}
-                ；单行输入会按逗号 / 分号 / 制表符自动拆分
-              </p>
-              <div className="text-ops-actions">
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    apply(`格式转换（${lineFormatLabels[format]}）`, formatResult.text)
-                  }
-                >
-                  应用格式转换
-                </Button>
-              </div>
-              <pre className="text-ops-preview" aria-label="格式转换预览">
-                {clip(formatResult.text)}
-              </pre>
-            </>
-          )}
-        </div>
-        <TextExtras active={active && open} source={source} onApply={apply} />
+        {/* 任意文本对比 */}
+        <TextDiffOps active={active && open} source={source} />
+        {/* 简繁转换 */}
+        <TextConvertOps active={active && open} source={source} onApply={apply} />
       </div>
     </section>
   )

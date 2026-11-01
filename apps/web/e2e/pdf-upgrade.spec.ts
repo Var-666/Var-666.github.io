@@ -20,7 +20,7 @@ async function pdf(pages = 1, rotations = false) {
     buffer: Buffer.from(await document.save()),
   }
 }
-async function bytes(page: Page, selector = '.pdf-tool .conversion-actions a[download]') {
+async function bytes(page: Page, selector = '.pdf-tool .workbench-bar-actions a[download]') {
   const link = page.locator(selector)
   await expect(link).toBeVisible()
   return Buffer.from(
@@ -101,10 +101,7 @@ test('插入图片/空白页与排序，页码和中文水印覆盖四个旋转�
   await expect(page.locator('.pdf-page')).toHaveCount(5)
   await page.getByRole('button', { name: '添加 A4 空白页', exact: true }).click()
   await expect(page.locator('.pdf-page')).toHaveCount(6)
-  await page
-    .locator('summary')
-    .filter({ hasText: /^页码与水印$/ })
-    .click()
+  await page.getByText('页码与水印', { exact: true }).click()
   await page.getByRole('switch', { name: '添加 PDF 页码', exact: true }).click()
   await page.getByLabel('PDF 起始页码', { exact: true }).fill('5')
   await page.getByLabel('PDF 水印文字', { exact: true }).fill('仅供校验')
@@ -132,9 +129,9 @@ test('插入图片/空白页与排序，页码和中文水印覆盖四个旋转�
   await page.getByRole('button', { name: '下一页', exact: true }).click()
   await readyPreview(page)
   await page.keyboard.press('Escape')
-  const oldUrl = await page.locator('.conversion-actions a[download]').getAttribute('href')
+  const oldUrl = await page.locator('.workbench-bar-actions a[download]').getAttribute('href')
   await page.getByLabel('PDF 起始页码', { exact: true }).fill('10')
-  await expect(page.locator('.conversion-actions a[download]')).toHaveCount(0)
+  await expect(page.locator('.workbench-bar-actions a[download]')).toHaveCount(0)
   expect(
     await page.evaluate(async (url) => {
       try {
@@ -160,10 +157,7 @@ test('结构压缩真实减少未压缩流，保留字体/可选择文字和页�
     .getByLabel('选择 PDF 或图片', { exact: true })
     .setInputFiles({ name: 'large.pdf', mimeType: 'application/pdf', buffer: input })
   await expect(page.locator('.pdf-page')).toHaveCount(1)
-  await page
-    .locator('summary')
-    .filter({ hasText: /^PDF 结构压缩$/ })
-    .click()
+  await page.getByText('PDF 结构压缩', { exact: true }).click()
   await page.getByRole('button', { name: '压缩并导出所选', exact: true }).click()
   const output = await bytes(page)
   await writeFile(info.outputPath('compressed.pdf'), output)
@@ -180,8 +174,8 @@ test('解密器加载失败不覆盖已有页面和下载，重试恢复；移�
   await page.goto('/tools/#/pdf')
   await page.getByLabel('选择 PDF 或图片', { exact: true }).setInputFiles(await pdf())
   await page.getByRole('button', { name: /^导出所选/ }).click()
-  await expect(page.locator('.conversion-actions a[download]')).toBeVisible()
-  const previous = await page.locator('.conversion-actions a[download]').getAttribute('href')
+  await expect(page.locator('.workbench-bar-actions a[download]')).toBeVisible()
+  const previous = await page.locator('.workbench-bar-actions a[download]').getAttribute('href')
   await page
     .getByLabel('选择 PDF 或图片', { exact: true })
     .setInputFiles('e2e/fixtures/encrypted.pdf')
@@ -191,7 +185,9 @@ test('解密器加载失败不覆盖已有页面和下载，重试恢复；移�
     '无法加载或运行 PDF 处理器',
   )
   await expect(page.locator('.pdf-page')).toHaveCount(1)
-  expect(await page.locator('.conversion-actions a[download]').getAttribute('href')).toBe(previous)
+  expect(await page.locator('.workbench-bar-actions a[download]').getAttribute('href')).toBe(
+    previous,
+  )
   await page.unroute('**/pdf-assets/qpdf.wasm')
   await page.getByLabel('PDF 打开密码', { exact: true }).fill(secret)
   await page.getByRole('button', { name: '解密并导入', exact: true }).click()
@@ -212,15 +208,12 @@ for (const theme of ['light', 'dark'] as const)
     await page.getByLabel('选择 PDF 或图片', { exact: true }).setInputFiles(await pdf())
     await page.getByRole('button', { name: '添加 A4 空白页', exact: true }).click()
     await expect(page.locator('.pdf-page')).toHaveCount(2)
-    await page
-      .locator('summary')
-      .filter({ hasText: /^页码与水印$/ })
-      .click()
+    await page.getByText('页码与水印', { exact: true }).click()
     await page.getByRole('switch', { name: '添加 PDF 页码', exact: true }).click()
     await page.getByLabel('PDF 水印文字', { exact: true }).fill('仅供内部使用')
     await expect(page.getByLabel('PDF 水印文字', { exact: true })).toHaveCSS('height', '36px')
     await page.getByRole('button', { name: /^导出所选/ }).click()
-    await expect(page.locator('.conversion-actions a[download]')).toBeVisible()
+    await expect(page.locator('.workbench-bar-actions a[download]')).toBeVisible()
     await page.addStyleTag({
       content: '*,*::before,*::after{transition:none!important;animation:none!important}',
     })
@@ -281,10 +274,7 @@ test('结构压缩不增大极简PDF，未收益时下载保持输入原字节',
     .getByLabel('选择 PDF 或图片', { exact: true })
     .setInputFiles({ name: 'minimal.pdf', mimeType: 'application/pdf', buffer: input })
   await expect(page.locator('.pdf-page')).toHaveCount(1)
-  await page
-    .locator('summary')
-    .filter({ hasText: /^PDF 结构压缩$/ })
-    .click()
+  await page.getByText('PDF 结构压缩', { exact: true }).click()
   await page.getByRole('button', { name: '压缩并导出所选', exact: true }).click()
   const output = await bytes(page)
   expect(output.equals(input)).toBe(true)

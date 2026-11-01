@@ -692,3 +692,25 @@ rename 的 details 在 `.conversion-panel` 内而非 main 直接子级，此前�
   - **对比度回归修复**：照抄设计源导致 Segmented 未激活选项 `--tb-mute on --tb-chip` = 4.15:1（上一轮手写版曾加深）——浅色改 `#57575d`（≈5.9:1）、深色保留设计源色，axe light+dark 通过。
   - tool-intake:86 又现偶发：stash 回基线重建后 4 跑 1 挂，证实仍为既有竞态（失败模式一致：二次任务对话框不弹），与本批无关。
 - 本轮验证：Prettier、TypeScript、ESLint、单测 223、构建通过；Chromium 全量 e2e **185/185**（52.6s，含 light/dark 全工具 axe）；关键元素计算样式实测命中设计值（卡片 24px 圆角+投影、拖放区 2px 虚线 20px、右栏 340px、无横向溢出）。
+
+### 补充二十二：文件工具页按设计源整页重构（应用户截图指出「还没对齐」）
+
+- 以设计源 FileTool + ui.tsx 为规格重排（Tailwind 工具类 + tb.tsx 共享组件，零手写翻译层；功能超集完整保留）：
+  - **底栏**：新增 `.workbench-actions`（状态=文件/完成绿/失败红 + conversion-auto 文案；右侧=OutputActions/继续处理/打包下载/主按钮「开始转换」，文案与 disabled 逻辑逐字搬移）。
+  - **aside**：单张 TbCard「设置」（输出格式等随模式 + 「高级设置与说明」「裁剪、旋转与水印」折叠，summary 逐字）；头部补「说明与限制」折叠（同表格页模式）。
+  - **主栏**：分类 Tabs 重排为设计源 Segmented 胶囊（Radix 结构与 role/tab 名保留）+ 模式 Segmented 卡（nowrap 横向滚）+ 「待处理 N / 上限」卡（设计源 DropZone 观感 + FileQueue 行式队列：48px 预览方块/文件名/状态行/行内操作，展开详情等超集保留）。
+  - styles.css：新增仅 2 条 files 作用域规则（merged-result 覆写、折叠箭头兜底），删除 22 组仅 files 引用的死规则（5226→4896 行）。
+- **首轮 e2e 抓出 4 类回归并修复**：①`.file-row-group` 类在队列重排中丢失（text-encoding 5 例定位失效）——恢复到行组容器；②48px 预览方块 `--tb-mute on --tb-chip` 4.15:1——浅色 `#57575d`；③320/390px 页面横向溢出——根因为 Tabs 根/TabsContent 又用了隐式 auto 轨道 grid（与 `.tool-body` 同款问题），改 flex 列布局并逐容器补 wrap/滚动兜底；④ui-consistency:121 实为溢出同因。修复后全量 e2e 185/185。
+- 有意偏差：两层导航（分类+模式，e2e 依赖）、队列行带文字按钮、状态色加深（#1a7f37/#c4141f 浅色）、Excel/结果详情面板内部暂留旧观感（受计算样式断言约束，后续单独对齐）。
+- 本轮验证：Prettier、TypeScript、ESLint、单测 223、构建通过；Chromium 全量 e2e **185/185**（54.7s）；1440×950 截图对照设计源（分类/模式胶囊卡、待处理卡、设置卡、底栏一致）+ 无障碍树核对（tablist/group/region/complementary/底栏状态齐全）。
+
+### 补充二十三：全工具箱交互模型对齐设计源（应用户「交互也要整体优化」并确认范围：全工具 + 含设计源交互模型）
+
+四个 feature-implementer 按工具并行（e2e 断言同步由各子任务承担：只改交互步骤，结果断言一律保留）：
+- **text**：规则卡从「预设驱动快捷开关+全部设置弹窗」改为设计源**平铺规则开关**（7 条 Toggle 带 hint，细项行下展开）；预设系统保留=规则卡顶部自定义预设 chips + 「全部设置 ⌘⇧K」入口；更多操作区统一设计源 Collapsible（内容提取类型 Select→Segmented）。
+- **rename**：从「全规则堆叠」改为设计源**模式驱动**——「命名规则」卡 Segmented（编号/替换/前后缀/统一名称）字段随模式显隐；「更多」卡（主名大小写/扩展名/修改时间 Toggle 行/特殊字符 Toggle 行/名称清单导入 Collapsible）；「实时预览」行内编辑新文件名+还原/移除圆钮；底栏 Stat（文件/将改名/待解决）。
+- **pdf**：aside 改「导出」卡（页码与水印/拆分导出/PDF 结构压缩 **Toggle 行驱动行下展开**，可访问名沿用原 summary）+「来源文件」卡（含解密流程）；拆分方式 Select→Segmented；底栏 Stat（文件/页面/已选）。
+- **files**：补「载入示例」（Canvas 运行时生成两张 PNG 走既有 addFiles）+ 失败行内「重试」按钮（调用既有批量 run）。
+- 首轮 e2e 修复三类：①text TbSegmented 未选中色 4.15:1→浅色 #57575d（第 3 次同类坑）；②offline 的下载定位无工具作用域，keep-alive 隐藏工具底栏 strict-mode 撞车→加 `.pdf-tool` 前缀；③**320×256 PDF 预览点击 hang 的真正根因**：页面缺顶部 `scroll-padding-top`，粘性头部（站点导航 48+面包屑 44=92px）遮挡 scrollIntoView 落点，命中测试永远不过——globals.css 补 `html { scroll-padding-top: 96px }`（与底部 88px 先例对称），探针实测点击 12s 超时→54ms 完成。
+- 有意保留：换模式确认弹窗（数据安全护栏）；pdf 未复制设计源「只导出选中的页」Toggle（本页即逐页选中模型，复制需改 exportPdf 逻辑）。
+- 本轮验证：Prettier、TypeScript、ESLint、单测 223、构建通过；Chromium 全量 e2e **185/185**（57.5s）；1440×950 截图核对 text/rename/pdf 三页与设计源交互结构一致。

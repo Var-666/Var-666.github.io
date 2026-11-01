@@ -206,10 +206,7 @@ test('PDF 拆分结果保存成多份 PDF，单文件可以系统分享；比较
   await expect
     .poll(() => page.evaluate(() => window.nativeTest.shared[0]?.text.startsWith('%PDF-')))
     .toBeTruthy()
-  await page
-    .locator('summary')
-    .filter({ hasText: /^拆分导出$/ })
-    .click()
+  await page.getByText('拆分导出', { exact: true }).click()
   await page.getByRole('button', { name: /^拆分导出 \(/ }).click()
   await page.getByRole('button', { name: '保存到文件夹', exact: true }).click()
   await expect

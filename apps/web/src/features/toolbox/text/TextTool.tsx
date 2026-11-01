@@ -3,9 +3,10 @@ import { useUnsavedWork } from '../DraftGuard'
 import { TextStatsButton } from './components/TextStatsButton'
 import { useTextProcessing } from './hooks/useTextProcessing'
 import { OverlayMarks, type DiffMark } from './components/DiffOverlay'
-import {} from '@/components/ui/select'
 import { TextSettingsDialog } from './components/TextSettingsDialog'
+import { TbSegmented, TbToggleRow } from './components/TbControls'
 import { OutputActions } from '../components/OutputActions'
+import { TbNotice } from '../components/tb'
 import { useTransferReceiver } from '../tool-transfer'
 import { readTextFile, type TextEncoding, type DecodedText } from '../lib/text-encoding'
 import { TextEncodingSelect } from '../components/TextEncodingSelect'
@@ -16,7 +17,6 @@ import {
   ArrowRight,
   Check,
   CheckCheck,
-  CircleAlert,
   CircleHelp,
   Clipboard,
   Copy,
@@ -41,7 +41,6 @@ import {
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
@@ -884,152 +883,28 @@ export default function TextTool({ active }: { active: boolean }) {
                     )
                   })}
                 </div>
-                {!!userPresets.length && (
-                  <div className="user-presets" aria-label="自定义预设">
-                    {userPresets.map((entry) => (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        className="user-preset-chip"
-                        aria-label={`应用自定义预设 ${entry.name}`}
-                        onClick={() => applyUserPreset(entry)}
-                      >
-                        <Star size={12} />
-                        {entry.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </section>
             </div>
             <div className="tool-aside-card">
-              <div className="rules-bar">
-                <div className="rule-bar-label">
-                  <Settings2 size={15} />
-                  <span>整理规则</span>
-                </div>
-                <div className="quick-rules">
-                  {preset === 'markdown' ? (
-                    <label>
-                      <Switch
-                        aria-label="移除 Markdown 格式"
-                        checked={options.markdownPlain}
-                        onCheckedChange={(value) => update('markdownPlain', value)}
-                      />
-                      <span>移除格式</span>
-                    </label>
-                  ) : (
-                    <label>
-                      <Switch
-                        aria-label="清理首尾空格"
-                        checked={options.trimLines}
-                        onCheckedChange={(value) => update('trimLines', value)}
-                      />
-                      <span>首尾空格</span>
-                    </label>
-                  )}
-                  {preset === 'pdf' ? (
-                    <>
-                      <label>
-                        <Switch
-                          aria-label="连接断行"
-                          checked={options.repairBreaks}
-                          onCheckedChange={(value) => update('repairBreaks', value)}
-                        />
-                        <span>连接断行</span>
-                      </label>
-                      <div className="repair-seg" role="group" aria-label="断行修复模式">
-                        <div className="repair-seg-group">
-                          <button
-                            type="button"
-                            className={cn(
-                              'repair-seg-btn',
-                              options.repairMode === 'conservative' && 'is-active',
-                            )}
-                            aria-pressed={options.repairMode === 'conservative'}
-                            onClick={() => update('repairMode', 'conservative')}
-                          >
-                            保守
-                          </button>
-                          <button
-                            type="button"
-                            className={cn(
-                              'repair-seg-btn',
-                              options.repairMode === 'standard' && 'is-active',
-                            )}
-                            aria-pressed={options.repairMode === 'standard'}
-                            onClick={() => update('repairMode', 'standard')}
-                          >
-                            标准
-                          </button>
-                        </div>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="keep-mark-button"
-                              onClick={insertKeepMark}
-                            >
-                              <Pin size={14} />
-                              <span>保留换行</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            在光标处插入 ⟦保留换行⟧：标记前的换行不会被合并，结果中自动移除标记
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </>
-                  ) : preset === 'dedupe' ? (
-                    <label>
-                      <Switch
-                        aria-label="忽略大小写"
-                        checked={options.ignoreCase}
-                        onCheckedChange={(value) => update('ignoreCase', value)}
-                      />
-                      <span>忽略大小写</span>
-                    </label>
-                  ) : preset === 'chinese' ? (
-                    <label>
-                      <Switch
-                        aria-label="中英间距"
-                        checked={options.cjkSpacing}
-                        onCheckedChange={(value) => update('cjkSpacing', value)}
-                      />
-                      <span>中英间距</span>
-                    </label>
-                  ) : (
-                    <label>
-                      <Switch
-                        aria-label="合并多余空格"
-                        checked={options.collapseSpaces}
-                        onCheckedChange={(value) => update('collapseSpaces', value)}
-                      />
-                      <span>多余空格</span>
-                    </label>
-                  )}
-                  <label>
-                    <Switch
-                      aria-label="清理多余空行"
-                      checked={options.blankLines !== 'keep'}
-                      onCheckedChange={(value) => update('blankLines', value ? 'single' : 'keep')}
-                    />
-                    <span>多余空行</span>
-                  </label>
-                  {preset === 'pdf' &&
-                    options.repairBreaks &&
-                    options.repairMode === 'standard' && (
-                      <p className="repair-mode-warn" role="note">
-                        <CircleAlert size={14} />
-                        标准模式更积极，可能把没有空行分隔的两段合并。重要文档建议先用保守模式。
-                      </p>
-                    )}
-                </div>
+              <p className="tool-aside-title">规则</p>
+              {/* 预设入口行：选择预设即批量设置下方各规则开关；保存 / 管理收在「全部设置」弹窗 */}
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                {userPresets.map((entry) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-tb-chip px-3 py-1.5 text-[12px] font-medium text-tb-fg transition hover:opacity-80"
+                    aria-label={`应用自定义预设 ${entry.name}`}
+                    onClick={() => applyUserPreset(entry)}
+                  >
+                    <Star size={12} />
+                    {entry.name}
+                  </button>
+                ))}
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="advanced-button"
+                  className="ml-auto h-7 px-2 text-[12px] text-tb-mute"
                   onClick={() => setAdvancedOpen(true)}
                 >
                   <Settings2 size={14} />
@@ -1037,7 +912,112 @@ export default function TextTool({ active }: { active: boolean }) {
                   <span className="shortcut">⌘ ⇧ K</span>
                 </Button>
               </div>
+              {/* 设计源平铺规则开关：开启即生效，细项在行下展开 */}
+              <div className="divide-y divide-tb-line">
+                <TbToggleRow
+                  label="清理首尾空格"
+                  hint="移除每行两端的空格和制表符"
+                  checked={options.trimLines}
+                  onChange={(value) => update('trimLines', value)}
+                />
+                <TbToggleRow
+                  label="合并连续空格"
+                  hint="将多个空格或制表符合并成一个空格"
+                  checked={options.collapseSpaces}
+                  onChange={(value) => update('collapseSpaces', value)}
+                />
+                <TbToggleRow
+                  label="清理多余空行"
+                  hint="压缩段落之间的连续空行"
+                  checked={options.blankLines !== 'keep'}
+                  onChange={(value) => update('blankLines', value ? 'single' : 'keep')}
+                >
+                  <TbSegmented
+                    size="sm"
+                    ariaLabel="空白行处理"
+                    value={options.blankLines === 'remove' ? 'remove' : 'single'}
+                    onChange={(value) => update('blankLines', value)}
+                    options={[
+                      { value: 'single', label: '最多留一行' },
+                      { value: 'remove', label: '全部删除' },
+                    ]}
+                  />
+                </TbToggleRow>
+                <TbToggleRow
+                  label="删除重复行"
+                  hint="保留第一次出现的行与原有顺序"
+                  checked={options.dedupe}
+                  onChange={(value) => update('dedupe', value)}
+                >
+                  <div className="flex flex-col gap-1">
+                    <TbToggleRow
+                      small
+                      label="忽略首尾空格"
+                      checked={options.ignoreWhitespace}
+                      onChange={(value) => update('ignoreWhitespace', value)}
+                    />
+                    <TbToggleRow
+                      small
+                      label="忽略大小写"
+                      checked={options.ignoreCase}
+                      onChange={(value) => update('ignoreCase', value)}
+                    />
+                  </div>
+                </TbToggleRow>
+                <TbToggleRow
+                  label="修复 PDF 断行"
+                  hint="标题、编号、列表处的换行会保留"
+                  checked={options.repairBreaks}
+                  onChange={(value) => update('repairBreaks', value)}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <TbSegmented
+                      size="sm"
+                      ariaLabel="断行修复模式"
+                      value={options.repairMode}
+                      onChange={(value) => update('repairMode', value)}
+                      options={[
+                        { value: 'conservative', label: '保守' },
+                        { value: 'standard', label: '标准' },
+                      ]}
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[12px] text-tb-mute"
+                          onClick={insertKeepMark}
+                        >
+                          <Pin size={14} />
+                          <span>保留换行</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        在光标处插入 ⟦保留换行⟧：标记前的换行不会被合并，结果中自动移除标记
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TbToggleRow>
+                <TbToggleRow
+                  label="中英文之间加空格"
+                  hint="在汉字与英文字母、数字之间补一个空格"
+                  checked={options.cjkSpacing}
+                  onChange={(value) => update('cjkSpacing', value)}
+                />
+                <TbToggleRow
+                  label="Markdown 转纯文本"
+                  hint="保留正文、代码和链接；表格转为制表符分隔"
+                  checked={options.markdownPlain}
+                  onChange={(value) => update('markdownPlain', value)}
+                />
+              </div>
             </div>
+            {options.repairBreaks && options.repairMode === 'standard' && (
+              <TbNotice tone="warn">
+                标准模式更积极，可能把没有空行分隔的两段合并。重要文档建议先用保守模式。
+              </TbNotice>
+            )}
           </aside>
         </div>
       </main>

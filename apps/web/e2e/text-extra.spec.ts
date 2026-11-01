@@ -14,6 +14,10 @@ async function select(page: Page, label: string, option: string) {
   await page.getByRole('combobox', { name: label, exact: true }).click()
   await page.getByRole('option', { name: option, exact: true }).click()
 }
+/** 提取类型是对齐设计源的 Segmented 按钮组（aria-pressed），直接按名称点选 */
+async function pickExtractType(page: Page, label: string) {
+  await page.getByRole('button', { name: label, exact: true }).click()
+}
 
 test('四类预设从原文提取；正则捕获保留001，应用可撤销且不持久化正文', async ({ page }) => {
   await page.goto('/tools/#/text')
@@ -27,12 +31,12 @@ test('四类预设从原文提取；正则捕获保留001，应用可撤销且�
     ['网址', 'https://example.com/a'],
     ['身份证', '11010519491231002X'],
   ]) {
-    await select(page, '提取类型', type)
+    await pickExtractType(page, type)
     await page.getByRole('button', { name: '开始提取', exact: true }).click()
     await expect(page.getByLabel('提取结果预览')).toHaveText(value)
   }
   await original(page).fill('编号：001；编号：002')
-  await select(page, '提取类型', '自定义正则')
+  await pickExtractType(page, '自定义正则')
   await page.getByLabel('提取正则表达式').fill('编号：(\\d+)')
   await page.getByRole('switch', { name: '仅提取第一个捕获组', exact: true }).click()
   await page.getByRole('button', { name: '开始提取', exact: true }).click()
@@ -48,7 +52,7 @@ test('非法正则/灾难回溯停止后可继续提取，不覆盖正文', asyn
   await page.goto('/tools/#/text')
   await original(page).fill('a'.repeat(30_000) + '!')
   await extras(page, '内容提取')
-  await select(page, '提取类型', '自定义正则')
+  await pickExtractType(page, '自定义正则')
   await page.getByLabel('提取正则表达式').fill('[')
   await page.getByRole('button', { name: '开始提取', exact: true }).click()
   await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
@@ -64,15 +68,15 @@ test('非法正则/灾难回溯停止后可继续提取，不覆盖正文', asyn
   )
   await expect(original(page)).toHaveValue('a'.repeat(30_000) + '!')
   await original(page).fill('恢复：ok@example.com')
-  await select(page, '提取类型', '邮箱')
+  await pickExtractType(page, '邮箱')
   await page.getByRole('button', { name: '开始提取', exact: true }).click()
   await expect(page.getByLabel('提取结果预览')).toHaveText('ok@example.com')
   await original(page).fill('a'.repeat(30_000) + '!')
-  await select(page, '提取类型', '自定义正则')
+  await pickExtractType(page, '自定义正则')
   await page.getByRole('button', { name: '开始提取', exact: true }).click()
   await expect(page.getByRole('button', { name: '正在提取…', exact: true })).toBeDisabled()
   await original(page).fill('final@example.com')
-  await select(page, '提取类型', '邮箱')
+  await pickExtractType(page, '邮箱')
   await page.getByRole('button', { name: '开始提取', exact: true }).click()
   await expect(page.getByLabel('提取结果预览')).toHaveText('final@example.com')
   // 等过被取消请求的截止时间，旧超时不能覆盖新预览。

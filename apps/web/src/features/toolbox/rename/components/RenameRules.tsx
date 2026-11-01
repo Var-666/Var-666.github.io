@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Button } from '@/components/ui/button'
+import { ChevronDown } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import {
   Select,
@@ -10,41 +10,52 @@ import {
 } from '@/components/ui/select'
 import type { RenameOptions } from '@/features/toolbox/rename/rename'
 
+/**
+ * 批量重命名侧栏，对齐设计源（Redesign Personal Portfolio Website / RenameTool）：
+ * - 「命名规则」卡：Segmented 快速模式，字段随模式显隐（编号 / 替换 / 前后缀 / 统一名称）。
+ * - 「更多」卡：大小写与扩展名、修改时间与清理开关（开启后行下展开字段，同表格页 StepCard）、
+ *   文件排序与读取照片时间、Collapsible 名称清单导入。
+ * 功能超集完整保留：所有 aria-label / 文案逐字沿用旧版（e2e 依赖）；仅重排结构，不改生成逻辑。
+ */
+
 type Quick = 'number' | 'replace' | 'affix' | 'base'
-export function RenameRules({
-  options,
-  update,
-  busy,
-  children,
-}: {
-  options: RenameOptions
-  update: (patch: Partial<RenameOptions>) => void
-  busy: boolean
-  children: ReactNode
-}) {
-  const [quick, setQuick] = useState<Quick>('number')
-  const text = (
-    key: 'base' | 'find' | 'replace' | 'prefix' | 'suffix' | 'customExtension',
-    label: string,
-    placeholder = '',
-  ) => (
-    <label key={key}>
+type UpdateFn = (patch: Partial<RenameOptions>) => void
+
+const labelCls = 'grid min-w-0 gap-1.5 text-[12px] font-semibold text-tb-mute'
+
+function textField(
+  key: 'base' | 'find' | 'replace' | 'prefix' | 'suffix' | 'customExtension',
+  options: RenameOptions,
+  update: UpdateFn,
+  busy: boolean,
+  label: string,
+  placeholder?: string,
+) {
+  return (
+    <label className={labelCls}>
       {label}
       <input
         className="tool-input"
         maxLength={255}
         value={options[key]}
         placeholder={placeholder}
+        disabled={busy}
         onChange={(event) => update({ [key]: event.target.value })}
       />
     </label>
   )
-  const choice = <K extends keyof RenameOptions>(
-    key: K,
-    label: string,
-    values: [RenameOptions[K], string][],
-  ) => (
-    <label>
+}
+
+function choiceField<K extends keyof RenameOptions>(
+  key: K,
+  options: RenameOptions,
+  update: UpdateFn,
+  busy: boolean,
+  label: string,
+  values: [RenameOptions[K], string][],
+) {
+  return (
+    <label className={labelCls}>
       {label}
       <Select
         value={String(options[key])}
@@ -54,7 +65,7 @@ export function RenameRules({
           if (selected !== undefined) update({ [key]: selected })
         }}
       >
-        <SelectTrigger aria-label={label}>
+        <SelectTrigger aria-label={label} className="font-normal">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -67,75 +78,69 @@ export function RenameRules({
       </Select>
     </label>
   )
-  const groups: Record<Quick, ReactNode> = {
-    base: text('base', '统一名称', '留空保留原名'),
-    replace: (
-      <>
-        {text('find', '查找文字', options.regex ? '正则表达式' : '按原样匹配')}
-        {text('replace', '替换为', '留空即删除')}
-        <div className="rename-cleanup">
-          {(
-            [
-              ['regex', '正则表达式'],
-              ['caseSensitive', '区分大小写'],
-            ] as const
-          ).map(([key, label]) => (
-            <label className="rename-cleanup-item" key={key}>
-              <Switch
-                aria-label={label}
-                checked={options[key]}
-                disabled={busy}
-                onCheckedChange={(value) => update({ [key]: value })}
-              />
-              {label}
-            </label>
-          ))}
+}
+
+function switchRow(
+  label: string,
+  checked: boolean,
+  disabled: boolean,
+  onChange: (value: boolean) => void,
+) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-3 py-1 text-[14px] text-tb-fg">
+      <span>{label}</span>
+      <Switch aria-label={label} checked={checked} disabled={disabled} onCheckedChange={onChange} />
+    </label>
+  )
+}
+
+/** 「命名规则」卡：快速模式 Segmented + 随模式显隐的字段 */
+export function RenameRules({
+  options,
+  update,
+  busy,
+}: {
+  options: RenameOptions
+  update: UpdateFn
+  busy: boolean
+}) {
+  const [quick, setQuick] = useState<Quick>('number')
+  const numbering = (
+    <>
+      {switchRow('添加编号', options.numbered, busy, (value) => update({ numbered: value }))}
+      {options.numbered && (
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+          <label className={labelCls}>
+            起始编号
+            <input
+              className="tool-input"
+              type="number"
+              min={0}
+              max={1000000}
+              value={options.start}
+              disabled={busy}
+              onChange={(event) => update({ start: Number(event.target.value) })}
+            />
+          </label>
+          {choiceField(
+            'digits',
+            options,
+            update,
+            busy,
+            '编号位数',
+            [1, 2, 3, 4].map((value) => [value, String(1).padStart(value, '0')]),
+          )}
         </div>
-      </>
-    ),
-    affix: (
-      <>
-        {text('prefix', '前缀')}
-        {text('suffix', '后缀')}
-      </>
-    ),
-    number: (
-      <div className="rename-numbering">
-        <label htmlFor="rename-numbering">
-          添加编号
-          <Switch
-            id="rename-numbering"
-            checked={options.numbered}
-            disabled={busy}
-            onCheckedChange={(numbered) => update({ numbered })}
-          />
-        </label>
-        {options.numbered && (
-          <div>
-            <label>
-              起始编号
-              <input
-                className="tool-input"
-                type="number"
-                min="0"
-                max="1000000"
-                value={options.start}
-                onChange={(event) => update({ start: Number(event.target.value) })}
-              />
-            </label>
-            {choice(
-              'digits',
-              '编号位数',
-              [1, 2, 3, 4].map((value) => [value, String(1).padStart(value, '0')]),
-            )}
-          </div>
-        )}
-      </div>
-    ),
-  }
+      )}
+    </>
+  )
   return (
     <>
-      <div className="rename-modes" role="group" aria-label="重命名快速模式">
+      <div
+        role="group"
+        aria-label="重命名快速模式"
+        className="inline-flex max-w-full flex-wrap gap-1 rounded-[14px] bg-tb-chip p-1"
+      >
         {(
           [
             ['number', '编号'],
@@ -144,95 +149,166 @@ export function RenameRules({
             ['base', '统一名称'],
           ] as const
         ).map(([key, label]) => (
-          <Button
+          <button
             key={key}
-            size="sm"
-            variant={quick === key ? 'secondary' : 'outline'}
+            type="button"
             aria-pressed={quick === key}
             disabled={busy}
             onClick={() => setQuick(key)}
+            className={
+              quick === key
+                ? 'flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-tb-card px-3.5 py-1.5 text-[14px] font-medium shadow-sm transition disabled:opacity-50'
+                : 'flex items-center gap-1.5 whitespace-nowrap rounded-[10px] px-3.5 py-1.5 text-[14px] font-medium text-[#57575d] transition enabled:hover:text-tb-fg disabled:opacity-50 dark:text-tb-mute dark:enabled:hover:text-tb-fg'
+            }
           >
             {label}
-          </Button>
+          </button>
         ))}
       </div>
-      <fieldset className="rename-rules" disabled={busy}>
+      <fieldset disabled={busy} className="mt-4 flex flex-col gap-3">
         <legend className="sr-only">重命名规则</legend>
-        {groups[quick]}
-      </fieldset>
-      <details className="tool-advanced rename-advanced">
-        <summary>更多规则与名单导入</summary>
-        <fieldset className="rename-rules" disabled={busy}>
-          <legend className="sr-only">更多重命名规则</legend>
-          {(Object.keys(groups) as Quick[])
-            .filter((key) => key !== quick)
-            .map((key) => (
-              <div className="rename-rule-group" key={key}>
-                {groups[key]}
-              </div>
-            ))}
-          {choice('caseMode', '主名大小写', [
-            ['keep', '保持原样'],
-            ['lower', '全部小写'],
-            ['upper', '全部大写'],
-            ['title', '单词首字母大写'],
-          ])}
-          {choice('extensionMode', '扩展名', [
-            ['keep', '保持原样'],
-            ['lower', '全部小写'],
-            ['upper', '全部大写'],
-            ['remove', '去掉扩展名'],
-            ['custom', '指定扩展名'],
-          ])}
-          {options.extensionMode === 'custom' &&
-            text('customExtension', '新扩展名', '例如 txt；只改名称，不转换内容')}
-          {choice('dateSource', '日期来源', [
-            ['none', '不添加日期'],
-            ['modified', '文件修改时间'],
-            ['exif', 'EXIF 拍摄时间'],
-          ])}
-          {options.dateSource !== 'none' && (
-            <>
-              {choice('datePosition', '日期位置', [
-                ['prefix', '主名前'],
-                ['suffix', '主名后'],
-                ['replace', '替换主名'],
-              ])}
-              {choice('dateFormat', '日期格式', [
-                ['date', '2026-10-27'],
-                ['datetime', '2026-10-27_14-30-00'],
-                ['compact', '20261027_143000'],
-              ])}
-            </>
-          )}
-          <div className="rename-cleanup">
-            <span>清理生成名称：</span>
-            {(
-              [
-                ['specialChars', '特殊字符换成空格'],
-                ['spaces', '折叠空格'],
-                ['duplicateSeparators', '合并重复分隔符'],
-              ] as const
-            ).map(([key, label]) => (
-              <label key={key} className="rename-cleanup-item">
-                <Switch
-                  aria-label={label}
-                  checked={options.cleanup[key]}
-                  disabled={busy}
-                  onCheckedChange={(value) =>
-                    update({ cleanup: { ...options.cleanup, [key]: value } })
-                  }
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <p className="conversion-note">
-          规则可组合；切换快速模式会保留其他设置。修改扩展名只改变名称，不会转换文件格式。
+        {(quick === 'number' || quick === 'base') && (
+          <>
+            {quick === 'base' &&
+              textField('base', options, update, busy, '统一名称', '留空保留原名')}
+            {numbering}
+          </>
+        )}
+        {quick === 'replace' && (
+          <>
+            {textField(
+              'find',
+              options,
+              update,
+              busy,
+              '查找文字',
+              options.regex ? '正则表达式' : '按原样匹配',
+            )}
+            {textField('replace', options, update, busy, '替换为', '留空即删除')}
+            <div className="flex flex-col divide-y divide-tb-line">
+              {switchRow('正则表达式', options.regex, busy, (value) => update({ regex: value }))}
+              {switchRow('区分大小写', options.caseSensitive, busy, (value) =>
+                update({ caseSensitive: value }),
+              )}
+            </div>
+          </>
+        )}
+        {quick === 'affix' && (
+          <>
+            {textField('prefix', options, update, busy, '前缀')}
+            {textField('suffix', options, update, busy, '后缀')}
+          </>
+        )}
+        <p className="text-[12px] leading-[1.6] text-tb-mute">
+          规则可组合；切换快速模式会保留其他设置。
         </p>
-        {children}
-      </details>
+      </fieldset>
     </>
+  )
+}
+
+/** 「更多」卡：大小写 / 扩展名、修改时间、清理特殊字符、文件排序与名称清单导入 */
+export function RenameMore({
+  options,
+  update,
+  busy,
+  sortRow,
+  children,
+}: {
+  options: RenameOptions
+  update: UpdateFn
+  busy: boolean
+  sortRow?: ReactNode
+  children?: ReactNode
+}) {
+  const [importOpen, setImportOpen] = useState(false)
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+        {choiceField('caseMode', options, update, busy, '主名大小写', [
+          ['keep', '保持原样'],
+          ['lower', '全部小写'],
+          ['upper', '全部大写'],
+          ['title', '单词首字母大写'],
+        ])}
+        {choiceField('extensionMode', options, update, busy, '扩展名', [
+          ['keep', '保持原样'],
+          ['lower', '全部小写'],
+          ['upper', '全部大写'],
+          ['remove', '去掉扩展名'],
+          ['custom', '指定扩展名'],
+        ])}
+      </div>
+      {options.extensionMode === 'custom' &&
+        textField(
+          'customExtension',
+          options,
+          update,
+          busy,
+          '新扩展名',
+          '例如 txt；只改名称，不转换内容',
+        )}
+      <p className="text-[12px] leading-[1.6] text-tb-mute">
+        修改扩展名只改变名称，不会转换文件格式。
+      </p>
+      <div className="border-t border-tb-line pt-1.5">
+        {switchRow('修改时间', options.dateSource !== 'none', busy, (on) =>
+          update({ dateSource: on ? 'modified' : 'none' }),
+        )}
+        {options.dateSource !== 'none' && (
+          <div className="flex flex-col gap-2.5 pt-1.5 pb-1">
+            {choiceField('dateSource', options, update, busy, '日期来源', [
+              ['modified', '文件修改时间'],
+              ['exif', 'EXIF 拍摄时间'],
+            ])}
+            {choiceField('datePosition', options, update, busy, '日期位置', [
+              ['prefix', '主名前'],
+              ['suffix', '主名后'],
+              ['replace', '替换主名'],
+            ])}
+            {choiceField('dateFormat', options, update, busy, '日期格式', [
+              ['date', '2026-10-27'],
+              ['datetime', '2026-10-27_14-30-00'],
+              ['compact', '20261027_143000'],
+            ])}
+          </div>
+        )}
+      </div>
+      <div className="border-t border-tb-line pt-1.5">
+        {switchRow('特殊字符换成空格', options.cleanup.specialChars, busy, (on) =>
+          update({ cleanup: { ...options.cleanup, specialChars: on } }),
+        )}
+        {options.cleanup.specialChars && (
+          <div className="flex flex-col pt-1 pb-1">
+            {switchRow('折叠空格', options.cleanup.spaces, busy, (on) =>
+              update({ cleanup: { ...options.cleanup, spaces: on } }),
+            )}
+            {switchRow('合并重复分隔符', options.cleanup.duplicateSeparators, busy, (on) =>
+              update({ cleanup: { ...options.cleanup, duplicateSeparators: on } }),
+            )}
+          </div>
+        )}
+      </div>
+      {sortRow}
+      <div className="rounded-[18px] ring-1 ring-tb-line">
+        <button
+          type="button"
+          onClick={() => setImportOpen((open) => !open)}
+          aria-expanded={importOpen}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        >
+          <span>
+            <span className="block text-[14px] font-medium">从名称清单导入</span>
+            <span className="mt-0.5 block text-[12px] text-tb-mute">每行一个，按当前顺序对应</span>
+          </span>
+          <ChevronDown
+            size={16}
+            className={`shrink-0 text-tb-mute transition ${importOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+        {/* 条件渲染（而非 0fr 动画折叠）：收起时 textarea 需对 Playwright 呈现真隐藏（toBeHidden 断言） */}
+        {importOpen && <div className="px-4 pb-4">{children}</div>}
+      </div>
+    </div>
   )
 }

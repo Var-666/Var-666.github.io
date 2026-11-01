@@ -13,9 +13,6 @@ async function choose(page: Page, label: string, option: string) {
   await page.getByRole('combobox', { name: label, exact: true }).click()
   await page.getByRole('option', { name: option, exact: true }).click()
 }
-async function advanced(page: Page) {
-  await page.getByText('更多规则与名单导入', { exact: true }).click()
-}
 
 test('快速模式精简默认页面；正则捕获、大小写、扩展名与排序应用到 ZIP且字节不变', async ({
   page,
@@ -33,7 +30,7 @@ test('快速模式精简默认页面；正则捕获、大小写、扩展名与�
   await expect(page.getByRole('textbox', { name: '新文件名 IMG_10.JPG' })).toHaveValue(
     'Photo-10_001.JPG',
   )
-  await advanced(page)
+  await page.getByRole('button', { name: '编号', exact: true }).click()
   await choose(page, '编号位数', '01')
   await choose(page, '主名大小写', '全部小写')
   await choose(page, '扩展名', '全部小写')
@@ -90,7 +87,7 @@ test('照片时间真实读取，不受时区偏移；缺失时间明确显示�
   await page.getByRole('button', { name: '读取照片时间', exact: true }).click()
   await expect(page.getByRole('button', { name: '读取照片时间', exact: true })).toBeEnabled()
   await expect(page.getByText('拍摄 2020:02:29 03:04:05', { exact: true })).toBeVisible()
-  await advanced(page)
+  await page.getByRole('switch', { name: '修改时间', exact: true }).click()
   await choose(page, '日期来源', 'EXIF 拍摄时间')
   await choose(page, '日期位置', '替换主名')
   await choose(page, '日期格式', '20261027_143000')
@@ -133,7 +130,7 @@ for (const theme of ['light', 'dark'] as const)
     })
     await page.getByRole('button', { name: '前后缀', exact: true }).click()
     await page.getByRole('textbox', { name: '前缀', exact: true }).fill('项目-')
-    await advanced(page)
+    await page.getByRole('switch', { name: '修改时间', exact: true }).click()
     await choose(page, '日期来源', '文件修改时间')
     await choose(page, '日期格式', '2026-10-27_14-30-00')
     await choose(page, '扩展名', '指定扩展名')

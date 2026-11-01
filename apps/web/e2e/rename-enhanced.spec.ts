@@ -25,11 +25,12 @@ async function downloadBytes(page: Page): Promise<Buffer> {
 test.beforeEach(async ({ page }) => {
   await page.goto('/tools/#/rename')
   await expect(page.getByRole('heading', { name: '批量重命名' })).toBeVisible()
-  await page.getByText('更多规则与名单导入', { exact: true }).click()
+  await page.getByText('从名称清单导入', { exact: true }).click()
 })
 
 test('清理特殊字符：含冒号的统一名称从报错变为合法输出', async ({ page }) => {
   await addFiles(page, ['a.txt', 'b.txt'])
+  await page.getByRole('button', { name: '统一名称', exact: true }).click()
   await page.getByRole('textbox', { name: '统一名称' }).fill('报告:终稿')
   await expect(page.locator('.rename-error')).toHaveCount(2)
   await page.getByRole('switch', { name: '特殊字符换成空格' }).click()
@@ -57,6 +58,7 @@ test('从文本列表导入：数量不一致明确报错，一致后逐项生�
 
 test('逐项编辑目标名：与生成名撞名被拦截，还原后可打包', async ({ page }) => {
   await addFiles(page, ['a.txt', 'b.txt'])
+  await page.getByRole('button', { name: '统一名称', exact: true }).click()
   await page.getByRole('textbox', { name: '统一名称' }).fill('同名')
   const second = page.getByRole('textbox', { name: '新文件名 b.txt' })
   await second.fill('同名_001.txt')

@@ -111,6 +111,7 @@ for (const [width, height] of [
   })
 
   test(`${width}×${height}: PDF 预览控制条和关闭按钮可达`, async ({ page }) => {
+    test.setTimeout(60_000) // 320×256 下渲染整页 PDF 较重，留足余量
     await page.setViewportSize({ width, height })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/tools/#/pdf')
