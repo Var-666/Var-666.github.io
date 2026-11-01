@@ -9,7 +9,16 @@ import { ConfirmImport } from '../components/ConfirmImport'
 import { ContinueWith } from '../components/ContinueWith'
 import { readTextFile, encodingNotices, type TextEncoding } from '../lib/text-encoding'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { ArrowDownToLine, Check, FileUp, Image, LoaderCircle, Trash2 } from 'lucide-react'
+import {
+  ArrowDownToLine,
+  Check,
+  ChevronDown,
+  FileUp,
+  Image,
+  Info,
+  LoaderCircle,
+  Trash2,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
@@ -43,6 +52,7 @@ import {
 } from './file-excel'
 
 import { imagesToPdf, packOutputs, pdfToImages } from './file-media'
+import { sampleImageFiles } from './file-samples'
 import { compressImageFile } from './image-compress'
 import { Textarea } from '@/components/ui/textarea'
 import { categories, modeKeys, modes, type Mode } from './modes'
@@ -51,12 +61,17 @@ import { sizeLabel, type Row } from './types'
 import { FileQueue } from './components/FileQueue'
 import { CsvExcelPreview, ExcelPreview } from './components/ExcelPreview'
 import { ToolHead } from '../components/ToolHead'
+import { TbCard } from '../components/tb'
+import { tools } from '../tools'
 
 // 首页任务入口通过 #/files?mode=xxx 直达具体转换方式；非法值回退默认图片互转
 const modeFromHash = (): Mode | null => {
   const param = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('mode')
   return param && modeKeys.includes(param as Mode) ? (param as Mode) : null
 }
+
+// 头部「说明与限制」胶囊使用的上限数据（与 TextTool/TableTool 同源）
+const toolLimits = tools.find((tool) => tool.id === 'files')!.limits
 
 export default function FileTool({ active = true }: { active?: boolean }) {
   const transfers = useToolTransfer()
@@ -65,6 +80,8 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     if (!active) setIncomingTransfer(null)
   }, [active])
   const [mode, setMode] = useState<Mode>(() => modeFromHash() ?? 'image')
+  // 头部「说明与限制」折叠开关（纯展示状态，照 TextTool/TableTool 先例）
+  const [limitsOpen, setLimitsOpen] = useState(false)
   const automatic = ['markdown', 'csv-json', 'json-csv', 'csv-markdown', 'markdown-csv'].includes(
     mode,
   )
@@ -190,6 +207,15 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       ...previous,
       ...files.map((file) => ({ id: crypto.randomUUID(), file, status: 'waiting' as const })),
     ])
+  }
+  // 空态「载入示例」：点击时才用 Canvas 现生成两张示例 PNG（SSR 不触达），
+  // 构造成 File 走既有 addFiles 校验入口，不绕过任何队列逻辑
+  const loadSamples = async () => {
+    try {
+      addFiles(await sampleImageFiles())
+    } catch {
+      toast.error('示例图片生成失败，请重试。')
+    }
   }
   const applyTransfer = (request: ToolTransfer) => {
     const next = request.mode ?? mode,
@@ -618,6 +644,14 @@ export default function FileTool({ active = true }: { active?: boolean }) {
     }
   }
   const excelPending = isExcelRead && !!rows.length && !excel
+  // 队列卡标题展示用的上限（与 addFiles 的校验上限一致；工作簿读取模式恒为 1），仅用于展示
+  const queueLimit = isExcelRead
+    ? 1
+    : modes[mode].category === 'image'
+      ? 20
+      : modes[mode].category === 'office'
+        ? 10
+        : 2
   const optionControls = (
     <ConversionOptions
       mode={mode}
@@ -658,7 +692,33 @@ export default function FileTool({ active = true }: { active?: boolean }) {
           setIncomingTransfer(null)
         }}
       />
-      <ToolHead toolId="files" />
+      <ToolHead
+        toolId="files"
+        actions={
+          <button
+            type="button"
+            className="tool-limits-toggle"
+            aria-expanded={limitsOpen}
+            onClick={() => setLimitsOpen((value) => !value)}
+          >
+            <Info size={15} />
+            说明与限制
+            <ChevronDown size={15} className={limitsOpen ? 'is-open' : undefined} />
+          </button>
+        }
+      />
+      {limitsOpen && (
+        <div className="tool-limits-panel">
+          <p>
+            文件只在当前标签页内存中处理，不上传；刷新或关闭标签页即清空。本地仅保存主题、预设与收藏等偏好设置。
+          </p>
+          <ul>
+            {toolLimits.map((limit) => (
+              <li key={limit}>{limit}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="tool-body">
         <div className="tool-main">
           <Tabs
@@ -667,53 +727,88 @@ export default function FileTool({ active = true }: { active?: boolean }) {
               const first = modeKeys.find((key) => modes[key].category === value)
               if (first) chooseMode(first)
             }}
-            className="conversion-groups"
+            className="flex flex-col gap-5"
           >
-            <TabsList className="conversion-categories" aria-label="文件类别">
-              {categories.map(({ id, title, icon: Icon }) => (
-                <TabsTrigger key={id} value={id} disabled={busy || packing}>
-                  <Icon size={15} />
-                  {title}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            <TabsContent value={modes[mode].category} className="conversion-content">
-              <div
-                className="conversion-modes"
-                role="group"
-                aria-label={`${categories.find((category) => category.id === modes[mode].category)?.title}转换方式`}
+            <TbCard>
+              <TabsList
+                aria-label="文件类别"
+                className="h-auto w-fit max-w-full flex-wrap justify-start rounded-[14px] bg-tb-chip p-1"
               >
-                {modeKeys
-                  .filter((key) => modes[key].category === modes[mode].category)
-                  .map((key) => (
-                    <button
-                      key={key}
-                      disabled={busy || packing}
-                      aria-pressed={mode === key}
-                      onClick={() => chooseMode(key)}
-                    >
-                      {modes[key].title}
-                    </button>
-                  ))}
-              </div>
-              <section className="conversion-panel" aria-label={modes[mode].title}>
-                <div className="conversion-toolbar">
-                  <div>
-                    <strong>{modes[mode].title}</strong>
-                    <span>
-                      {mode === 'image-pdf'
-                        ? '按队列顺序合并'
-                        : modes[mode].category === 'image'
-                          ? '支持直接粘贴截图'
-                          : automatic
-                            ? '添加文件后自动转换'
-                            : '支持多文件依次转换'}
-                    </span>
+                {categories.map(({ id, title, icon: Icon }) => (
+                  <TabsTrigger
+                    key={id}
+                    value={id}
+                    disabled={busy || packing}
+                    className="gap-1.5 rounded-[10px] px-3.5 py-1.5 text-[14px] font-medium transition data-[state=active]:bg-tb-card data-[state=active]:text-tb-fg data-[state=active]:shadow-sm data-[state=inactive]:text-[#57575d] data-[state=inactive]:hover:text-tb-fg disabled:opacity-50 dark:data-[state=inactive]:text-tb-mute dark:data-[state=inactive]:hover:text-tb-fg"
+                  >
+                    <Icon size={15} />
+                    {title}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </TbCard>
+            <TabsContent value={modes[mode].category} className="mt-0 flex flex-col gap-5">
+              <TbCard>
+                <div className="-mx-1 overflow-x-auto px-1 pb-1">
+                  <div
+                    className="inline-flex w-max gap-1 rounded-[14px] bg-tb-chip p-1"
+                    role="group"
+                    aria-label={`${categories.find((category) => category.id === modes[mode].category)?.title}转换方式`}
+                  >
+                    {modeKeys
+                      .filter((key) => modes[key].category === modes[mode].category)
+                      .map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          disabled={busy || packing}
+                          aria-pressed={mode === key}
+                          onClick={() => chooseMode(key)}
+                          className={
+                            mode === key
+                              ? 'flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-tb-card px-3.5 py-1.5 text-[14px] font-medium shadow-sm transition disabled:opacity-50'
+                              : 'flex items-center gap-1.5 whitespace-nowrap rounded-[10px] px-3.5 py-1.5 text-[14px] font-medium text-[#57575d] transition hover:text-tb-fg disabled:opacity-50 dark:text-tb-mute'
+                          }
+                        >
+                          {modes[key].title}
+                        </button>
+                      ))}
                   </div>
                 </div>
+              </TbCard>
+              <TbCard
+                aria-label={modes[mode].title}
+                title={rows.length ? `待处理 ${rows.length} / ${queueLimit}` : undefined}
+                extra={
+                  rows.length ? (
+                    <Button
+                      variant="ghost"
+                      disabled={!rows.length || busy || packing}
+                      onClick={reset}
+                    >
+                      <Trash2 size={14} />
+                      清空
+                    </Button>
+                  ) : modes[mode].category === 'image' ? (
+                    // 空态一致性（同表格页「载入示例」）：仅图片类模式提供示例，其他模式会误导
+                    <div className="flex flex-1 items-center justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy || packing}
+                        onClick={() => void loadSamples()}
+                      >
+                        载入示例
+                      </Button>
+                    </div>
+                  ) : undefined
+                }
+              >
                 <button
                   type="button"
-                  className={`file-drop ${dragging ? 'is-dragging' : ''}`}
+                  className={`flex w-full items-center gap-4 rounded-[20px] border-2 border-dashed text-left transition disabled:opacity-60 ${
+                    rows.length ? 'px-4 py-3' : 'flex-col justify-center px-6 py-12 text-center'
+                  } ${dragging ? 'border-[#0071e3] bg-[#0071e3]/5' : 'border-tb-line hover:border-[#0071e3]/50'}`}
                   disabled={busy || packing}
                   onClick={() => input.current?.click()}
                   onDragOver={(event) => {
@@ -727,14 +822,29 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                     if (!packing) addFiles(Array.from(event.dataTransfer.files))
                   }}
                 >
-                  <span className="file-drop-icon">
-                    {mode === 'image' ? <Image size={25} /> : <FileUp size={25} />}
+                  <span
+                    aria-hidden="true"
+                    className={`grid shrink-0 place-items-center rounded-full bg-[#0071e3] text-white ${
+                      rows.length
+                        ? 'size-9'
+                        : 'size-14 shadow-[0_10px_24px_-10px_rgba(0,113,227,0.8)]'
+                    }`}
+                  >
+                    {mode === 'image' ? (
+                      <Image size={rows.length ? 16 : 24} strokeWidth={1.75} />
+                    ) : (
+                      <FileUp size={rows.length ? 16 : 24} strokeWidth={1.75} />
+                    )}
                   </span>
-                  <strong>
-                    {rows.length ? '继续添加文件，或拖到这里' : '点击选择文件，或拖到这里'}
-                  </strong>
-                  <span>
-                    {modes[mode].accept.replaceAll('.', '').split(',').join(' / ').toUpperCase()}
+                  <span className="min-w-0">
+                    <span
+                      className={`block font-semibold [overflow-wrap:anywhere] ${rows.length ? 'text-[14px]' : 'text-[19px]'}`}
+                    >
+                      {rows.length ? '继续添加文件，或拖到这里' : '点击选择文件，或拖到这里'}
+                    </span>
+                    <span className="mt-1 block text-[13px] text-tb-mute [overflow-wrap:anywhere]">
+                      {modes[mode].accept.replaceAll('.', '').split(',').join(' / ').toUpperCase()}
+                    </span>
                   </span>
                 </button>
                 <input
@@ -752,13 +862,14 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                   }}
                 />
                 {mode === 'csv-markdown' && (
-                  <div className="table-paste">
+                  <div className="mt-4 flex flex-col items-end gap-2">
                     <Textarea
                       aria-label="粘贴表格内容"
                       placeholder="在此粘贴从 Excel 复制的表格（首行作为表头）"
                       value={tablePaste}
                       disabled={busy || packing}
                       onChange={(event) => setTablePaste(event.target.value)}
+                      className="min-h-[94px]"
                     />
                     <Button
                       size="sm"
@@ -786,6 +897,9 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                     onRemove={removeRow}
                     onToggleDetail={toggleDetail}
                     onMarkPreviewError={markPreviewError}
+                    // 行内重试与底栏「重试失败项 / 开始转换」同一入口、同一禁用语义
+                    onRetry={() => void run()}
+                    retryDisabled={busy || packing || excelPending}
                   />
                 )}
                 {mode === 'csv-excel' && csvPreview && (
@@ -824,94 +938,110 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                     <OutputActions outputs={[merged]} disabled={busy || packing} />
                   </div>
                 )}
-                <div className="conversion-actions">
-                  <Button
-                    variant="ghost"
-                    disabled={!rows.length || busy || packing}
-                    onClick={reset}
-                  >
-                    <Trash2 size={14} />
-                    清空
-                  </Button>
-                  <div>
-                    {automatic && (
-                      <span className="conversion-auto" role="status">
-                        {busy
-                          ? '正在自动转换'
-                          : failed > 0
-                            ? `已完成 ${done} 个，失败 ${failed} 个`
-                            : done === rows.length && done > 0
-                              ? `已完成 ${done} 个文件`
-                              : '添加文件后自动转换'}
-                      </span>
-                    )}
-                    {done > 1 && mode !== 'image-pdf' && (
-                      <OutputActions
-                        outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
-                        disabled={busy || packing}
-                      />
-                    )}
-                    {done > 1 && mode !== 'image-pdf' && (
-                      <ContinueWith
-                        outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
-                        disabled={busy || packing}
-                      />
-                    )}
-                    {done > 1 && mode !== 'image-pdf' && (
-                      <Button variant="outline" disabled={busy || packing} onClick={zip}>
-                        {packing ? (
-                          <LoaderCircle className="animate-spin" size={14} />
-                        ) : (
-                          <ArrowDownToLine size={14} />
-                        )}
-                        打包下载 ({done})
-                      </Button>
-                    )}
-                    {(!automatic || failed > 0) && (
-                      <Button
-                        disabled={
-                          !rows.length ||
-                          busy ||
-                          packing ||
-                          done === rows.length ||
-                          excelPending ||
-                          (automatic && !failed)
-                        }
-                        onClick={() => void run()}
-                      >
-                        {busy ? (
-                          <LoaderCircle className="animate-spin" size={14} />
-                        ) : (
-                          <Check size={14} />
-                        )}
-                        {busy
-                          ? '正在转换'
-                          : automatic
-                            ? '重试失败项'
-                            : mode === 'image-pdf'
-                              ? '合并 PDF'
-                              : '开始转换'}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </section>
+              </TbCard>
             </TabsContent>
           </Tabs>
         </div>
         <aside className="tool-aside">
-          <div className="tool-aside-card">{optionControls}</div>
-          {(mode === 'image' || mode === 'image-compress') && (
-            <ImageEditOptions
-              value={imageEdit}
+          <TbCard title="设置">
+            {optionControls}
+            {(mode === 'image' || mode === 'image-compress') && (
+              <ImageEditOptions
+                value={imageEdit}
+                disabled={busy || packing}
+                onChange={(value) => {
+                  clearOutputs()
+                  setImageEdit(value)
+                }}
+              />
+            )}
+          </TbCard>
+        </aside>
+      </div>
+      <div className="workbench-actions">
+        <div className="workbench-status">
+          <span>
+            文件 <b className="font-semibold text-tb-fg tabular-nums">{rows.length}</b>
+          </span>
+          {mode !== 'image-pdf' && (
+            <span>
+              完成{' '}
+              <b
+                className={`font-semibold tabular-nums ${
+                  done ? 'text-[#1a7f37] dark:text-[#30d158]' : 'text-tb-fg'
+                }`}
+              >
+                {done}
+              </b>
+            </span>
+          )}
+          {!!failed && (
+            <span>
+              失败{' '}
+              <b className="font-semibold text-[#c4141f] tabular-nums dark:text-[#ff6961]">
+                {failed}
+              </b>
+            </span>
+          )}
+          {automatic && (
+            <span className="conversion-auto" role="status">
+              {busy
+                ? '正在自动转换'
+                : failed > 0
+                  ? `已完成 ${done} 个，失败 ${failed} 个`
+                  : done === rows.length && done > 0
+                    ? `已完成 ${done} 个文件`
+                    : '添加文件后自动转换'}
+            </span>
+          )}
+        </div>
+        <div className="workbench-bar-actions">
+          {done > 1 && mode !== 'image-pdf' && (
+            <OutputActions
+              outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
               disabled={busy || packing}
-              onChange={(value) => {
-                clearOutputs()
-                setImageEdit(value)
-              }}
             />
           )}
-        </aside>
+          {done > 1 && mode !== 'image-pdf' && (
+            <ContinueWith
+              outputs={rows.flatMap((row) => (row.output ? [row.output] : []))}
+              disabled={busy || packing}
+            />
+          )}
+          {done > 1 && mode !== 'image-pdf' && (
+            <Button variant="outline" disabled={busy || packing} onClick={zip}>
+              {packing ? (
+                <LoaderCircle className="animate-spin" size={14} />
+              ) : (
+                <ArrowDownToLine size={14} />
+              )}
+              打包下载 ({done})
+            </Button>
+          )}
+          {(!automatic || failed > 0) && (
+            <Button
+              className="copy-button"
+              disabled={
+                !rows.length ||
+                busy ||
+                packing ||
+                done === rows.length ||
+                excelPending ||
+                (automatic && !failed)
+              }
+              onClick={() => void run()}
+            >
+              {busy ? <LoaderCircle className="animate-spin" size={14} /> : <Check size={14} />}
+              {busy
+                ? '正在转换'
+                : automatic
+                  ? '重试失败项'
+                  : mode === 'image-pdf'
+                    ? '合并 PDF'
+                    : '开始转换'}
+            </Button>
+          )}
+        </div>
       </div>
     </main>
   )
