@@ -671,3 +671,24 @@ rename 的 details 在 `.conversion-panel` 内而非 main 直接子级，此前�
 - styles.css：删除「四工具选项右栏化」纯 CSS Grid 块（双栅格隐患）；新增右栏适配（≥1024px）：`.tool-aside .compare-options` 放平（边框/背景交由 aside-card 统一承担）、卡内首个 `details.tool-advanced` 去上边距（同 FileTool 卡内 details 先例）、`.tool-aside .rename-rules` 三列改单列。
 - 实测（1440×950）：rename 双卡、pdf 三卡、compare/table 空态仅使用说明卡（条件卡随数据出现），主栏 880 / 右栏 340、无横向溢出、无残留栅格；390×844 aside 落主栏下方全宽堆叠。带文件流程由 e2e 覆盖。
 - 本轮验证：Prettier、TypeScript、ESLint、单测（apps/web 223 + scripts 8）、构建通过；Chromium 全量 e2e 185/185（53.2s，含 tool-intake:86）。
+
+### 补充二十：表格工具页按设计源整页重构（应用户「按 Figma Make 设计页面样式来」）
+
+- 以设计源 `Redesign…/src/tools/TableTool.tsx` + `ui.tsx` 为唯一规格重排两模式（feature-implementer 执行，逻辑零改动；主会话集成）：
+  - **批量处理**：右栏常驻两卡「1 · 合并方式 / 2 · 清理与拆分」（StepCard 开关行+展开，列改名和顺序保留为同级折叠）；主栏「导入表格」卡（载入示例=移植设计源 SAMPLE 数据、N/10 计数、紧凑拖放、FileChip 双列）+「结果预览」卡（步骤结果胶囊+预览表）；底部玻璃操作栏（状态 + 导出主按钮）。
+  - **表格对比**：右栏「比较设置」卡（主键列+组合主键+比较范围折叠保留）；主栏「导入两张表」卡（1fr_auto_1fr + 圆形交换 + 载入示例）+「对比结果」卡（新增/删除/修改/未变四分类视图卡 28px 数字彩色描边 + 提示条 + 逐列对照预览）；底栏状态与导出。
+  - 新建 `table/table-samples.ts`（四组示例 CSV 取自设计源）。
+- **e2e 保护**：全部步骤结果文案、报错文案、aria 名逐字保留（合并方式保留下拉而非胶囊、按字段拆分导出保留下拉直达，均为断言/免开关直达所需）；导出按钮沿用既有文案。
+- **集成期修复**：①320px 长表头用例挂——根因为**既有通用规则潜在缺陷**：`.tool-body` 窄屏堆叠用隐式单列 grid（auto 轨道按 max-content），40 列预览表把整页撑到 3360px、下拉选项横溢出视口；修复为显式 `grid-template-columns: minmax(0,1fr)`（各工具页窄屏渲染不变，宽内容改内部滚动），复跑全量 185/185。②头部对齐设计源：模式切换胶囊从标题上方浮条改为**头部行右侧**（`.table-mode-switch` 塌陷为零高占位 + tablist 绝对定位，与「说明与限制」底对齐；右缘 168px 偏移因切换条恒比容器宽 20px 而在 ≥1024 各档不变）；「使用说明与限制」从 aside 卡移入头部折叠（tool-limits-toggle/panel，同 TextTool 模式），aside 与设计源卡数一致。
+- 与设计源的既有偏差（有意保留）：标题「表格批量处理/表格对比」按模式显示（设计为单一「表格工具」）；合并方式为下拉非胶囊；按字段拆分导出常驻展开；XLSX/编码选择为功能超集。
+- 本轮验证：Prettier、TypeScript、ESLint、单测 223、构建通过；Chromium 全量 e2e **连续两轮 185/185**（58.0s）；1440×950 两模式与设计源同视口截图逐区对照（头部/卡片/右栏/底栏布局一致）。
+
+### 补充二十一：工具箱样式统一到 Tailwind 工具类（应用户「先写一个 Tailwind 统一一下」）
+
+- 项目本就是 Tailwind v4（shadcn 组件在用工具类），此前对齐设计源却手写 `.tb-*` CSS 逐条翻译。现补齐统一基础并迁移表格页：
+  - **令牌映射**：globals.css `@theme inline` 补 `--color-tb-bg/card/raise/fg/mute/line/link/chip/blue/green/orange → var(--tb-*)`（变量值与设计源 index.css 完全一致，定义在 styles.css 的 `.app-shell` 作用域，仅工具箱路由内解析）；`bg-tb-card`、`text-tb-mute`、`ring-tb-line` 等设计源工具类从此全站可用，后续页面对齐可直接照抄设计源 JSX。
+  - **共享组件**：新建 `components/tb.tsx`（TbCard/TbLabel/TbNotice/TbStat，类名逐字取自设计源 ui.tsx；Segmented/Toggle/DropZone 不整体移植——需 aria/disabled 或沿用 shadcn Switch，工具类直接落在现有元素上），文件头注明约定：工具箱页面对齐设计源一律用工具类 + tb-* 令牌，不再新增手写 .tb-* CSS。
+  - **表格页迁移**：TableTool/CompareTool 全部 `.tb-*` 手写类换为设计源同款工具类 + TbCard；styles.css「表格工具页对齐设计源」节删除 558 行死规则（逐条 grep 确认无引用），仅保留 e2e/跨文件依赖类（.table-file-row/.compare-* 等）与 `.table-mode-switch` 对齐块。16 处 `!` 尾缀工具类用于压过未分层旧规则（后续清理旧规则时可去）。
+  - **对比度回归修复**：照抄设计源导致 Segmented 未激活选项 `--tb-mute on --tb-chip` = 4.15:1（上一轮手写版曾加深）——浅色改 `#57575d`（≈5.9:1）、深色保留设计源色，axe light+dark 通过。
+  - tool-intake:86 又现偶发：stash 回基线重建后 4 跑 1 挂，证实仍为既有竞态（失败模式一致：二次任务对话框不弹），与本批无关。
+- 本轮验证：Prettier、TypeScript、ESLint、单测 223、构建通过；Chromium 全量 e2e **185/185**（52.6s，含 light/dark 全工具 axe）；关键元素计算样式实测命中设计值（卡片 24px 圆角+投影、拖放区 2px 虚线 20px、右栏 340px、无横向溢出）。

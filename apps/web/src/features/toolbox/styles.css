@@ -4595,6 +4595,8 @@ details.tool-advanced > :not(summary) {
 /* ---------- TextTool 骨架：主栏 + 右侧设置栏（重设计版 ToolShell 布局） ---------- */
 .tool-body {
   display: grid;
+  /* 显式 minmax(0,1fr) 单列：隐式 auto 轨道按 max-content 计，宽内容（如多列表格预览）会把整页撑破 */
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 @media (min-width: 1024px) {
@@ -5195,5 +5197,30 @@ html:has(.app-shell .workbench-actions) {
   }
   .tool-main .text-ops {
     margin-top: 0;
+  }
+}
+
+/* ================================================================== */
+/* ---------- 表格工具页对齐设计源（TableTool / CompareTool 整页重排） ---------- */
+/* 设计源：Redesign Personal Portfolio Website src/tools/TableTool.tsx + ui.tsx。
+   数值逐项翻译：卡片 24px 圆角、DropZone 20px 虚线、FileChip 14px、StepCard 开关行、
+   Segmented 14px/10px、分类视图卡 18px + 28px 数字、字号 15/14/13/12/11px；
+   颜色 #0071e3/#30d158/#ff9f0a/#ff3b30 走 --tb-* 变量，文本色用既有浅色调色板保证对比度。 */
+/* ================================================================== */
+
+/* —— 模式切换胶囊对齐头部行（≥1024px；设计源把胶囊放在标题行右侧、与「说明与限制」底对齐） —— */
+/* 切换条塌陷为零高占位，胶囊绝对定位到头部行；切换条右缘恒比内容容器右缘宽 20px，168px 偏移在各档视口不变 */
+@media (min-width: 1024px) {
+  .main-content.table-mode-switch {
+    position: relative;
+    height: 0;
+    padding: 0;
+    overflow: visible;
+  }
+  .table-mode-switch [role='tablist'] {
+    position: absolute;
+    top: 78px;
+    right: 168px;
+    z-index: 6;
   }
 }
