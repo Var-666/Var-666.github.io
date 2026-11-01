@@ -133,6 +133,11 @@
   box-sizing: border-box;
   border-color: var(--border);
 }
+html {
+  /* 顶部粘性区（站点导航 48px + 工具箱面包屑条 44px）为滚动定位预留空间：
+     缺失时窄视口下 scrollIntoView 的落点会停在粘性条后面，目标命中测试永远被遮挡 */
+  scroll-padding-top: 96px;
+}
 body {
   margin: 0;
   min-width: 0;
