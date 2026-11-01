@@ -55,7 +55,7 @@ const routes = [
   ['/tools/', '全部工具'],
   ['/tools/#/text', '文本整理'],
   ['/tools/#/files', '文件格式转换'],
-  ['/tools/#/table', '表格批量处理'],
+  ['/tools/#/table', '表格工具'],
   ['/tools/#/compare', '表格对比'],
   ['/tools/#/pdf', 'PDF 页面整理'],
   ['/tools/#/rename', '批量重命名'],
@@ -217,7 +217,7 @@ test('跳过导航、工具焦点、表格标签方向键与草稿离开保护',
   await expect(page.getByRole('textbox', { name: '原始文本', exact: true })).toHaveValue(
     '不要丢失的草稿',
   )
-  await openTool(page, '表格批量处理')
+  await openTool(page, '表格工具')
   await page.getByRole('tab', { name: '批量处理', exact: true }).press('ArrowRight')
   await expect(page.getByRole('tab', { name: '表格对比', exact: true })).toBeFocused()
   await expect(page.getByRole('heading', { name: '表格对比', exact: true })).toBeVisible()

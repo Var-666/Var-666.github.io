@@ -33,6 +33,7 @@ import {
   type PdfPageEntry,
   type SplitMode,
 } from './pdf-organize'
+import { samplePdfFile } from './pdf-samples'
 import { verifyPdfBlob } from '../files/convert-report'
 import { imagesToPdf, packOutputs } from '../files/file-media'
 import PdfPreview from './components/PdfPreview'
@@ -351,6 +352,16 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
   useTransferReceiver('pdf', active && !busy, (request) => {
     void addFiles(request.files ?? [])
   })
+  // 「载入示例」：设计源在 dropzone 下有灰色入口；运行时生成 3 页小 PDF，
+  // 走既有 addFiles 校验入队，不绕过任何现有逻辑。
+  const loadSamples = async () => {
+    try {
+      await addFiles([await samplePdfFile()])
+    } catch (error) {
+      if (mounted.current)
+        toast.error(error instanceof Error ? error.message : '无法生成示例文档。')
+    }
+  }
   const move = (id: string, to: number) => {
     if (running.current || to < 0 || to >= pages.length) return
     const next = [...pages]
@@ -587,10 +598,10 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
                 <span
                   className={`block font-semibold leading-tight [overflow-wrap:anywhere] ${pages.length ? 'text-[14px]' : 'text-[19px]'}`}
                 >
-                  {pages.length ? '继续添加 PDF 或图片，或拖到这里' : '选择 PDF 或图片，或拖到这里'}
+                  {pages.length ? '继续添加 PDF，或拖到这里' : '选择 PDF，或拖到这里'}
                 </span>
                 <span className="mt-1 block text-[13px] leading-[1.5] text-tb-mute [overflow-wrap:anywhere]">
-                  PDF / PNG / JPG / WebP / HEIC / AVIF · 可同时拖入多个 PDF 合并，图片转成一页
+                  可同时拖入多个 PDF 合并：图片会转成一页 A4 · PDF / PNG / JPG / WebP / HEIC / AVIF
                 </span>
               </span>
             </button>
@@ -608,6 +619,19 @@ export default function PdfTool({ active = true }: { active?: boolean }) {
                 event.target.value = ''
               }}
             />
+            {!pages.length && (
+              <p className="mt-3 text-center text-[13px] text-tb-mute">
+                手边没有 PDF？
+                <button
+                  type="button"
+                  className="text-tb-link hover:underline disabled:opacity-50"
+                  disabled={busy}
+                  onClick={() => void loadSamples()}
+                >
+                  载入示例
+                </button>
+              </p>
+            )}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button
                 size="sm"

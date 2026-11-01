@@ -5,6 +5,12 @@ async function choose(page: Page, label: string, value: string) {
   await page.getByRole('combobox', { name: label, exact: true }).click()
   await page.getByRole('option', { name: value, exact: true }).click()
 }
+async function chooseFormat(page: Page, value: string) {
+  await page
+    .getByRole('group', { name: '输出格式', exact: true })
+    .getByRole('button', { name: value, exact: true })
+    .click()
+}
 async function png(page: Page, width = 64, height = 40, transparent = false) {
   const data = await page.evaluate(
     ({ width, height, transparent }) => {
@@ -62,7 +68,7 @@ test('真实HEIC通过本地WASM转JPG；坏解码器失败后原文件可重试
   await forceWasm(page)
   await page.route('**/_next/static/chunks/heic.worker.*.js', (route) => route.abort())
   await page.goto('/tools/#/files')
-  await choose(page, '输出格式', 'JPG')
+  await chooseFormat(page, 'JPG')
   await page.getByLabel('选择待转换文件').setInputFiles('e2e/fixtures/colors.heic')
   await page.getByRole('button', { name: '开始转换', exact: true }).click()
   await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
@@ -144,7 +150,7 @@ test('批量水印改变真实像素但不存正文，结果可预览，JPG透�
   await page.getByRole('button', { name: '清空', exact: true }).click()
   await page.getByRole('button', { name: '重置图片编辑', exact: true }).click()
   await page.getByLabel('选择待转换文件').setInputFiles(await png(page, 64, 40, true))
-  await choose(page, '输出格式', 'JPG')
+  await chooseFormat(page, 'JPG')
   await page.getByRole('button', { name: '开始转换', exact: true }).click()
   const opaque = await output(page)
   const pixel = opaque.pixels.slice((4 * 64 + 4) * 4, (4 * 64 + 4) * 4 + 4)
@@ -168,18 +174,18 @@ test('AVIF输出能力检测禁用不支持项；保存的AVIF不伪装成PNG成
   await expect(
     page.getByText('当前浏览器不支持 AVIF 编码，请改用 PNG、JPG 或 WebP。', { exact: true }),
   ).toBeVisible()
-  await page.getByRole('combobox', { name: '输出格式', exact: true }).click()
   await expect(
-    page.getByRole('option', { name: 'AVIF（当前浏览器不支持编码）', exact: true }),
-  ).toBeDisabled()
-  await page.keyboard.press('Escape')
+    page
+      .getByRole('group', { name: '输出格式', exact: true })
+      .getByRole('button', { name: 'AVIF', exact: true }),
+  ).toHaveCount(0)
   await page.getByLabel('选择待转换文件').setInputFiles(await png(page))
   await page.getByRole('button', { name: '开始转换', exact: true }).click()
   await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
     '不支持此输出格式',
   )
   await expect(page.locator('.file-row a[download]')).toHaveCount(0)
-  await choose(page, '输出格式', 'PNG')
+  await chooseFormat(page, 'PNG')
   await page.getByRole('button', { name: '开始转换', exact: true }).click()
   expect((await output(page)).type).toBe('image/png')
 })

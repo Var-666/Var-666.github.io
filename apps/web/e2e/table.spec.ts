@@ -31,17 +31,17 @@ async function downloadBytes(page: Page): Promise<{ name: string; bytes: Buffer 
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/tools/#/table')
-  await expect(page.getByRole('heading', { name: '表格批量处理' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '表格工具' })).toBeVisible()
 })
 
 test('两份 CSV 合并 + 按编号去重：分步统计与导出内容一致', async ({ page }) => {
   await upload(page, '一.csv', csvA)
   await upload(page, '二.csv', csvB)
-  await expect(page.getByText('合并 2 份 · 4 行')).toBeVisible()
+  await expect(page.getByText('同结构追加 2 份 → 4 行')).toBeVisible()
   await page.getByRole('switch', { name: '启用去重' }).click()
   await page.getByRole('combobox', { name: '去重列' }).click()
   await page.getByRole('option', { name: '编号' }).click()
-  await expect(page.getByText('去重删除 1 行')).toBeVisible()
+  await expect(page.getByText('去重 删除 1 行')).toBeVisible()
   await expect(page.getByText('结果 3 行 × 3 列')).toBeVisible()
   await page.getByRole('button', { name: /导出 CSV/ }).click()
   const { name, bytes } = await downloadBytes(page)
@@ -92,6 +92,6 @@ test('删除列与筛选的组合在预览计数中体现', async ({ page }) => 
   await page.getByRole('combobox', { name: '筛选列' }).click()
   await page.getByRole('option', { name: '部门' }).click()
   await page.getByRole('textbox', { name: '筛选关键词' }).fill('研发')
-  await expect(page.getByText('筛选移除 2 行')).toBeVisible()
+  await expect(page.getByText('筛选 移除 2 行')).toBeVisible()
   await expect(page.getByText('结果 2 行 × 2 列')).toBeVisible()
 })

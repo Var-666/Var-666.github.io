@@ -249,6 +249,10 @@ export default function TableTool({ active }: { active: boolean }) {
     }
   }
 
+  // V8：汇总 chip 用设计源格式「{模式名} {N} 份 → {行数} 行」，模式名与合并方式 Segmented 一致
+  const mergeModeLabel =
+    mergeMode === 'strict' ? '同结构追加' : mergeMode === 'align' ? '列名并集' : '主键连接'
+
   const columnSelect = (
     label: string,
     value: string,
@@ -278,6 +282,12 @@ export default function TableTool({ active }: { active: boolean }) {
     </label>
   )
 
+  // V2：设计源 Segmented（r14 chip 容器 + r10 选项）——选中白底投影、未选中 #57575d（C 类达标色）
+  const mergeSegment = (active: boolean) =>
+    active
+      ? 'flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-tb-card px-3 py-1 text-[13px] font-medium shadow-sm transition disabled:opacity-50'
+      : 'flex items-center gap-1.5 whitespace-nowrap rounded-[10px] px-3 py-1 text-[13px] font-medium text-[#57575d] transition enabled:hover:text-tb-fg disabled:opacity-50 dark:text-tb-mute'
+
   return (
     <main className="main-content table-tool">
       <p className={busy ? 'compare-note' : 'sr-only'} role="status" aria-atomic="true">
@@ -291,8 +301,8 @@ export default function TableTool({ active }: { active: boolean }) {
       </p>
       <ToolHead
         toolId="table"
-        title="表格批量处理"
-        tagline="多份表格，一次处理到位。"
+        title="表格工具"
+        tagline="两张表，差异一眼看清。"
         actions={
           <button
             type="button"
@@ -328,9 +338,11 @@ export default function TableTool({ active }: { active: boolean }) {
                     <span className="whitespace-nowrap text-[12px] tabular-nums text-tb-mute">
                       {tables.length} / 10 份
                     </span>
+                    {/* V7：设计源卡头清空为 ghost 蓝字（text-tb-link，hover chip 底） */}
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="text-tb-link! hover:bg-tb-chip! hover:text-tb-link!"
                       disabled={busy}
                       onClick={() => {
                         setTables([])
@@ -533,42 +545,63 @@ export default function TableTool({ active }: { active: boolean }) {
               <ol className="mb-4 flex flex-wrap gap-2">
                 {validResult.stats.join && (
                   <li className="rounded-full bg-tb-chip px-3 py-1 text-[12px] tabular-nums">
-                    匹配 {validResult.stats.join.pairs} 对 · 左表未匹配{' '}
-                    {validResult.stats.join.leftUnmatched} 行 · 右表未匹配{' '}
-                    {validResult.stats.join.rightUnmatched} 行
+                    <span className="font-semibold">匹配</span>{' '}
+                    <span className="text-[#57575d] dark:text-tb-mute">
+                      {validResult.stats.join.pairs} 对 · 左表未匹配{' '}
+                      {validResult.stats.join.leftUnmatched} 行 · 右表未匹配{' '}
+                      {validResult.stats.join.rightUnmatched} 行
+                    </span>
                   </li>
                 )}
                 {!!validResult.stats.renamedColumns && (
                   <li className="rounded-full bg-tb-chip px-3 py-1 text-[12px] tabular-nums">
-                    列改名 {validResult.stats.renamedColumns} 列
+                    <span className="font-semibold">列改名</span>{' '}
+                    <span className="text-[#57575d] dark:text-tb-mute">
+                      {validResult.stats.renamedColumns} 列
+                    </span>
                   </li>
                 )}
                 <li className="rounded-full bg-tb-chip px-3 py-1 text-[12px] tabular-nums">
-                  合并 {validResult.stats.files} 份 · {validResult.stats.mergedRows} 行
+                  <span className="font-semibold">{mergeModeLabel}</span>{' '}
+                  <span className="text-[#57575d] dark:text-tb-mute">
+                    {validResult.stats.files} 份 → {validResult.stats.mergedRows} 行
+                  </span>
                 </li>
                 {!!validResult.stats.dedupedRemoved && (
                   <li className="rounded-full bg-tb-chip px-3 py-1 text-[12px] tabular-nums text-[#a03530] dark:text-[#ef9c96]">
-                    去重删除 {validResult.stats.dedupedRemoved} 行
+                    <span className="font-semibold">去重</span>{' '}
+                    <span className="text-[#57575d] dark:text-tb-mute">
+                      删除 {validResult.stats.dedupedRemoved} 行
+                    </span>
                   </li>
                 )}
                 {!!validResult.stats.filterRemoved && (
                   <li className="rounded-full bg-tb-chip px-3 py-1 text-[12px] tabular-nums text-[#a03530] dark:text-[#ef9c96]">
-                    筛选移除 {validResult.stats.filterRemoved} 行
+                    <span className="font-semibold">筛选</span>{' '}
+                    <span className="text-[#57575d] dark:text-tb-mute">
+                      移除 {validResult.stats.filterRemoved} 行
+                    </span>
                   </li>
                 )}
                 {!!validResult.stats.droppedColumns.length && (
                   <li className="rounded-full bg-tb-chip px-3 py-1 text-[12px] tabular-nums text-[#855700] dark:text-[#e9bd66]">
-                    删除列 {validResult.stats.droppedColumns.join('、')}
+                    <span className="font-semibold">删除列</span>{' '}
+                    <span className="text-[#57575d] dark:text-tb-mute">
+                      {validResult.stats.droppedColumns.join('、')}
+                    </span>
                   </li>
                 )}
                 {!!options.splitBy && (
                   <li className="rounded-full bg-tb-chip px-3 py-1 text-[12px] tabular-nums">
-                    拆分为 {validResult.stats.groups.length} 组：
-                    {validResult.stats.groups
-                      .slice(0, 6)
-                      .map((group) => group.value)
-                      .join('、')}
-                    {validResult.stats.groups.length > 6 ? ' …' : ''}
+                    <span className="font-semibold">拆分为</span>{' '}
+                    <span className="text-[#57575d] dark:text-tb-mute">
+                      {validResult.stats.groups.length} 组：
+                      {validResult.stats.groups
+                        .slice(0, 6)
+                        .map((group) => group.value)
+                        .join('、')}
+                      {validResult.stats.groups.length > 6 ? ' …' : ''}
+                    </span>
                   </li>
                 )}
               </ol>
@@ -613,27 +646,72 @@ export default function TableTool({ active }: { active: boolean }) {
           <div className="tool-aside-card">
             <h2 className="tool-aside-title">1 · 合并方式</h2>
             <div className="grid gap-3">
-              <label className="grid min-w-0 gap-1.5 text-[12px] font-semibold text-tb-mute">
+              {/* V2：合并方式 Segmented——strict=同结构追加、align=列名并集、left/inner/full=主键连接，
+                 与设计源三选项一一对应；主键连接首次点击默认左连接（设计源 joinType 默认值），子胶囊可切换 */}
+              <div
+                className="flex min-w-0 flex-col items-start gap-1.5 text-[12px] font-semibold text-tb-mute"
+                role="group"
+                aria-label="合并方式"
+              >
                 合并方式
-                <Select
-                  disabled={busy}
-                  value={mergeMode}
-                  onValueChange={(value) => setMergeMode(value as TableMergeMode)}
-                >
-                  <SelectTrigger aria-label="合并方式" className="font-normal">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="strict">同结构追加</SelectItem>
-                    <SelectItem value="align">按列名对齐补空</SelectItem>
-                    <SelectItem value="left">左连接（保留左表）</SelectItem>
-                    <SelectItem value="inner">内连接（只保留匹配）</SelectItem>
-                    <SelectItem value="full">全连接（保留两表）</SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
+                <div className="inline-flex max-w-full flex-wrap gap-1 rounded-[14px] bg-tb-chip p-1">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-pressed={mergeMode === 'strict'}
+                    onClick={() => setMergeMode('strict')}
+                    className={mergeSegment(mergeMode === 'strict')}
+                  >
+                    同结构追加
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-pressed={mergeMode === 'align'}
+                    onClick={() => setMergeMode('align')}
+                    className={mergeSegment(mergeMode === 'align')}
+                  >
+                    列名并集
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-pressed={isJoin}
+                    onClick={() => {
+                      if (!isJoin) setMergeMode('left')
+                    }}
+                    className={mergeSegment(isJoin)}
+                  >
+                    主键连接
+                  </button>
+                </div>
+              </div>
               {isJoin && (
                 <>
+                  <div
+                    className="inline-flex max-w-full flex-wrap gap-1 self-start rounded-[14px] bg-tb-chip p-1"
+                    role="group"
+                    aria-label="连接方式"
+                  >
+                    {(
+                      [
+                        ['left', '左连接'],
+                        ['inner', '内连接'],
+                        ['full', '全连接'],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        disabled={busy}
+                        aria-pressed={mergeMode === value}
+                        onClick={() => setMergeMode(value)}
+                        className={mergeSegment(mergeMode === value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                   <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 max-[480px]:grid-cols-1">
                     <label className="grid min-w-0 gap-1.5 text-[12px] font-semibold text-tb-mute">
                       左表主键

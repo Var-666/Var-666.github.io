@@ -13,7 +13,7 @@ const routes = [
   ['text', '文本整理'],
   ['files', '文件格式转换'],
   ['compare', '表格对比'],
-  ['table', '表格批量处理'],
+  ['table', '表格工具'],
   ['pdf', 'PDF 页面整理'],
   ['rename', '批量重命名'],
 ] as const
@@ -117,7 +117,7 @@ test('首次离线准备后，未访问过的六个工具与本地字体都可�
     .getByLabel('选择需要重命名的文件')
     .setInputFiles({ name: 'offline.jpg', mimeType: 'image/jpeg', buffer: exifJpeg() })
   await page.getByRole('button', { name: '读取照片时间', exact: true }).click()
-  await expect(page.getByText('拍摄 2026:10:26 09:08:07', { exact: true })).toBeVisible()
+  await expect(page.getByText('拍摄 2026:10:26 09:08:07')).toBeVisible()
   await page.getByRole('button', { name: '替换', exact: true }).click()
   await page.getByRole('textbox', { name: '查找文字', exact: true }).fill('^offline$')
   await page.getByRole('textbox', { name: '替换为', exact: true }).fill('renamed')
@@ -127,8 +127,10 @@ test('首次离线准备后，未访问过的六个工具与本地字体都可�
   )
   await page.goto('/tools/#/files')
   await page.getByLabel('选择待转换文件').setInputFiles('e2e/fixtures/colors.heic')
-  await page.getByRole('combobox', { name: '输出格式', exact: true }).click()
-  await page.getByRole('option', { name: 'JPG', exact: true }).click()
+  await page
+    .getByRole('group', { name: '输出格式', exact: true })
+    .getByRole('button', { name: 'JPG', exact: true })
+    .click()
   await page.getByRole('button', { name: '开始转换', exact: true }).click()
   await expect(page.locator('.file-row a[download]')).toBeVisible()
   const heicUrl = await page.locator('.file-row a[download]').getAttribute('href')

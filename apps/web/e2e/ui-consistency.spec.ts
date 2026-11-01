@@ -5,7 +5,7 @@ const routes = [
   ['text', '文本整理'],
   ['files', '文件格式转换'],
   ['compare', '表格对比'],
-  ['table', '表格批量处理'],
+  ['table', '表格工具'],
   ['pdf', 'PDF 页面整理'],
   ['rename', '批量重命名'],
 ] as const
@@ -127,11 +127,11 @@ for (const theme of ['light', 'dark'] as const) {
     const fields = page.locator('.replace-rule input, .list-options input')
     for (const field of await fields.all()) {
       await expect(field).toHaveCSS('height', '36px')
-      await expect(field).toHaveCSS('border-radius', '6px')
+      await expect(field).toHaveCSS('border-radius', '10px')
     }
     await expect(page.getByRole('textbox', { name: '第 1 条查找' })).toHaveCSS(
-      'outline-width',
-      '2px',
+      'box-shadow',
+      /0px 0px 0px 2px rgb\(0, 113, 227\)|rgb\(0, 113, 227\) 0px 0px 0px 2px/,
     )
     await noOverflow(page)
     await page.screenshot({ path: info.outputPath('text-options.png'), fullPage: true })

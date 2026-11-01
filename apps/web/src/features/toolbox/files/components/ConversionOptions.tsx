@@ -51,31 +51,91 @@ export function ConversionOptions({
     modes[mode].category === 'text' ||
     (modes[mode].category === 'table' && !mode.startsWith('excel-'))
   const fieldLabel = 'grid min-w-0 gap-1.5 text-[12px] font-semibold text-tb-mute'
+  // F2/F3：设计源 Segmented（r14 chip 容器 + r10 选项）；分组字段用左对齐纵向小栈，
+  // 选中白底投影、未选中 #57575d（C 类达标色，dark 回退 tb-mute），与主区子模式胶囊同款
+  const fieldGroup =
+    'flex min-w-0 flex-col items-start gap-1.5 text-[12px] font-semibold text-tb-mute'
+  const formatSegment = (active: boolean) =>
+    active
+      ? 'flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-tb-card px-3.5 py-1.5 text-[14px] font-medium shadow-sm transition disabled:opacity-50'
+      : 'flex items-center gap-1.5 whitespace-nowrap rounded-[10px] px-3.5 py-1.5 text-[14px] font-medium text-[#57575d] transition hover:text-tb-fg disabled:opacity-50 dark:text-tb-mute'
+  const sizeSegment = (active: boolean) =>
+    active
+      ? 'flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-tb-card px-3 py-1 text-[13px] font-medium shadow-sm transition disabled:opacity-50'
+      : 'flex items-center gap-1.5 whitespace-nowrap rounded-[10px] px-3 py-1 text-[13px] font-medium text-[#57575d] transition hover:text-tb-fg disabled:opacity-50 dark:text-tb-mute'
   return (
     <div className="flex flex-col gap-4">
       {mode === 'image' && (
-        <label className={fieldLabel}>
+        <div className={fieldGroup} role="group" aria-label="输出格式">
           输出格式
-          <Select
-            disabled={disabled}
-            value={format}
-            onValueChange={(value) => {
-              onChange({ format: value as typeof format })
-            }}
-          >
-            <SelectTrigger aria-label="输出格式" className="font-normal">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="png">PNG</SelectItem>
-              <SelectItem value="jpeg">JPG</SelectItem>
-              <SelectItem value="webp">WebP</SelectItem>
-              <SelectItem value="avif" disabled={!avif}>
-                {avif ? 'AVIF' : 'AVIF（当前浏览器不支持编码）'}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </label>
+          <div className="inline-flex max-w-full flex-wrap gap-1 rounded-[14px] bg-tb-chip p-1">
+            {(
+              [
+                ['jpeg', 'JPG'],
+                ['png', 'PNG'],
+                ['webp', 'WebP'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                disabled={disabled}
+                aria-pressed={format === value}
+                onClick={() => {
+                  onChange({ format: value })
+                }}
+                className={formatSegment(format === value)}
+              >
+                {label}
+              </button>
+            ))}
+            {/* AVIF 依能力检测后出现（与设计源一致）；不支持时由下方 Notice 提示改用其他格式 */}
+            {avif && (
+              <button
+                type="button"
+                disabled={disabled}
+                aria-pressed={format === 'avif'}
+                onClick={() => {
+                  onChange({ format: 'avif' })
+                }}
+                className={formatSegment(format === 'avif')}
+              >
+                AVIF
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      {mode === 'image' && (
+        <div className={fieldGroup} role="group" aria-label="图片尺寸">
+          尺寸
+          <div className="inline-flex max-w-full flex-wrap gap-1 rounded-[14px] bg-tb-chip p-1">
+            {(
+              [
+                ['original', '原尺寸'],
+                ['1920', '≤1920'],
+                ['1280', '≤1280'],
+                ['half', '50%'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                disabled={disabled}
+                aria-pressed={imageSize === value}
+                onClick={() => {
+                  onChange({ imageSize: value as ImageSize })
+                }}
+                className={sizeSegment(imageSize === value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[12px] font-normal leading-[1.5] text-tb-mute">
+            按最大宽度等比缩小，不放大小图。
+          </p>
+        </div>
       )}
       {mode === 'image-compress' && (
         <label className={fieldLabel}>
@@ -177,46 +237,22 @@ export function ConversionOptions({
           />
         </summary>
         <div className="flex flex-col gap-4 px-4 pb-4">
-          {mode === 'image' && (
-            <>
-              <label className={fieldLabel}>
-                尺寸
-                <Select
-                  disabled={disabled}
-                  value={imageSize}
-                  onValueChange={(value) => {
-                    onChange({ imageSize: value as ImageSize })
-                  }}
-                >
-                  <SelectTrigger aria-label="图片尺寸" className="font-normal">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="original">原尺寸</SelectItem>
-                    <SelectItem value="1920">宽度 ≤ 1920</SelectItem>
-                    <SelectItem value="1280">宽度 ≤ 1280</SelectItem>
-                    <SelectItem value="half">缩放 50%</SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
-              {format !== 'png' && (
-                <label className={fieldLabel}>
-                  质量 {quality}%
-                  <input
-                    type="range"
-                    aria-label="图片质量"
-                    min="10"
-                    max="100"
-                    disabled={disabled}
-                    value={quality}
-                    onChange={(event) => {
-                      onChange({ quality: Number(event.target.value) })
-                    }}
-                    className="w-full accent-[#0071e3]"
-                  />
-                </label>
-              )}
-            </>
+          {mode === 'image' && format !== 'png' && (
+            <label className={fieldLabel}>
+              质量 {quality}%
+              <input
+                type="range"
+                aria-label="图片质量"
+                min="10"
+                max="100"
+                disabled={disabled}
+                value={quality}
+                onChange={(event) => {
+                  onChange({ quality: Number(event.target.value) })
+                }}
+                className="w-full accent-[#0071e3]"
+              />
+            </label>
           )}
           {mode === 'image-compress' && (
             <>

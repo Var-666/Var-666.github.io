@@ -714,3 +714,16 @@ rename 的 details 在 `.conversion-panel` 内而非 main 直接子级，此前�
 - 首轮 e2e 修复三类：①text TbSegmented 未选中色 4.15:1→浅色 #57575d（第 3 次同类坑）；②offline 的下载定位无工具作用域，keep-alive 隐藏工具底栏 strict-mode 撞车→加 `.pdf-tool` 前缀；③**320×256 PDF 预览点击 hang 的真正根因**：页面缺顶部 `scroll-padding-top`，粘性头部（站点导航 48+面包屑 44=92px）遮挡 scrollIntoView 落点，命中测试永远不过——globals.css 补 `html { scroll-padding-top: 96px }`（与底部 88px 先例对称），探针实测点击 12s 超时→54ms 完成。
 - 有意保留：换模式确认弹窗（数据安全护栏）；pdf 未复制设计源「只导出选中的页」Toggle（本页即逐页选中模型，复制需改 exportPdf 逻辑）。
 - 本轮验证：Prettier、TypeScript、ESLint、单测 223、构建通过；Chromium 全量 e2e **185/185**（57.5s）；1440×950 截图核对 text/rename/pdf 三页与设计源交互结构一致。
+
+### 补充二十四：六页逐像素审计与 A 类差异清零（应用户「要完全仿照 Figma 样式」）
+
+- **审计**：code-reviewer 六页（text/files/table/compare/pdf/rename）× {1440 light/dark, 390 light} 同视口截图 + getComputedStyle 程序化 diff（19 属性 × 20+ 探针/页）+ 有数据态实填对照。结论：骨架层（头部/卡片/右栏/底栏/开关/Segmented/Collapsible/表格行）实测逐字一致；差异 A 类 30 条（可对齐）、B 类 27 条（功能超集）、C 类 1 条（对比度）。
+- **A 类清零**（4 个并行子智能体 + 主会话集成）：
+  - 全局（styles.css）：底栏主按钮统一 #0071e3（原 pdf/rename 页 #0066cc 项目内不一致）、次按钮 chip 实底胶囊、h37/gap6/禁用 0.4、底栏高 65、玻璃底 0.80、工具条 gap16、切换器投影、「说明与限制」蓝字 h31.5、双模式胶囊 h41/14px、移动端工具条 h48/13px 可换行、**控件 field 化**（.tool-input 与 SelectTrigger：r10 + tb-raise 底 + ring-1，focus 2px 蓝——替换行等四类输入的焦点规则 :focus-visible→:focus，程序化 focus 也生效）、导航 letter-spacing、**移动端底栏恢复 fixed**（≤640 堆叠+换行保留，scroll-padding-bottom 88px 防遮挡）。
+  - text：场景按钮纯文字胶囊（去图标/徽标）、结果列顶部 8px、头部行 58px。
+  - files：输出格式/尺寸改 Segmented（尺寸移出 details）、队列行 48px 方块+「大小 · 待处理」、拖放区文案与真实限制 hint、清空 ghost 蓝字。
+  - table：标题改「表格工具/两张表，差异一眼看清。」、合并方式 Select→Segmented（含连接方式子胶囊，语义 strict/align/left/inner/full 一一映射）、结果 chip 文案设计源格式（「同结构追加 2 份 → 4 行」等）+ 明细色加深。
+  - compare/pdf/rename：pdf 补「载入示例」（pdf-lib 运行时生成 3 页示例文档）与设计源拖放区文案、rename 补「载入示例」（复用 files 画布 PNG）与预览行灰字辅助行；compare 分类卡描边/swap 按钮经两站实测已与设计源一致（审计误报，未盲改）。
+  - e2e 同步：13 个 spec 的定位/步骤/标题（含范围外 image-upgrade/conversion-flow/offline/reliability/home/accessibility；ui-consistency 的输入圆角契约 6px→10px、焦点断言改为设计源 2px 蓝 ring 的 box-shadow）。
+- **B 类 27 条（功能超集）与 C 类 1 条留待用户圈定**：B=本项目多出的能力（XLSX/编码/预设/12 模式/解密/压缩/统计行/页脚/双模式切换器等）的安放差异，功能不可删故只能决定「是否进一步压缩其视觉占地」；C=#57575d 家族（照抄设计源 #6e6e73 在 chip 底 4.15:1 挂 axe AA，dark 已同设计源）。
+- 本轮验证：Prettier、TypeScript、ESLint、单测 223+8、构建通过；Chromium 全量 e2e **185/185**（55.3s，迭代 3 轮：choose helper 恢复 combobox+新增 Segmented 专用、chip 明细色加深、焦点契约同步）。

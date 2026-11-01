@@ -32,7 +32,7 @@ for (const blocked of ['object', 'methods'] as const) {
     // 直接子级 = 面包屑返回链接；工具条内的工具切换器也是链接，不能混入
     await page.locator('.tool-breadcrumb > a').click()
     await page.locator('.tool-card').filter({ hasText: '文件格式转换' }).click()
-    await expect(page.getByRole('combobox', { name: '输出格式', exact: true })).toBeVisible()
+    await expect(page.getByRole('group', { name: '输出格式', exact: true })).toBeVisible()
     expect(errors).toEqual([])
   })
 }
@@ -125,7 +125,7 @@ test('大 CSV 在 Worker 解析并分批返回，导出保留完整行列及前�
   const threads: string[] = []
   page.on('worker', (worker) => threads.push(worker.url()))
   await page.goto('/tools/#/table')
-  await expect(page.getByRole('heading', { name: '表格批量处理', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '表格工具', exact: true })).toBeVisible()
   await page.evaluate(() => {
     const durations: number[] = []
     Object.assign(window, { csvLongTasks: durations })
@@ -190,7 +190,7 @@ test('CSV 线程无法加载时提示失败并恢复操作，不丢弃已有表�
 
 test('CSV 线程未响应时，30 秒后终止并恢复文件选择', async ({ page }) => {
   await page.goto('/tools/#/table')
-  await expect(page.getByRole('heading', { name: '表格批量处理', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '表格工具', exact: true })).toBeVisible()
   await page.clock.install()
   await page.evaluate(() => {
     Object.assign(window, { csvWorkerTerminated: false })

@@ -64,7 +64,7 @@ test('多工具往返复用模块与线程，并保留已生成的下载', async
     .getByRole('link', { name: '工具箱', exact: true })
   for (const [id, heading] of [
     ['text', '文本整理'],
-    ['table', '表格批量处理'],
+    ['table', '表格工具'],
     ['pdf', 'PDF 页面整理'],
     ['rename', '批量重命名'],
     ['text', '文本整理'],

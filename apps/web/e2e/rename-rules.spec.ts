@@ -86,7 +86,8 @@ test('照片时间真实读取，不受时区偏移；缺失时间明确显示�
     ])
   await page.getByRole('button', { name: '读取照片时间', exact: true }).click()
   await expect(page.getByRole('button', { name: '读取照片时间', exact: true })).toBeEnabled()
-  await expect(page.getByText('拍摄 2020:02:29 03:04:05', { exact: true })).toBeVisible()
+  // 拍摄时间与文件大小同行展示（设计源 R3），子串匹配定位到该行
+  await expect(page.getByText('拍摄 2020:02:29 03:04:05')).toBeVisible()
   await page.getByRole('switch', { name: '修改时间', exact: true }).click()
   await choose(page, '日期来源', 'EXIF 拍摄时间')
   await choose(page, '日期位置', '替换主名')

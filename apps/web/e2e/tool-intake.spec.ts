@@ -109,7 +109,7 @@ test('Excel 转 CSV 后直接接力表格批处理，保留 001 与中文', asyn
   await page.getByRole('button', { name: '导出 CSV', exact: true }).click()
   const url = await page.locator('.table-tool a[download]').getAttribute('href')
   await openTool(page, 'PDF 页面整理')
-  await openTool(page, '表格批量处理')
+  await openTool(page, '表格工具')
   expect(await page.evaluate(async (url) => (await fetch(url!)).ok, url)).toBe(true)
 })
 

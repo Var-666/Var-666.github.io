@@ -24,7 +24,7 @@ test('统一表格入口可切换两个模式，返回后批量导入草稿保�
     .locator('.tool-card')
     .filter({ has: page.getByRole('heading', { name: '表格工具', exact: true }) })
     .click()
-  await expect(page.getByRole('heading', { name: '表格批量处理', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '表格工具', exact: true })).toBeVisible()
   await page.getByLabel('添加表格文件', { exact: true }).setInputFiles({
     name: 'draft.csv',
     mimeType: 'text/csv',

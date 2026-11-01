@@ -143,7 +143,8 @@ export function FileQueue({
                               ? ' · 预览失败'
                               : ''
                         }`
-                      : sizeLabel(row.file.size))}
+                      : // 设计源格式：未开始处理的行显示「{大小} · 待处理」
+                        `${sizeLabel(row.file.size)} · 待处理`)}
                 </span>
               </p>
             </div>

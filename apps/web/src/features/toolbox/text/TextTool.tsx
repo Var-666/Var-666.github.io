@@ -23,7 +23,6 @@ import {
   FileText,
   FileUp,
   Diff,
-  ListFilter,
   ChevronDown,
   Info,
   LoaderCircle,
@@ -33,9 +32,6 @@ import {
   ShieldCheck,
   Star,
   Trash2,
-  Type,
-  WandSparkles,
-  WrapText,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -73,13 +69,6 @@ import { DIFF_MAX_CHARS, type DiffHunk } from '@/features/toolbox/text/text-diff
 import { ToolHead } from '../components/ToolHead'
 import { tools } from '../tools'
 
-const icons = {
-  clean: WandSparkles,
-  pdf: WrapText,
-  dedupe: ListFilter,
-  chinese: Type,
-  markdown: FileText,
-}
 const presetKeys = Object.keys(presets) as Preset[]
 const maxChars = 1_000_000
 function initialSettings(): { preset: Preset; options: Options } {
@@ -545,7 +534,7 @@ export default function TextTool({ active }: { active: boolean }) {
                     void importFile(event.dataTransfer.files[0])
                   }}
                 >
-                  <div className="editor-header">
+                  <div className="editor-header lg:h-[58px]!">
                     <div>
                       <FileText size={16} />
                       <h2>原始文本</h2>
@@ -649,7 +638,7 @@ export default function TextTool({ active }: { active: boolean }) {
                     mobileTab !== 'result' && 'mobile-hidden',
                   )}
                 >
-                  <div className="editor-header">
+                  <div className="editor-header lg:h-[58px]!">
                     <div>
                       <span className="result-dot" />
                       <h2>整理结果</h2>
@@ -660,13 +649,13 @@ export default function TextTool({ active }: { active: boolean }) {
                     </div>
                   </div>
                   <div className="editor-body">
-                    <div ref={resultOverlay} className="diff-overlay" aria-hidden="true">
+                    <div ref={resultOverlay} className="diff-overlay lg:pt-2!" aria-hidden="true">
                       <OverlayMarks text={result.text} marks={marksTooMany ? [] : resultMarks} />
                     </div>
                     <Textarea
                       ref={output}
                       aria-label="整理结果"
-                      className="text-editor result-editor"
+                      className="text-editor result-editor lg:pt-2!"
                       value={result.text}
                       readOnly
                       spellCheck={false}
@@ -860,28 +849,23 @@ export default function TextTool({ active }: { active: boolean }) {
             <div className="tool-aside-card">
               <p className="tool-aside-title">场景</p>
               <section aria-label="选择整理场景" className="presets">
-                <div className="preset-grid">
-                  {presetKeys.map((key) => {
-                    const Icon = icons[key]
-                    return (
-                      <button
-                        key={key}
-                        className={cn('preset-card', preset === key && 'selected')}
-                        onClick={() => choosePreset(key)}
-                        aria-pressed={preset === key}
-                      >
-                        <span className={`preset-icon preset-${key}`}>
-                          <Icon size={20} strokeWidth={1.8} />
-                        </span>
-                        <span className="preset-copy">
-                          <strong>{presets[key].title}</strong>
-                        </span>
-                        <span className="preset-check">
-                          {preset === key ? <Check size={12} strokeWidth={3} /> : null}
-                        </span>
-                      </button>
-                    )
-                  })}
+                {/* 场景按钮对齐设计源：纯文字圆形胶囊，选中反色，无图标无徽标 */}
+                <div className="flex flex-wrap gap-2">
+                  {presetKeys.map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => choosePreset(key)}
+                      aria-pressed={preset === key}
+                      className={cn(
+                        'rounded-full px-3.5 py-1.5 text-[13px]! font-medium whitespace-nowrap transition',
+                        preset === key
+                          ? 'bg-tb-fg text-tb-bg'
+                          : 'bg-tb-chip text-tb-fg hover:opacity-80',
+                      )}
+                    >
+                      {presets[key].title}
+                    </button>
+                  ))}
                 </div>
               </section>
             </div>

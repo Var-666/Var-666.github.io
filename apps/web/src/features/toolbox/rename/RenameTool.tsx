@@ -33,6 +33,8 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { packOutputs } from '../files/file-media'
+import { sampleImageFiles } from '../files/file-samples'
+import { sizeLabel } from '../files/types'
 import { ToolHead } from '../components/ToolHead'
 import { tools } from '../tools'
 import {
@@ -123,6 +125,15 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
   useTransferReceiver('rename', active && !packing && !readingDates, (request) => {
     void addFiles(request.files ?? [])
   })
+  // 「载入示例」：设计源在空态 dropzone 下有灰色入口；Canvas 生成两张小 PNG，
+  // 走既有 addFiles 校验入队（PNG 无 EXIF，「读取照片时间」与手动上传同样走缺失降级路径）。
+  const loadSamples = async () => {
+    try {
+      addFiles(await sampleImageFiles())
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '无法生成示例文件。')
+    }
+  }
   const move = (index: number, offset: number) => {
     if (running.current || readingDates || index + offset < 0 || index + offset >= files.length)
       return
@@ -251,6 +262,19 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
                 event.target.value = ''
               }}
             />
+            {!files.length && (
+              <p className="mt-3 text-center text-[13px] text-tb-mute">
+                手边没有文件？
+                <button
+                  type="button"
+                  className="text-tb-link hover:underline disabled:opacity-50"
+                  disabled={packing || readingDates}
+                  onClick={() => void loadSamples()}
+                >
+                  载入示例
+                </button>
+              </p>
+            )}
           </TbCard>
           {!!files.length && (
             <TbCard
@@ -348,11 +372,12 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
                                 >
                                   {entry.file.name}
                                 </span>
-                                {(entry.shotAt || entry.shotError) && (
-                                  <small className="mt-0.5 block text-[11px] text-tb-mute [overflow-wrap:anywhere]">
-                                    {entry.shotAt ? `拍摄 ${entry.shotAt}` : entry.shotError}
-                                  </small>
-                                )}
+                                {/* 设计源：原文件名后跟灰色小字（大小）；本项目在徽标右侧、名称下方，含大小与拍摄时间/错误 */}
+                                <small className="mt-0.5 block text-[11px] text-tb-mute [overflow-wrap:anywhere]">
+                                  {sizeLabel(entry.file.size)}
+                                  {entry.shotAt && <> · 拍摄 {entry.shotAt}</>}
+                                  {entry.shotError && <> · {entry.shotError}</>}
+                                </small>
                               </span>
                             </span>
                           </td>

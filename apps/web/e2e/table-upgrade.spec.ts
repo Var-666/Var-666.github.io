@@ -36,6 +36,16 @@ async function choose(page: Page, label: string, option: string | RegExp) {
   await page.getByRole('combobox', { name: label, exact: true }).click()
   await page.getByRole('option', { name: option, exact: typeof option === 'string' }).click()
 }
+// 合并方式改为设计源 Segmented（同结构追加 / 列名并集 / 主键连接 + 左/内/全连接子胶囊）后的按钮交互；
+// 主键连接首次点击默认左连接，重复点击不改变当前连接类型
+async function chooseMerge(
+  page: Page,
+  mode: '同结构追加' | '列名并集' | '左连接' | '内连接' | '全连接',
+) {
+  if (mode !== '同结构追加' && mode !== '列名并集')
+    await page.getByRole('button', { name: '主键连接', exact: true }).click()
+  await page.getByRole('button', { name: mode, exact: true }).click()
+}
 async function bytes(page: Page) {
   const link = page.locator('.table-tool a[download]')
   await expect(link).toBeVisible()
@@ -63,7 +73,7 @@ test('全局接收 XLSX+CSV：按列名补空合并，工作表切换使旧结�
     .setInputFiles([workbook(), csv('extra.csv', '部门,备注\n销售,新增')])
   await page.getByRole('button', { name: '合并、去重、筛选表格', exact: true }).click()
   await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText('表头')
-  await choose(page, '合并方式', '按列名对齐补空')
+  await chooseMerge(page, '列名并集')
   await page.getByRole('button', { name: '导出 CSV', exact: true }).click()
   expect(parse(await bytes(page))).toEqual([
     ['编号', '部门', '备注'],
@@ -107,7 +117,7 @@ test('主键左/内/全连接保留一对多和前导零，空键不互相匹配
     csv('left.csv', '编号,部门\n001,研发\n002,销售\n,左空'),
     csv('right.csv', '员工号,部门\n001,经理一\n001,经理二\n003,财务\n,右空'),
   ])
-  await choose(page, '合并方式', '全连接（保留两表）')
+  await chooseMerge(page, '全连接')
   await expect(page.getByText('结果 6 行 × 3 列', { exact: true })).toBeVisible()
   await expect(
     page.getByText('匹配 2 对 · 左表未匹配 2 行 · 右表未匹配 2 行', { exact: true }),
@@ -122,17 +132,17 @@ test('主键左/内/全连接保留一对多和前导零，空键不互相匹配
     ['003', '', '财务'],
     ['', '', '右空'],
   ])
-  await choose(page, '合并方式', '内连接（只保留匹配）')
+  await chooseMerge(page, '内连接')
   await expect(page.locator('.table-tool a[download]')).toHaveCount(0)
   await expect(page.getByText('结果 2 行 × 3 列', { exact: true })).toBeVisible()
-  await choose(page, '合并方式', '左连接（保留左表）')
+  await chooseMerge(page, '左连接')
   await expect(page.getByText('结果 4 行 × 3 列', { exact: true })).toBeVisible()
 })
 
 test('相同主键反复交换左右表后旧下载失效，新下载与预览一致', async ({ page }) => {
   await page.goto('/tools/#/table')
   await upload(page, [csv('a.csv', 'id,value\n1,A\n2,B'), csv('b.csv', 'id,value\n1,C\n3,D')])
-  await choose(page, '合并方式', '左连接（保留左表）')
+  await chooseMerge(page, '左连接')
   await page.getByRole('button', { name: '交换左右表', exact: true }).click()
   await page.getByRole('button', { name: '导出 CSV', exact: true }).click()
   await bytes(page)
@@ -252,12 +262,12 @@ test('连接展开超过行数边界时停止，原表可切回追加继续使�
     csv('a.csv', 'id,v\n' + Array(400).fill('x,a').join('\n')),
     csv('b.csv', 'id,v\n' + Array(400).fill('x,b').join('\n')),
   ])
-  await choose(page, '合并方式', '全连接（保留两表）')
+  await chooseMerge(page, '全连接')
   await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(
     '超出 10 万行',
   )
   await expect(page.locator('.table-tool a[download]')).toHaveCount(0)
-  await choose(page, '合并方式', '同结构追加')
+  await chooseMerge(page, '同结构追加')
   await expect(page.getByText('结果 800 行 × 2 列', { exact: true })).toBeVisible()
 })
 
@@ -273,7 +283,7 @@ for (const theme of ['light', 'dark'] as const)
       csv('left.csv', '编号,部门\n001,研发'),
       csv('right.csv', '编号,部门\n001,销售'),
     ])
-    await choose(page, '合并方式', '左连接（保留左表）')
+    await chooseMerge(page, '左连接')
     await page.getByRole('switch', { name: '启用筛选' }).click()
     await page.getByRole('switch', { name: '启用列操作' }).click()
     await page.getByText('列改名和顺序', { exact: true }).click()

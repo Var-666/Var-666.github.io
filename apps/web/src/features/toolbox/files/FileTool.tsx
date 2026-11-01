@@ -652,6 +652,14 @@ export default function FileTool({ active = true }: { active?: boolean }) {
       : modes[mode].category === 'office'
         ? 10
         : 2
+  // F7：拖放区 hint 与实际校验逻辑（validateQueueFiles）一致：
+  // 队列最多 10 个文件、总计 50 MB；单个文件上限按类别 20 / 10 / 2 MB；扩展名来自当前模式 accept
+  const queueHint = (() => {
+    const formats = modes[mode].accept.replaceAll('.', '').split(',').join(' · ').toUpperCase()
+    const perFile =
+      modes[mode].category === 'image' ? 20 : modes[mode].category === 'office' ? 10 : 2
+    return `${formats}，${modes[mode].category === 'image' ? '单张' : '单个'} ${perFile} MB，最多 10 个`
+  })()
   const optionControls = (
     <ConversionOptions
       mode={mode}
@@ -781,8 +789,10 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                 title={rows.length ? `待处理 ${rows.length} / ${queueLimit}` : undefined}
                 extra={
                   rows.length ? (
+                    // F8：设计源卡头清空为 ghost 蓝字（text-tb-link，hover chip 底）
                     <Button
                       variant="ghost"
+                      className="text-tb-link! hover:bg-tb-chip! hover:text-tb-link!"
                       disabled={!rows.length || busy || packing}
                       onClick={reset}
                     >
@@ -840,10 +850,10 @@ export default function FileTool({ active = true }: { active?: boolean }) {
                     <span
                       className={`block font-semibold [overflow-wrap:anywhere] ${rows.length ? 'text-[14px]' : 'text-[19px]'}`}
                     >
-                      {rows.length ? '继续添加文件，或拖到这里' : '点击选择文件，或拖到这里'}
+                      {rows.length ? '继续添加文件，或拖到这里' : '选择文件，或拖到这里'}
                     </span>
                     <span className="mt-1 block text-[13px] text-tb-mute [overflow-wrap:anywhere]">
-                      {modes[mode].accept.replaceAll('.', '').split(',').join(' / ').toUpperCase()}
+                      {queueHint}
                     </span>
                   </span>
                 </button>
