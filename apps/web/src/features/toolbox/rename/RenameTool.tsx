@@ -195,9 +195,6 @@ export default function RenameTool({ active = true }: { active?: boolean }) {
       />
       {limitsOpen && (
         <div className="tool-limits-panel">
-          <p>
-            文件只在当前标签页内存中处理，不上传；刷新或关闭标签页即清空。本地仅保存主题、预设与收藏等偏好设置。
-          </p>
           <ul>
             {toolLimits.map((limit) => (
               <li key={limit}>{limit}</li>

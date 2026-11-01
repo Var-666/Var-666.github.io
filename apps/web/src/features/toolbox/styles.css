@@ -50,6 +50,10 @@
   gap: 32px;
   margin-bottom: 28px;
 }
+/* 文案块移除后 intro 仅剩状态/主题 aside，右对齐 */
+.intro > .intro-aside:only-child {
+  margin-left: auto;
+}
 .intro-copy {
   max-width: 720px;
 }

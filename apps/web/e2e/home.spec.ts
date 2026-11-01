@@ -11,7 +11,7 @@ test('工具首页只保留网站导航、导入区和五个工具入口', async
   await expect(page.getByRole('searchbox')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: '常见任务', exact: true })).toHaveCount(0)
   await expect(page.locator('.tool-card')).toHaveCount(5)
-  await expect(page.getByText('5 个工具', { exact: true })).toBeVisible()
+  await expect(page.locator('.tool-count')).toHaveCount(0)
   await expect(
     page
       .locator('.tool-card')

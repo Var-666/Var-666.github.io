@@ -104,35 +104,8 @@ function Intro({
 }) {
   return (
     <section className="intro">
-      <div className="intro-copy">
-        <h1 className="tb-blur-in">
-          全部工具<span aria-hidden="true">。</span>
-        </h1>
-        <p className="intro-sub tb-blur-in" style={{ animationDelay: '0.15s' }}>
-          顺手的工具，就在浏览器里。
-          <span className="tool-count">{tools.length} 个工具</span>
-        </p>
-      </div>
+      <h1 className="sr-only">全部工具</h1>
       <aside className="intro-aside tb-blur-in" style={{ animationDelay: '0.25s' }}>
-        <div className="intro-privacy">
-          <span className="intro-privacy-mark" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
-              <path
-                d="M5 4l6 14 6-14"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <p>
-            <strong>文件不上传。</strong>所有处理都在你的浏览器里完成。
-            <a className="intro-privacy-link" href="#promises">
-              了解隐私
-              <ChevronRight size={14} aria-hidden="true" />
-            </a>
-          </p>
-        </div>
         <div className="intro-status">
           <span className={`status-pill${online ? ' is-online' : ' is-offline'}`}>
             {online ? (
@@ -654,9 +627,6 @@ export default function App() {
         </div>
       )}
       <footer className="toolbox-footer">
-        <p className="toolbox-footer-note">
-          文件和交接内容只留在当前标签页内存，不写入本地存储、不上传；刷新或关闭标签页即清空。本地仅保存主题、预设与收藏等偏好设置。
-        </p>
         <div className="toolbox-footer-row">
           <OfflineStatus />
           <span>Copyright © {new Date().getFullYear()} VAR · hi-var.top</span>

@@ -727,3 +727,11 @@ rename 的 details 在 `.conversion-panel` 内而非 main 直接子级，此前�
   - e2e 同步：13 个 spec 的定位/步骤/标题（含范围外 image-upgrade/conversion-flow/offline/reliability/home/accessibility；ui-consistency 的输入圆角契约 6px→10px、焦点断言改为设计源 2px 蓝 ring 的 box-shadow）。
 - **B 类 27 条（功能超集）与 C 类 1 条留待用户圈定**：B=本项目多出的能力（XLSX/编码/预设/12 模式/解密/压缩/统计行/页脚/双模式切换器等）的安放差异，功能不可删故只能决定「是否进一步压缩其视觉占地」；C=#57575d 家族（照抄设计源 #6e6e73 在 chip 底 4.15:1 挂 axe AA，dark 已同设计源）。
 - 本轮验证：Prettier、TypeScript、ESLint、单测 223+8、构建通过；Chromium 全量 e2e **185/185**（55.3s，迭代 3 轮：choose helper 恢复 combobox+新增 Segmented 专用、chip 明细色加深、焦点契约同步）。
+
+### 补充二十五：删除说明性文案（应用户「这种没用的说明文字都不要有」）
+
+- **工具箱首页**：可见标题「全部工具。」、副题「顺手的工具，就在浏览器里。N 个工具」、隐私块（「文件不上传…」+ 了解隐私链接 + V 标）全部移除；h1 转为 sr-only（10 处 e2e 的 heading 断言与页面语义保留）；intro 仅剩状态胶囊与主题按钮（右对齐）。
+- **全站页脚**：删除隐私说明段（「文件和交接内容只留在当前标签页内存…」）；保留 Copyright / 返回首页 / 离线状态。
+- **工具页「说明与限制」面板**：files/text/rename 三处面板内的同款隐私段落删除（limits 胶囊保留；table/compare/pdf 面板本无此段）。
+- home.spec 同步：「5 个工具」断言改为 `.tool-count` 不存在。
+- 本轮验证：Prettier、TypeScript、ESLint、构建通过；Chromium 全量 e2e **185/185**（55.8s）。
