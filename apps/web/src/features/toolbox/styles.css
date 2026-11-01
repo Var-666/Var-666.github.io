@@ -1289,13 +1289,17 @@
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px; /* G7：工具条左右两组间距 12px → 设计源 gap-4 16px */
   width: 100%;
   padding: 0 max(20px, calc((100% - 1280px) / 2 + 20px));
   min-height: 48px;
   font-size: 13px;
   color: var(--tb-mute);
-  background: color-mix(in srgb, var(--tb-bg) 82%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--tb-bg) 80%,
+    transparent
+  ); /* G6：玻璃底 alpha 0.82 → 0.80（bg-tb-bg/80） */
   -webkit-backdrop-filter: blur(40px) saturate(1.5);
   backdrop-filter: blur(40px) saturate(1.5);
   border-bottom: 1px solid var(--tb-line);
@@ -1309,11 +1313,9 @@
 .tool-breadcrumb a:hover {
   color: var(--tb-fg);
 }
+/* G13：面包屑窄屏允许换行，去掉单行 truncate 强制（overflow/ellipsis/nowrap） */
 .tool-breadcrumb-current {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-weight: 500;
   color: var(--tb-fg);
 }
@@ -1590,8 +1592,7 @@
 @media (max-width: 650px) {
   .tool-breadcrumb {
     padding: 0 16px;
-    min-height: 44px;
-    font-size: 12px;
+    /* G13：移动端工具条与桌面同规格（h48 / 13px），窄屏不再压缩 */
   }
   .tool-grid {
     grid-template-columns: 1fr;
@@ -1870,6 +1871,8 @@
   background: #423427;
   color: #dcab78;
 }
+/* G15：输入控件对齐设计源 field——rounded-[10px]、bg-tb-raise、ring-1 rgba(0,0,0,.08)、focus ring 2px 蓝
+   （dark 下 --tb-raise 与设计源 dark:bg-tb-chip 同值 #2c2c2e） */
 .tool-input,
 .replace-rule input,
 .list-options input,
@@ -1878,20 +1881,22 @@
   min-width: 0;
   width: 100%;
   height: 36px;
-  padding: 0 11px;
-  border: 1px solid var(--input);
-  border-radius: 6px;
-  background: var(--background);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--tb-raise);
+  box-shadow: 0 0 0 1px var(--tb-line);
   color: var(--ink);
   font: inherit;
 }
-.tool-input:focus-visible,
-.replace-rule input:focus-visible,
-.list-options input:focus-visible,
-.table-keyword input:focus-visible,
-.user-preset-save input:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+/* 设计源 field 的焦点环是普通 :focus（focus:ring-2），程序化 focus() 也生效 */
+.tool-input:focus,
+.replace-rule input:focus,
+.list-options input:focus,
+.table-keyword input:focus,
+.user-preset-save input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--tb-blue);
 }
 .rename-rules {
   display: grid;
@@ -3729,7 +3734,7 @@
   color: #ffffff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 4px 10px -4px rgba(0, 0, 0, 0.35);
+    0 8px 20px -8px rgba(0, 0, 0, 0.35); /* G8：外投影 0 4px 10px -4px → 设计源 0 8px 20px -8px black/.35，inset 高光保留 */
 }
 .switcher-icon.is-dashed {
   border: 1.5px dashed rgba(255, 159, 10, 0.6);
@@ -4114,6 +4119,18 @@
 .app-shell :is(button, a).rounded-md {
   border-radius: 999px;
 }
+/* G15：shadcn SelectTrigger 实测被上面规则拉成 r999 全圆角 + 透明底（border-input 灰边），
+   按设计源 field 统一为 r10 + bg-tb-raise + ring-1 rgba(0,0,0,.08)；focus ring 2px #0071e3。
+   用作用域规则覆盖，不改 shadcn 组件文件（compare 主键列 / rename 编号位数 / files 输出格式等）。 */
+.app-shell button[role='combobox'] {
+  border: 0;
+  border-radius: 10px;
+  background: var(--tb-raise);
+  box-shadow: 0 0 0 1px var(--tb-line);
+}
+.app-shell button[role='combobox']:focus {
+  box-shadow: 0 0 0 2px var(--tb-blue);
+}
 /* 分段选项卡：chip 底胶囊，选中项白底投影（globals 的下划线式选中改为投影） */
 .app-shell [role='tablist'] {
   background: var(--tb-chip);
@@ -4135,6 +4152,12 @@
 .dark .app-shell :is(button, a).bg-primary {
   background-color: var(--tb-blue);
   color: #ffffff;
+}
+/* G16：站点导航条恢复全局 letter-spacing -0.01em 继承。设计源头部继承 body 的 -0.01em 收紧；
+   本项目 header 在 .app-shell 之外收不到该值（styles.css 内并无覆盖规则，属缺失而非冲突），
+   故在 is-tb 作用域显式补回。 */
+.website-header.is-tb {
+  letter-spacing: -0.01em;
 }
 /* /tools 站点导航的悬停/当前项文字：主蓝在 chip 底上对比度不足，改用链接蓝 */
 .website-header.is-tb .website-nav a:hover,
@@ -4343,10 +4366,14 @@ details.tool-advanced > :not(summary) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 64px;
+  min-height: 65px; /* G5：底栏总高 65px = min-h-16 64px 内容高 + 1px border-t（border-box 下取 65） */
   padding: 12px max(20px, calc((100% - 1280px) / 2 + 20px));
   border-top: 1px solid var(--tb-line);
-  background: color-mix(in srgb, var(--tb-bg) 82%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--tb-bg) 80%,
+    transparent
+  ); /* G6：玻璃底 alpha 0.82 → 0.80（bg-tb-bg/80） */
   -webkit-backdrop-filter: blur(40px) saturate(1.5);
   backdrop-filter: blur(40px) saturate(1.5);
 }
@@ -4379,10 +4406,10 @@ html:has(.app-shell .workbench-actions) {
   scroll-padding-bottom: 88px;
 }
 @media (max-width: 640px) {
-  /* 窄屏回退为卡内静态底栏：固定栏会持续遮挡底部交互目标（Playwright 滚动不走 scroll-padding）。
-     纵向堆叠 + 按钮行可换行，否则三个按钮的最小内容宽（约 302px）会撑破 320px 视口。 */
+  /* T10：恢复设计源 ≤640 悬浮底栏（fixed inset-x-0 bottom-0 由基础规则提供，不再退化为静态流内）。
+     纵向堆叠 + 按钮行可换行，否则三个按钮的最小内容宽（约 302px）会撑破 320px 视口。
+     防遮挡仍依赖 html scroll-padding-bottom: 88px（见上）。 */
   .workbench-actions {
-    position: static;
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
@@ -4398,16 +4425,19 @@ html:has(.app-shell .workbench-actions) {
 }
 
 /* ---------- 头部「说明与限制」折叠面板 + 场景胶囊化（对齐重设计版） ---------- */
-.tool-limits-toggle {
+/* G10：tb-mute 灰 → 设计源 tb-link 蓝；px-3 py-1.5（h≈31.5）。双选择器提升特异性，
+   压过下方 .tool-title-actions > button 的 --gray 文字色（此前按钮被渲染成灰色的原因）。 */
+.tool-limits-toggle,
+.tool-title-actions .tool-limits-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   border: 0;
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 6px 12px;
   background: transparent;
   color: var(--tb-link);
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: background-color 0.3s;
 }
@@ -4617,6 +4647,47 @@ html:has(.app-shell .workbench-actions) {
   font-size: 14px;
   box-shadow: none;
   background: var(--tb-blue);
+}
+
+/* 13b. G1：底栏主按钮双色统一——pdf/rename 页 shadcn bg-primary 实测 #0066cc（--primary 令牌），
+   与 text/files/table/compare 页（copy-button → --tb-blue）不一致；统一为设计源 #0071e3。
+   仅作用于底栏按钮，--primary 令牌本身不动（站点其他地方仍在引用）。 */
+.workbench-actions button.bg-primary {
+  background-color: var(--tb-blue);
+}
+.workbench-actions button.bg-primary:hover {
+  background-color: var(--tb-blue-hover); /* 设计源 primary hover #0077ed */
+}
+
+/* 13c. G3：底栏按钮统一 px-4 py-2（h37）、图标-文字 gap 6px（设计源 gap-1.5）；
+   size-icon 的 IconButton（w-9 固定宽）与 asChild 渲染出的 <a> 一并拉平 */
+.workbench-actions :is(button, a) {
+  height: 37px;
+  width: auto;
+  padding-inline: 16px;
+  gap: 6px;
+  font-size: 14px;
+}
+
+/* 13d. G2：底栏次按钮（撤销/下载 TXT/清空/导出 CSV(ZIP) 等非主按钮）从 ghost/outline 透明底
+   改为设计源 bg-tb-chip #e8e8ed 实底胶囊；hover 对齐设计源 secondary hover:opacity-80。
+   去投影需排除 :focus-visible，否则会以更高特异性永久压掉 shadcn 的键盘焦点环。 */
+.workbench-actions :is(button, a):not(.copy-button):not(.bg-primary) {
+  background: var(--tb-chip);
+  border: 0;
+  color: var(--tb-fg);
+}
+.workbench-actions :is(button, a):not(.copy-button):not(.bg-primary):not(:focus-visible) {
+  box-shadow: none;
+}
+.workbench-actions :is(button, a):not(.copy-button):not(.bg-primary):hover {
+  background: var(--tb-chip);
+  opacity: 0.8;
+}
+
+/* 13e. G4：底栏按钮禁用态 opacity 0.5（shadcn disabled:opacity-50）→ 设计源 disabled:opacity-40 */
+.workbench-actions button:disabled {
+  opacity: 0.4;
 }
 
 /* 14. 移动端原文/结果切换：chip 底、13px */
@@ -4846,6 +4917,17 @@ html:has(.app-shell .workbench-actions) {
    颜色 #0071e3/#30d158/#ff9f0a/#ff3b30 走 --tb-* 变量，文本色用既有浅色调色板保证对比度。 */
 /* ================================================================== */
 
+/* G11（尺寸部分）：双模式胶囊对齐设计源——容器 bg-tb-chip p-1 → h41；item px-4 py-1.5、字 14px/500 → h33。
+   未选中文字色保持本项目现状（opacity .72 ≈ #57575d，C 类刻意偏离，勿动）。 */
+.table-mode-switch [role='tablist'] {
+  height: 41px;
+}
+.table-mode-switch [role='tab'] {
+  height: 33px;
+  padding-inline: 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
 /* —— 模式切换胶囊对齐头部行（≥1024px；设计源把胶囊放在标题行右侧、与「说明与限制」底对齐） —— */
 /* 切换条塌陷为零高占位，胶囊绝对定位到头部行；切换条右缘恒比内容容器右缘宽 20px，168px 偏移在各档视口不变 */
 @media (min-width: 1024px) {
